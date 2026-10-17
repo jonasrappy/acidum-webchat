@@ -5,14 +5,15 @@
 <meta name="referrer" content="no-referrer">
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; connect-src wss://ws0.acium.app; img-src 'self' data:; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="theme-color" content="#11141a"><meta name="description" content="En let, uafhængig webchat til din Acium-session. Ingen installation og ingen adgangskode hos os.">
-<title>acium · webchat</title><link rel="icon" href="icon.svg" type="image/svg+xml"><link rel="stylesheet" href="style.css?v=5"><script type="module" src="app.js?v=5"></script>
+<title>acium · webchat</title><link rel="icon" href="icon.svg" type="image/svg+xml"><link rel="stylesheet" href="style.css?v=6"><script type="module" src="app.js?v=5"></script>
 </head>
 <body>
 <section id="welcome" class="welcome">
   <div class="login-card">
     <h1 class="brand"><span class="brand-icon" aria-hidden="true">a</span> acium</h1>
+    <p id="link-guide" class="login-guide"><a href="https://acium.app/" target="_blank" rel="noopener noreferrer">Log ind hos Acium ↗</a> og åbn webchatten. Kopiér hele linket fra adresselinjen og indsæt det her.</p>
     <form id="connect-form">
-      <input id="chat-link" type="password" aria-label="Dit Acium-webchat-link" placeholder="Indsæt dit webchat-link" autocomplete="off" spellcheck="false" required>
+      <input id="chat-link" type="password" aria-label="Dit Acium-webchat-link" aria-describedby="link-guide" placeholder="https://acium.app/chat?token=…" autocomplete="off" spellcheck="false" required>
       <p id="login-error" class="error" role="alert"></p>
       <button class="primary" type="submit">Åbn chat <span aria-hidden="true">→</span></button>
     </form>
