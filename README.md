@@ -18,14 +18,14 @@ Login hos Acium er stadig nødvendigt. Der er ikke implementeret et officielt OA
 
 - Alle samtaler samlet eller én bruger ad gangen.
 - Aciums markerede hændelser i en separat log.
-- Søgning i den indlæste historik, hændelsesfilter og ulæste markeringer.
+- Søgning i den indlæste historik og hændelsesfilter. Tallet ved hver bruger tæller kun ulæste navneomtaler eller beskeder, Acium har markeret med `log`/`notify`. Almindelige rumbeskeder, egne beskeder og ind-/udgange tæller ikke med. Selve triggerlisten indlæses ikke.
 - Automatisk lazy load ved scroll mod toppen, med bevaret scrollplacering.
 - Valgfri lokal historik i IndexedDB: op til 10.000 beskeder pr. webchat-login på denne enhed.
 - Vælg hvilken af dine brugere du skriver som.
 - Privatbeskeder og rumskift vises; der er ingen separat brugerflade til at starte hvisken eller skifte rum.
 - Automatisk genforbindelse med stigende ventetid og tilfældig variation.
 - Mobilvisning med bundnavigation, hurtige brugerfaner, store trykfelter og separate rum- og indstillingspaneler.
-- Visning af rum og observerede brugere separat for hver konto. Det er ikke en fuld deltagerliste: den bygges af almindelige beskeder og ind-/udgange, nulstilles ved rumskift og ignorerer hvisken og gamle genafspillede hændelser. Hvis serverens begrænsede historik ikke indeholder et rumskift, vises “Rumnavn afventes”.
+- Visning af rum og observerede brugere separat for hver konto. Det er ikke en fuld deltagerliste: den bygges af almindelige beskeder og ind-/udgange, nulstilles ved rumskift og ignorerer hvisken og gamle genafspillede hændelser. Hvis serverens begrænsede historik ikke indeholder et rumskift, vises “Rumnavn afventes” kun i rumoversigten.
 - Layoutet tilpasser højden til browserens synlige viewport, når skærmtastaturet ændrer pladsen. Tastaturbetjening og `/` som søge-genvej.
 - Eksempeltilstand uden netværksforbindelse til Acium.
 

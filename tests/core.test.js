@@ -1,6 +1,6 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {ChatStore, parseToken, retryDelay} from '../dist/core.js';
+import {ChatStore, parseToken, retryDelay, needsAttention} from '../dist/core.js';
 const event = (i, name='Test') => ({type:'text',me:{name},user:{name:'Guest'},text:`message ${i}`,time:1700000000000+i});
 test('tokens accept the official link and reject other hosts, missing tokens and arbitrary URL strings', () => {
  assert.equal(parseToken('https://acium.app/chat?token=example_token_123#log'),'example_token_123');
@@ -44,4 +44,21 @@ test('presence follows each account independently, clears at room changes, ignor
  s.add({...event(4),type:'join',user:{name:'Old room guest'}});assert.equal(s.tab('Test').presence.has('Old room guest'),false);
  s.add({...event(7,'Other'),user:{name:'Separate'}});assert.equal(s.tab('Test').presence.has('Separate'),false);
  assert.equal(s.tab('Other').presence.get('Separate').present,true);
+});
+
+test('attention badges only match names or Acium trigger flags, never ordinary room traffic',()=>{
+ const base={type:'text',me:{name:'Punktum'},user:{name:'Guest'},text:'Hej alle sammen'};
+ assert.equal(needsAttention(base),false);
+ for(const text of ['Hej Punktum!','@PUNKTUM: er du der?','punktum'])assert.equal(needsAttention({...base,text}),true);
+ for(const text of ['punktummer','antipunktum','Punktum123'])assert.equal(needsAttention({...base,text}),false);
+ assert.equal(needsAttention({...base,notify:true}),true);
+ assert.equal(needsAttention({...base,log:true}),true);
+ assert.equal(needsAttention({...base,type:'join',notify:true}),false);
+ assert.equal(needsAttention({...base,user:{name:'Punktum'},text:'Punktum',notify:true}),false);
+ assert.equal(needsAttention({...base,me:{name:'A+B'},text:'Hej A+B!'}),true);
+ assert.equal(needsAttention({...base,me:{name:'Søren'},text:'Hej SØREN!'}),true);
+ assert.equal(needsAttention({...base,type:'priv',from:{name:'Punktum'},notify:true}),false);
+ const store=new ChatStore();store.setTabs(['Punktum']);
+ assert.equal(store.add({...base,time:1}).attention,false);
+ assert.equal(store.add({...base,time:2,text:'Hej Punktum'}).attention,true);
 });
