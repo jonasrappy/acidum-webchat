@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="da">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; connect-src wss://ws0.acium.app; img-src 'self' data:; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta name="theme-color" content="#11141a"><meta name="description" content="En let, uafhængig webchat til din Acium-session. Ingen installation og ingen adgangskode hos os.">
+<title>Stuen · Let webchat</title><link rel="icon" href="icon.svg" type="image/svg+xml"><link rel="stylesheet" href="style.css"><script type="module" src="app.js"></script>
+</head>
+<body>
+<section id="welcome" class="welcome">
+  <div class="login-card">
+    <div class="brand"><span class="brand-icon">s</span> stuen<span class="beta">BETA</span></div>
+    <p class="eyebrow">DIN CHAT. LIDT MERE RO.</p>
+    <h1>Samme mennesker.<br>En lettere webchat.</h1>
+    <p class="intro">En enkel indgang til dine Acium-faner. Med læselige samtaler, søgning og plads til at følge med.</p>
+    <ol class="steps"><li><a href="https://acium.app/" target="_blank" rel="noopener noreferrer">Log ind hos Acium <span aria-hidden="true">↗</span></a> og åbn din webchat.</li><li>Kopiér webchat-linket fra adresselinjen og indsæt det her.</li></ol>
+    <form id="connect-form"><label for="chat-link">Dit webchat-link</label><input id="chat-link" type="password" placeholder="https://acium.app/chat?token=…" autocomplete="off" spellcheck="false" required><p id="login-error" class="error" role="alert"></p><button class="primary" type="submit">Åbn min chat <span aria-hidden="true">→</span></button></form>
+    <p class="privacy">Dit link forbinder direkte til Acium. Vi modtager hverken link, adgangskode eller beskeder. Acium på din computer skal stadig køre.</p>
+    <details><summary>Åbn hurtigere næste gang</summary><p>Træk denne genvej til din bogmærkelinje. Klik på den, mens du står på din Acium-webchat, for at åbne Stuen.</p><a id="bookmarklet" class="bookmark" href="#">Åbn i Stuen ↗</a><p>Linket gemmes kun i denne fanes session. Brug “Afbryd” for at fjerne det.</p></details>
+    <button id="demo-button" class="text-button" type="button">Se brugerfladen med eksempeldata</button>
+    <p class="independent">Uafhængigt projekt · Ikke en officiel Acium-klient</p>
+  </div>
+  <div class="welcome-art" aria-hidden="true"><div class="orbit o1"></div><div class="orbit o2"></div><div class="art-symbol">s<span>et sted at lande.</span></div><div class="art-note">Mindre støj.<br>Mere samtale.</div></div>
+</section>
+<div id="workspace" class="workspace" hidden>
+  <aside class="sidebar">
+    <div class="brand"><span class="brand-icon">s</span> stuen<span class="beta">BETA</span></div>
+    <p class="nav-label">OVERBLIK</p><button id="all-button" class="nav-item active"><span aria-hidden="true">◫</span> Alle samtaler <span id="total-unread" class="badge" hidden></span></button><button id="log-button" class="nav-item"><span aria-hidden="true">≡</span> Hændelseslog</button>
+    <div class="nav-label account-label">DINE BRUGERE <span id="account-count">0</span></div><nav id="accounts" aria-label="Brugere"></nav>
+    <div class="sidebar-bottom"><div class="connection"><span id="status-dot" class="status-dot"></span><span id="status" role="status">Forbinder…</span></div><button id="reconnect" class="text-button">Forbind igen</button><button id="disconnect" class="text-button muted">Afbryd</button></div>
+  </aside>
+  <main class="chat-main">
+    <header class="chat-header"><div><p class="eyebrow" id="view-caption">DIT OVERBLIK</p><h1 id="view-title">Alle samtaler</h1><p id="view-subtitle">Beskeder fra alle dine brugere, samlet ét sted.</p></div><span id="demo-label" class="demo-label" hidden>Eksempeldata</span><button id="mobile-exit" class="icon-button" aria-label="Afbryd forbindelsen">↪</button></header>
+    <div class="toolbar"><label class="search"><span aria-hidden="true">⌕</span><input id="search" type="search" placeholder="Søg i beskeder…" aria-label="Søg i indlæst historik"><kbd>/</kbd></label><label class="toggle"><input id="show-events" type="checkbox" checked> Hændelser</label><button id="clear-search" class="text-button" hidden>Nulstil</button></div>
+    <div id="mobile-accounts" class="mobile-accounts" aria-label="Vælg bruger"></div>
+    <div id="timeline" class="timeline" tabindex="0" aria-label="Samtalehistorik"><button id="older" class="older" hidden>Vis ældre beskeder</button><div id="messages"></div><div id="empty" class="empty"><span aria-hidden="true">◌</span><h2>Her er der plads til samtalen</h2><p id="empty-text">Dine beskeder vises, så snart Acium sender dem.</p></div></div>
+    <button id="new-messages" class="new-messages" hidden>Nye beskeder ↓</button>
+    <footer class="composer-wrap"><form id="composer"><select id="send-as" aria-label="Send som"><option value="">Vælg bruger</option></select><input id="message" placeholder="Skriv en besked…" aria-label="Besked" autocomplete="off" disabled><button id="send" class="send-button" type="submit" aria-label="Send besked" disabled>↑</button></form><div class="composer-hint"><span id="send-hint">Vælg en bruger at skrive som.</span><span>Enter for at sende</span></div><p id="send-error" class="error" role="alert"></p></footer>
+  </main>
+</div>
+</body></html>
