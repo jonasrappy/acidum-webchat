@@ -5,12 +5,12 @@
 <meta name="referrer" content="no-referrer">
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; connect-src wss://ws0.acium.app; img-src 'self' data:; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="theme-color" content="#11141a"><meta name="description" content="En let, uafhængig webchat til din Acium-session. Ingen installation og ingen adgangskode hos os.">
-<title>acium · webchat</title><link rel="icon" href="icon.svg" type="image/svg+xml"><link rel="stylesheet" href="style.css?v=6"><script type="module" src="app.js?v=5"></script>
+<title>acidum · webchat</title><link rel="icon" href="icon.svg" type="image/svg+xml"><link rel="stylesheet" href="style.css?v=7"><script type="module" src="app.js?v=6"></script>
 </head>
 <body>
 <section id="welcome" class="welcome">
   <div class="login-card">
-    <h1 class="brand"><span class="brand-icon" aria-hidden="true">a</span> acium</h1>
+    <h1 class="brand"><span class="brand-icon" aria-hidden="true">a</span> acidum</h1>
     <p id="link-guide" class="login-guide"><a href="https://acium.app/" target="_blank" rel="noopener noreferrer">Log ind hos Acium ↗</a> og åbn webchatten. Kopiér hele linket fra adresselinjen og indsæt det her.</p>
     <form id="connect-form">
       <input id="chat-link" type="password" aria-label="Dit Acium-webchat-link" aria-describedby="link-guide" placeholder="https://acium.app/chat?token=…" autocomplete="off" spellcheck="false" required>
@@ -22,7 +22,7 @@
 </section>
 <div id="workspace" class="workspace" hidden>
   <aside class="sidebar">
-    <div class="brand"><span class="brand-icon">a</span> acium</div>
+    <div class="brand"><span class="brand-icon">a</span> acidum</div>
     <p class="nav-label">OVERBLIK</p><button id="all-button" class="nav-item active"><span aria-hidden="true">◫</span> Alle samtaler <span id="total-unread" class="badge" hidden></span></button><button id="log-button" class="nav-item"><span aria-hidden="true">≡</span> Hændelseslog</button>
     <div class="nav-label account-label">DINE BRUGERE <span id="account-count">0</span></div><nav id="accounts" aria-label="Brugere"></nav>
     <div class="sidebar-bottom"><div class="connection"><span id="status-dot" class="status-dot"></span><span id="status" role="status">Forbinder…</span></div><button id="reconnect" class="text-button">Forbind igen</button><button id="disconnect" class="text-button muted">Afbryd</button></div>
@@ -43,9 +43,9 @@
   </main>
 </div>
 <dialog id="rooms-dialog" class="sheet" aria-labelledby="rooms-title"><div class="sheet-handle" aria-hidden="true"></div><header class="sheet-header"><div><p class="eyebrow">DINE BRUGERE</p><h2 id="rooms-title">Rum og mennesker</h2></div><button class="icon-button close-sheet" aria-label="Luk rumoversigt">×</button></header><p class="sheet-intro">Et overblik for hver af dine brugere. Listen bygger på den aktivitet, webchatten har sendt.</p><div id="room-cards"></div><p class="sheet-footnote">Ind- og udgange opdaterer listen. Det er ikke en komplet deltagerliste; stille brugere kan mangle. Rumnavnet vises, når et rumskift modtages.</p></dialog>
-<dialog id="settings-dialog" class="sheet" aria-labelledby="settings-title"><div class="sheet-handle" aria-hidden="true"></div><header class="sheet-header"><div><p class="eyebrow">ACIUM</p><h2 id="settings-title">Gør chatten til din</h2></div><button class="icon-button close-sheet" aria-label="Luk indstillinger">×</button></header>
+<dialog id="settings-dialog" class="sheet" aria-labelledby="settings-title"><div class="sheet-handle" aria-hidden="true"></div><header class="sheet-header"><div><p class="eyebrow">ACIDUM</p><h2 id="settings-title">Gør chatten til din</h2></div><button class="icon-button close-sheet" aria-label="Luk indstillinger">×</button></header>
 <section class="settings-group"><h3>Forbindelse</h3><div class="settings-connection"><span id="settings-status">Forbinder…</span><button id="settings-reconnect" class="soft-button">Forbind igen</button></div></section>
 <section class="settings-group"><h3>Visning</h3><label class="setting-row" for="show-events"><span><strong>Vis ind- og udgange</strong><small>Rumskift og andre hændelser i samtalen</small></span><input id="show-events" type="checkbox" checked></label></section>
 <section class="settings-group"><h3>Historik på denne enhed</h3><label class="setting-row" for="save-history"><span><strong>Gem historik</strong><small>Op til 10.000 beskeder · kun i din browser</small></span><input id="save-history" type="checkbox"></label><p class="setting-note">Scroll op i samtalen for at hente ældre gemte beskeder. Slår du lagring fra, bevares allerede gemte beskeder, indtil du sletter dem.</p><button id="clear-history" class="soft-button danger" hidden>Slet gemt historik</button></section>
-<section class="settings-group"><button id="mobile-exit" class="soft-button danger">Afbryd og fjern login</button><p class="setting-note">Dit gemte webchat-link fjernes fra denne browser. Gemt historik bevares.</p></section><p class="sheet-footnote">acium · Uafhængig webchat. Acium-programmet på din computer skal fortsat køre.</p></dialog>
+<section class="settings-group"><button id="mobile-exit" class="soft-button danger">Afbryd og fjern login</button><p class="setting-note">Dit gemte webchat-link fjernes fra denne browser. Gemt historik bevares.</p></section><p class="sheet-footnote">acidum · Uafhængig webchat. Acium-programmet på din computer skal fortsat køre.</p></dialog>
 </body></html>

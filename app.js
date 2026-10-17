@@ -113,7 +113,7 @@ function renderNavigation() {
     $('account-count').textContent = store.names.length;
     const unread = [...store.tabs.values()].reduce((sum,t) => sum + t.unread, 0);
     $('total-unread').hidden = !unread; $('total-unread').textContent = unread > 99 ? '99+' : unread;
-    document.title = `${unread ? `(${unread}) ` : ''}${active ? active+' · ' : ''}acium`;
+    document.title = `${unread ? `(${unread}) ` : ''}${active ? active+' · ' : ''}acidum`;
     $('bottom-unread').hidden=!unread;
     for(const [id,selected] of [['bottom-chat',!logOnly],['bottom-log',logOnly]]) {
       $(id).classList.toggle('selected',selected);$(id).setAttribute('aria-pressed',String(selected));
@@ -226,7 +226,7 @@ function disconnect(forget=true) {
   intentional = true; ++generation; clearTimeout(retryTimer); clearTimeout(liveRenderTimer); liveRenderTimer=0; if (socket) {socket.onclose = null; socket.close();} socket = null;
   flushArchive(); archiveScope = ''; resetArchiveView(); token = null; if(forget)savedTokenSet(null); $('resume-saved').hidden=!savedTokenGet(); store = new ChatStore(); active = ''; logOnly = false; query = ''; demo = false; tabsSignature = '';
   $('search').value = ''; $('message').value = ''; $('send-error').textContent = ''; $('workspace').hidden = true; $('welcome').hidden = false;
-  document.title = 'acium · webchat'; document.body.classList.remove('chat-open'); for(const dialog of document.querySelectorAll('dialog[open]'))dialog.close(); $('chat-link').focus();
+  document.title = 'acidum · webchat'; document.body.classList.remove('chat-open'); for(const dialog of document.querySelectorAll('dialog[open]'))dialog.close(); $('chat-link').focus();
 }
 $('connect-form').addEventListener('submit', event => {event.preventDefault(); try {start($('chat-link').value);} catch (error) {$('login-error').textContent = error.message;} });
 $('disconnect').onclick = () => disconnect(); $('mobile-exit').onclick = () => disconnect();
