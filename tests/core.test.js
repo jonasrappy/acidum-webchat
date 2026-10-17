@@ -46,7 +46,7 @@ test('presence follows each account independently, clears at room changes, ignor
  assert.equal(s.tab('Other').presence.get('Separate').present,true);
 });
 
-test('attention badges only match names or Acium trigger flags, never ordinary room traffic',()=>{
+test('attention badges only match names or server trigger flags, never ordinary room traffic',()=>{
  const base={type:'text',me:{name:'Punktum'},user:{name:'Guest'},text:'Hej alle sammen'};
  assert.equal(needsAttention(base),false);
  for(const text of ['Hej Punktum!','@PUNKTUM: er du der?','punktum'])assert.equal(needsAttention({...base,text}),true);
@@ -61,4 +61,20 @@ test('attention badges only match names or Acium trigger flags, never ordinary r
  const store=new ChatStore();store.setTabs(['Punktum']);
  assert.equal(store.add({...base,time:1}).attention,false);
  assert.equal(store.add({...base,time:2,text:'Hej Punktum'}).attention,true);
+});
+test('room snapshot includes quiet users and stays separate from later movements',()=>{
+ const s=new ChatStore();s.setTabs(['Test','Other']);
+ s.add({...event(1),type:'room',room:{id:12,name:'Torvet'},users:[{name:'Quiet'},{name:'Guest'}]});
+ assert.equal(s.tab('Test').rosterComplete,true);assert.equal(s.tab('Test').presence.get('Quiet').present,true);
+ s.add({...event(2),type:'quit',user:{name:'Guest'}});assert.equal(s.tab('Test').presence.get('Guest').present,false);
+ s.add({...event(3),type:'room',room:{id:15,name:'Cafe'},users:[{name:'New'}]});
+ assert.equal(s.tab('Test').presence.has('Quiet'),false);assert.equal(s.tab('Test').presence.get('New').present,true);
+ assert.equal(s.tab('Other').presence.size,0);
+});
+test('local triggers match whole words and are isolated by account',()=>{
+ const s=new ChatStore();s.setTabs(['Test','Other']);s.setTriggers('Test',['kaffe']);
+ assert.equal(s.add({...event(1),text:'Er der kaffe?'}).attention,true);
+ assert.equal(s.add({...event(2,'Other'),text:'Er der kaffe?'}).attention,false);
+ assert.equal(s.add({...event(3),text:'kaffemaskine'}).attention,false);
+ s.setTriggers('Other',['kaffe']);assert.equal(s.tab('Other').messages[0].attention,true);
 });

@@ -40,7 +40,7 @@ export async function saveMessages(scope,messages) {
     tx.oncomplete = resolve;tx.onerror = () => reject(new Error('Historikken kunne ikke begrænses.'));
   });
 }
-export async function loadBefore(scope,account,before,{limit=250,logOnly=false,query='',systems=true}={}) {
+export async function loadBefore(scope,account,before,{limit=250,logOnly=false,query='',systems=true,accept=()=>true}={}) {
   const db=await open();
   return new Promise((resolve,reject) => {
     const tx=db.transaction('messages'), index=tx.objectStore('messages').index(account?'account':'timeline');
@@ -54,7 +54,7 @@ export async function loadBefore(scope,account,before,{limit=250,logOnly=false,q
       if (!cursor) return;
       if (result.length>=limit) {hasMore=true;return;}
       const message=cursor.value;cursorToken={time:message.time,archiveId:message.archiveId};
-      if ((!logOnly||message.log)&&(systems||!message.system)&&(!search||`${message.account} ${message.name} ${message.text}`.toLocaleLowerCase('da').includes(search)))result.push(message);
+      if (accept(message)&&(!logOnly||message.log)&&(systems||!message.system)&&(!search||`${message.account} ${message.name} ${message.text}`.toLocaleLowerCase('da').includes(search)))result.push(message);
       cursor.continue();
     };
     tx.oncomplete=()=>resolve({messages:result.reverse(),before:cursorToken,hasMore});

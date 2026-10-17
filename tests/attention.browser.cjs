@@ -6,7 +6,7 @@ const assert=require('node:assert/strict');
   const page=await browser.newPage({viewport:{width:390,height:844},isMobile:true,hasTouch:true});
   let socket;const errors=[];page.on('pageerror',e=>errors.push(e.message));
   await page.routeWebSocket('wss://ws0.acium.app/**',ws=>{socket=ws;ws.send(JSON.stringify({tabs:['Punktum','Other']}));});
-  await page.goto(process.env.STUEN_TEST_URL||'http://127.0.0.1:8765/');
+  await page.goto(process.env.ACIDUM_TEST_URL||'http://127.0.0.1:8765/');
   await page.locator('#chat-link').fill('synthetic_attention_token');await page.locator('#connect-form').evaluate(f=>f.requestSubmit());
   await page.locator('#mobile-accounts button').nth(2).click();await page.waitForTimeout(150);
   assert.equal(await page.locator('#view-caption').isVisible(),false);

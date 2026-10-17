@@ -3,7 +3,7 @@ const {chromium}=require('playwright-core');const assert=require('node:assert/st
 const browser=await chromium.launch({executablePath:process.env.BROWSER_EXECUTABLE || chromium.executablePath(),headless:true,args:['--no-sandbox']});
 const page=await browser.newPage({viewport:{width:1200,height:900}}),errors=[];page.on('pageerror',e=>errors.push(e.message));
 await page.routeWebSocket('wss://ws0.acium.app/**',ws=>{ws.send(JSON.stringify({tabs:['Fixture']}));ws.onMessage(data=>{if(JSON.parse(data).lastLine===0)ws.send(JSON.stringify(Array.from({length:2000},(_,i)=>({time:1700000000000+i,me:{name:'Fixture'},user:{name:'Example'},type:'text',text:'Saved message '+i}))));});});
-await page.addInitScript(()=>localStorage.setItem('acium-webchat-save-history','yes'));await page.goto(process.env.STUEN_TEST_URL || 'http://127.0.0.1:8765/');
+await page.addInitScript(()=>localStorage.setItem('acium-webchat-save-history','yes'));await page.goto(process.env.ACIDUM_TEST_URL || 'http://127.0.0.1:8765/');
 await page.locator('#chat-link').fill('test_history_token_123');await page.locator('#connect-form').evaluate(f=>f.requestSubmit());
 await page.waitForFunction(()=>document.querySelectorAll('.message').length===250);
 await page.waitForFunction(async()=>{const {scopeFor,loadBefore}=await import('/archive.js');return (await loadBefore(await scopeFor('test_history_token_123'),'',null,{limit:3000})).messages.length===2000;});

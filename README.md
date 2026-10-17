@@ -1,75 +1,66 @@
-# acidum
+# acidum-webchat
 
-En let, uafhængig webchat til Acium, bygget med almindelig HTML, CSS og JavaScript. Ingen framework-runtime, tredjepartsscripts, tracking, database eller serverkode.
+**[Åbn acidum](https://jonasrappy.github.io/acidum-webchat/)**
 
-**Åbn: https://jonasrappy.github.io/acium-webchat/**
+En let webchat med mobilnavigation og flere brugere. Almindelig HTML, CSS og JavaScript, uden framework, tracking eller egen backend.
 
 ## Forbind
 
-1. Start Acium på computeren og aktivér webchat som normalt.
-2. Log ind på https://acium.app/ og åbn din webchat.
-3. Kopiér webchat-linket og indsæt det i acidum.
+1. Start acidum på computeren og aktivér webchat.
+2. Log ind hos [acidum](https://acium.app/) og åbn webchatten.
+3. Kopiér hele webchat-linket fra adresselinjen og indsæt det i acidum.
 
-Dit link huskes automatisk på denne enhed. Næste gang du åbner siden, forbindes chatten igen. “Afbryd og fjern login” sletter det gemte link.
-
-Login hos Acium er stadig nødvendigt. Der er ikke implementeret et officielt OAuth-login eller automatisk retur fra deres login. acidum erstatter browserens webchat; Acium-programmet er fortsat broen til Netstationen. Vi er ikke tilknyttet Acium eller Netstationen.
+Token-linkets tekniske format er `https://acium.app/chat?token=…`. Linket huskes på enheden, så chatten åbner automatisk næste gang. Midlertidige netværksfejl sletter det ikke. Ved gentagne serverlukninger uden data vises muligheden for at prøve det gemte link igen. “Afbryd og fjern login” fjerner det fra browseren. Programmet på computeren skal fortsat køre.
 
 ## Funktioner
 
-- Alle samtaler samlet eller én bruger ad gangen.
-- Aciums markerede hændelser i en separat log.
-- Søgning i den indlæste historik og hændelsesfilter. Tallet ved hver bruger tæller kun ulæste navneomtaler eller beskeder, Acium har markeret med `log`/`notify`. Almindelige rumbeskeder, egne beskeder og ind-/udgange tæller ikke med. Selve triggerlisten indlæses ikke.
-- Automatisk lazy load ved scroll mod toppen, med bevaret scrollplacering.
-- Valgfri lokal historik i IndexedDB: op til 10.000 beskeder pr. webchat-login på denne enhed.
-- Vælg hvilken af dine brugere du skriver som.
-- Privatbeskeder og rumskift vises; der er ingen separat brugerflade til at starte hvisken eller skifte rum.
+- Samlet samtale eller én bruger ad gangen, med kompakt mobilnavigation.
+- Filtre til omtaler, hvisken, links og gemte beskeder. Søg i indlæst tekst eller filtrér på en bestemt afsender.
+- Tællere ved brugerne reagerer kun på navneomtaler, egne lokale triggerord og medsendte markeringer. Almindelige rumbeskeder og egne beskeder tæller ikke med.
+- Deltagerliste fra rumskiftets `users`-data, opdateret med ind- og udgange. Når et rumsnapshot ikke er modtaget, bruges observeret aktivitet. Efter forbindelsesbrud markeres listen igen som observeret, indtil et nyt snapshot modtages.
+- Tryk på et navn for at omtale personen eller se personens beskeder. Det sender ikke automatisk en besked.
+- Separate lokale kladder og ekstra triggerord for hver bruger.
+- Tryk på et tidspunkt for at kopiere eller gemme en besked. Op til 200 gemte beskeder bevares separat fra den rullende historik.
+- Eksportér den aktuelt indlæste og filtrerede samtale som en tekstfil. Filen oprettes direkte i browseren.
+- Skriv som den valgte bruger med grænse på 100 tegn og tæller nær grænsen.
+- Lazy load ved scroll op, med bevaret læseposition. Valgfrit lokalt arkiv med op til 10.000 beskeder pr. login.
 - Automatisk genforbindelse med stigende ventetid og tilfældig variation.
-- Mobilvisning med bundnavigation, hurtige brugerfaner, store trykfelter og separate rum- og indstillingspaneler.
-- Visning af rum og observerede brugere separat for hver konto. Det er ikke en fuld deltagerliste: den bygges af almindelige beskeder og ind-/udgange, nulstilles ved rumskift og ignorerer hvisken og gamle genafspillede hændelser. Hvis serverens begrænsede historik ikke indeholder et rumskift, vises “Rumnavn afventes” kun i rumoversigten.
-- Layoutet tilpasser højden til browserens synlige viewport, når skærmtastaturet ændrer pladsen. Tastaturbetjening og `/` som søge-genvej.
-- Eksempeltilstand uden netværksforbindelse til Acium.
 
-## Forbrug og privatliv
+## Data og privatliv
 
-Højst 700 beskeder pr. bruger gemmes i hukommelsen. Den aktive visning tegner først de nyeste 250; ældre beholdte beskeder kan hentes frem med en knap. Live-opdateringer samles med mindst 120 ms mellem tegninger og tegnes i browserens animation frame, og skjulte faner tegnes først, når de bliver synlige. Genforbindelse beder om historik efter det senest modtagne tidsstempel og fjerner gentagelser blandt de beholdte beskeder.
+Alt, acidum selv gemmer, ligger i browseren: login-link, kladder, triggerord, gemte beskeder og eventuelt historik. Data tilknyttes det aktuelle login via en SHA-256-identifikator, så kladder og gemte beskeder fra forskellige login ikke blandes. Selve tokenet gemmes separat i browserens `localStorage`; tidligere sessionslagring overføres automatisk. Hvis browseren blokerer vedvarende lagring, forsøges sessionslagring i stedet.
 
-Gamle beskeder falder ud af hukommelsen. Som standard gemmes historik ikke på disk. Vælg “Gem historik” for at gemme beskeder lokalt i browserens IndexedDB. Når du scroller op, hentes ældre beskeder i portioner på 250, og din placering bevares. Den første visning har højst 250 beskeder; flere DOM-rækker tilføjes kun, når du selv læser længere tilbage. Mens du læser ældre beskeder, tegnes samtalen ikke igen for hver ny besked. Arkivet holder højst 10.000 beskeder pr. webchat-login, adskilt efter en SHA-256-identifikator for tokenet; selve tokenet gemmes ikke i arkivet. Ved et nyt token starter et separat arkiv. “Slet historik” sletter arkivet for det aktuelle login; “Gem historik” kan slås fra for at stoppe ny lagring. “Afbryd” sletter tokenet, men bevarer et eventuelt lokalt arkiv.
+For at chatten virker, sendes token og beskeder direkte til chatserveren over en krypteret WebSocket. GitHub Pages leverer kun sidens statiske filer. Ingen chatdata eller adgangskoder skal ligge i repoet. Del ikke dit token-link med andre.
 
-Den observerede serverprotokol har en `lastLine`-forespørgsel efter nyere beskeder. Der er ikke fundet en forespørgsel efter vilkårligt ældre serverhistorik. Lazy load kan derfor vise den historik, Acium har leveret, og den historik du selv har valgt at gemme fremover. Søgning viser først matches i indlæst historik; scroll op eller brug knappen for at søge videre i det lokale arkiv. Der er ikke målt en bestemt CPU-besparelse sammenlignet med den officielle webchat.
+“Gem historik” er som standard slået fra. “Slet gemt historik” sletter det rullende arkiv for det aktuelle login; manuelt gemte beskeder og kladder bevares. “Afbryd og fjern login” fjerner tokenet, men bevarer lokale data. Browserens sletning af webstedsdata fjerner alle lokale data.
 
-Chat-token opbevares i hukommelsen og i browserens `localStorage`, så det huskes efter lukning af faner og browser. Tidligere gemte sessioner overføres automatisk. Midlertidige forbindelsesfejl sletter ikke tokenet. Efter tre serverlukninger uden data (kode 1005) vises indtastningsfeltet igen med mulighed for at prøve det gemte link; linket bevares, fordi serveren ikke giver en entydig forklaring. Hvis vedvarende lagring er blokeret af browseren, forsøges lagring kun for fanens session. “Afbryd” sletter det. Link og beskeder sendes direkte til Aciums WebSocket-server over TLS. Token skal behandles som en adgangsnøgle. Indsæt aldrig din Acium-adgangskode her. GitHub leverer kun de statiske filer; ingen loginoplysninger eller chatindhold skal ligge i repoet.
+## Forbrug og begrænsninger
 
-Protokollen er observeret fra den eksisterende webchat den 17. oktober 2026. Det er en uofficiel integration, som kan kræve tilpasning, hvis Acium ændrer server eller adgangsregler. acidum omgår ingen adgangskontrol og kræver et gyldigt token.
+Hukommelsen beholder op til 700 indgående beskeder pr. bruger. Den aktive visning tegner først de seneste 250; flere tilføjes, når du selv læser længere tilbage. Live-opdateringer samles med mindst 120 ms mellem tegninger. Skjulte faner tegnes først, når de bliver synlige. Mens du læser ældre beskeder, tegnes samtalen ikke igen for hver ny besked.
 
-## Udvikling
+Serverprotokollens `lastLine` henter nyere beskeder. Der er ikke fundet en forespørgsel efter vilkårligt gammel serverhistorik. Lazy load bruger derfor allerede leverede beskeder og det arkiv, du har valgt at gemme lokalt. Søgning og eksport omfatter indlæste beskeder; scroll op for at hente flere fra arkivet. Gemte beskeder kan findes gennem deres eget filter.
 
-Kræver Node.js til test og Python 3 til den valgfrie lokale server. Selve siden kræver ingen installation eller byggetrin.
+Deltagerlisten er fra det seneste modtagne rumskift og de efterfølgende hændelser. Ved manglende data kan den være ufuldstændig. Der er ingen udokumenterede kommandoer til at flytte brugere eller starte hvisken. En hvisken, som modtages, kan læses og filtreres.
+
+Integrationen bygger på observeret protokol og kan kræve tilpasning ved ændringer på serveren. Der er ikke målt en bestemt CPU-besparelse.
+
+## Udvikling og test
 
 ```sh
 npm test
 npm run serve
 ```
 
-Åbn http://127.0.0.1:8765. Eksempeltilstanden findes på http://127.0.0.1:8765/#demo uden et gemt login. Alle filer til hosting findes i `dist/`.
+Åbn http://127.0.0.1:8765. Uden gemt login findes eksempeldata på http://127.0.0.1:8765/#demo. Filerne til hosting ligger i `dist/`; der er intet byggetrin.
 
-## Udgiv på GitHub Pages
+Node-tests kontrollerer historikgrænser, dubletter, brugeradskillelse, omtaler, lokale triggerord, deltagerlister og lokal lagring. De valgfrie `tests/*.browser.cjs` bruger `playwright-core` og Chromium, med `BROWSER_EXECUTABLE` sat til browserens sti. `ACIDUM_TEST_URL` kan ændre den lokale testadresse. Browsertest bruger syntetiske data.
 
-Pages bruger roden af grenen `gh-pages`. Fra en opdateret `main`:
+## Udgivelse
+
+Pages bruger roden af grenen `gh-pages`:
 
 ```sh
 npm test
 git push origin main
 git subtree push --prefix dist origin gh-pages
 ```
-
-Repoets Pages-indstilling peger på `gh-pages` og `/`. GitHub bygger og udgiver automatisk efter push.
-
-## Test
-
-Node-tests dækker tokenvalidering, 20.000 indgående beskeder med begrænset historik, gentagelser, genoptagelsestidsstempel, adskilte brugere, filtre, ugyldige beskeder og ventetider ved genforbindelse. Browserkontrol er udført på desktop og mobil, inkl. tekstindsættelse uden HTML-fortolkning. Live forbindelse til to eksisterende Acium-brugerfaner er kontrolleret uden at sende chatbeskeder. Lokal historik testes også i en rigtig browser med syntetiske WebSocket-beskeder: første indlæsning, lazy load fra hukommelse og IndexedDB, bevaret scrollplacering, genindlæsning, adskilte login og sletning.
-
-For den valgfrie browsertest: installér `playwright-core` lokalt som udviklingsværktøj, start den lokale server, og kør `tests/history.browser.cjs` med `BROWSER_EXECUTABLE` sat til en Chromium-browser. Testen bruger udelukkende syntetiske beskeder og en simuleret WebSocket; den kontakter ikke Acium. `STUEN_TEST_URL` kan ændre testserverens adresse (roden af siden).
-
-Mobiltesten `tests/mobile.browser.cjs` kontrollerer seks skærmstørrelser fra 320 pixels til tablet og liggende mobil samt brugerskift, rumoversigt, indstillinger, søgning og navigation tilbage fra loggen.
-
-`tests/login.browser.cjs` kontrollerer den minimale forside, genåbning af faner, gendannelse af browserlagring, migration fra sessionslagring, manuel fjernelse af login og bevarelse af linket ved netværksfejl eller gentagne serverlukninger. Kun syntetiske tokens bruges i testen.

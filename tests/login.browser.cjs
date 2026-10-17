@@ -1,7 +1,7 @@
 const {chromium}=require('playwright-core');const assert=require('node:assert/strict');
 (async()=>{
  const browser=await chromium.launch({executablePath:process.env.BROWSER_EXECUTABLE||chromium.executablePath(),headless:true,args:['--no-sandbox']});
- const url=process.env.STUEN_TEST_URL||'http://127.0.0.1:8765/', key='acium-webchat-token', fixture='synthetic_persistent_login_123';
+ const url=process.env.ACIDUM_TEST_URL||'http://127.0.0.1:8765/', key='acium-webchat-token', fixture='synthetic_persistent_login_123';
  try {
   const context=await browser.newContext({viewport:{width:390,height:844}});
   await context.routeWebSocket('wss://ws0.acium.app/**',ws=>ws.send(JSON.stringify({tabs:['Fixture']})));
@@ -9,7 +9,7 @@ const {chromium}=require('playwright-core');const assert=require('node:assert/st
   assert.equal(await page.locator('#welcome p:not(:empty)').count(),1);
   assert.equal(await page.locator('#link-guide a').getAttribute('href'),'https://acium.app/');
   assert.equal(await page.locator('#welcome input').count(),1);
-  await page.screenshot({path:'/tmp/acium-minimal-login.png'});
+  await page.screenshot({path:'/tmp/acidum-minimal-login.png'});
   await page.locator('#chat-link').fill(fixture);await page.locator('#connect-form').evaluate(f=>f.requestSubmit());
   await page.waitForFunction(()=>document.querySelector('#accounts button'));assert.equal(await page.evaluate(k=>localStorage.getItem(k),key),fixture);
   await page.close();page=await context.newPage();await page.goto(url);await page.waitForFunction(()=>document.querySelector('#accounts button'));
