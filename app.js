@@ -1,8 +1,57 @@
 import {ChatStore, parseToken, retryDelay} from './core.js';
+import {scopeFor, archiveId, saveMessages, loadBefore, clearScope} from './archive.js';
 const $ = id => document.getElementById(id);
 let store = new ChatStore(), socket, token, retryTimer, retry = 0, generation = 0, intentional = false;
 let active = '', logOnly = false, query = '', showSystems = true, pageSize = 250, frame = 0, demo = false, nearBottom = true;
 let tabsSignature = '', notice = false;
+let archiveScope = '', archiveRows = [], archiveBefore = null, archiveMore = true, archiveLoading = false, archiveGeneration = 0;
+let archivePending = [], archiveTimer, archiveWriting = Promise.resolve();
+let historyEnabled = false;
+try {historyEnabled = localStorage.getItem('stuen-save-history') === 'yes';} catch {}
+$('save-history').checked = historyEnabled;
+$('clear-history').hidden = !historyEnabled;
+function resetArchiveView() {archiveRows = []; archiveBefore = null; archiveMore = true; archiveLoading = false; ++archiveGeneration; $('history-status').textContent = '';}
+function queueArchive(message) {
+  if (!historyEnabled || !archiveScope || demo) return;
+  archivePending.push(message);
+  if (archivePending.length >= 250) flushArchive();
+  else if (!archiveTimer) archiveTimer = setTimeout(flushArchive, 500);
+}
+function flushArchive() {
+  clearTimeout(archiveTimer); archiveTimer = null;
+  const batch = archivePending.splice(0), scope = archiveScope;
+  if (!scope || !batch.length) return archiveWriting;
+  archiveWriting = archiveWriting.catch(()=>{}).then(()=>saveMessages(scope,batch)).catch(()=>{$('history-status').textContent = 'Lokal historik kunne ikke gemmes. Chatten fortsætter.';});
+  return archiveWriting;
+}
+async function olderMessages() {
+  if (archiveLoading || loadingOlder) return;
+  const retained = combinedMessages();
+  if (retained.length > pageSize) {pageSize += 250; nearBottom = false; loadingOlder = true; schedule(); return;}
+  if (!historyEnabled || !archiveScope || !archiveMore || demo) return;
+  archiveLoading = true; const view = archiveGeneration;
+  $('history-status').textContent = 'Henter ældre beskeder fra denne enhed…';
+  try {
+    await flushArchive();
+    if (view !== archiveGeneration) return;
+    if (!archiveBefore && retained.length) {
+      const oldest = retained.reduce((a,b)=>a.time<b.time?a:b);
+      archiveBefore = {time:oldest.time,archiveId:archiveId(archiveScope,oldest)};
+    }
+    const result = await loadBefore(archiveScope,active,archiveBefore,{logOnly,query,systems:showSystems});
+    if (view !== archiveGeneration) return;
+    archiveBefore = result.before; archiveMore = result.hasMore;
+    archiveRows = [...result.messages,...archiveRows].slice(-10000);
+    pageSize += 250; nearBottom = false; loadingOlder = true;
+    $('history-status').textContent = !archiveMore ? 'Begyndelsen af den lokalt gemte historik.' : '';
+    schedule();
+  } catch {if(view === archiveGeneration) $('history-status').textContent = 'Browseren kunne ikke hente den lokale historik.';}
+  finally {if(view === archiveGeneration) archiveLoading = false;}
+}
+function combinedMessages() {
+  const current = store.messages(active,logOnly,query,showSystems), seen = new Set(current.map(m=>m.account+'\0'+m.key));
+  return [...archiveRows.filter(m=>!seen.has(m.account+'\0'+m.key)),...current].sort((a,b)=>a.time-b.time||a.account.localeCompare(b.account)||a.key.localeCompare(b.key));
+}
 const timeFormat = new Intl.DateTimeFormat('da-DK', {hour: '2-digit', minute: '2-digit'});
 const dateFormat = new Intl.DateTimeFormat('da-DK', {day: 'numeric', month: 'long', year: 'numeric'});
 function element(tag, cls, text) { const el = document.createElement(tag); if (cls) el.className = cls; if (text != null) el.textContent = text; return el; }
@@ -17,7 +66,7 @@ function updateComposer() {
   $('send-hint').textContent = demo ? 'Eksempeltilstand · intet sendes til Netstationen.' : name ? `Du skriver som ${name}${isConnected() ? '' : ' · afventer forbindelse'}` : 'Vælg en bruger at skrive som.';
 }
 function choose(name, isLog = false) {
-  active = name; logOnly = isLog; pageSize = 250; nearBottom = true; notice = false;
+  active = name; logOnly = isLog; resetArchiveView(); pageSize = 250; nearBottom = true; notice = false;
   if (name && store.tabs.has(name)) { store.tabs.get(name).unread = 0; $('send-as').value = name; }
   else if (!isLog) for (const tab of store.tabs.values()) tab.unread = 0;
   tabsSignature = ''; schedule(); updateComposer();
@@ -53,7 +102,7 @@ function schedule() { if (!document.hidden && !frame) frame = requestAnimationFr
 function render() {
   renderNavigation();
   const timeline = $('timeline'), before = timeline.scrollHeight, top = timeline.scrollTop;
-  const messages = store.messages(active, logOnly, query, showSystems), visible = messages.slice(-pageSize);
+  const messages = combinedMessages(), visible = messages.slice(-pageSize);
   const fragment = document.createDocumentFragment(); let day = '';
   for (const message of visible) {
     const nextDay = dateFormat.format(message.time);
@@ -68,7 +117,7 @@ function render() {
     body.append(head,element('p','message-text',message.text)); row.append(body); fragment.append(row);
   }
   // Replace only the visible, bounded window; never build a hidden DOM for each account.
-  $('messages').replaceChildren(fragment); $('empty').hidden = Boolean(visible.length); $('older').hidden = messages.length <= pageSize;
+  $('messages').replaceChildren(fragment); $('empty').hidden = Boolean(visible.length); $('older').hidden = messages.length <= pageSize && !(historyEnabled && archiveScope && archiveMore && !demo);
   $('empty-text').textContent = query ? 'Ingen beskeder matcher din søgning i den indlæste historik.' : logOnly ? 'Ingen markerede hændelser endnu.' : !store.names.length ? 'Venter på brugerfaner fra Acium. Kontrollér, at programmet kører med webchat slået til.' : 'Dine beskeder vises, så snart Acium sender dem.';
   if (nearBottom) timeline.scrollTop = timeline.scrollHeight;
   else if (loadingOlder) timeline.scrollTop = top + timeline.scrollHeight - before;
@@ -96,12 +145,14 @@ function ingest(payload) {
     } else {
       const message = store.add(event);
       if (!message) continue;
+      queueArchive(message);
       const visible = (!active || active === message.account) && (!logOnly || message.log);
       if (document.hidden || !visible || !nearBottom) store.tab(message.account).unread++;
       if (visible && !nearBottom) notice = true;
     }
   }
-  schedule();
+  if (nearBottom) schedule();
+  else if (!document.hidden) {renderNavigation(); $('new-messages').hidden = !notice;}
 }
 function connect() {
   if (!token || intentional || demo) return;
@@ -127,13 +178,15 @@ function connect() {
 }
 function start(input) {
   const parsed = parseToken(input);
-  demo = false; token = parsed; intentional = false; retry = 0; sessionSet(token);
+  demo = false; token = parsed; intentional = false; retry = 0; sessionSet(token); resetArchiveView();
+  archiveScope = '';
+  scopeFor(parsed).then(scope=>{if(token !== parsed)return; archiveScope = scope; if(historyEnabled) {for(const tab of store.tabs.values())for(const message of tab.messages)queueArchive(message);} schedule();});
   $('demo-label').hidden = true; $('chat-link').value = ''; $('login-error').textContent = '';
   openWorkspace(); connect(); schedule();
 }
 function disconnect() {
   intentional = true; ++generation; clearTimeout(retryTimer); if (socket) {socket.onclose = null; socket.close();} socket = null;
-  token = null; sessionSet(null); store = new ChatStore(); active = ''; logOnly = false; query = ''; demo = false; tabsSignature = '';
+  flushArchive(); archiveScope = ''; resetArchiveView(); token = null; sessionSet(null); store = new ChatStore(); active = ''; logOnly = false; query = ''; demo = false; tabsSignature = '';
   $('search').value = ''; $('message').value = ''; $('send-error').textContent = ''; $('workspace').hidden = true; $('welcome').hidden = false;
   document.title = 'Stuen · Let webchat'; $('chat-link').focus();
 }
@@ -152,19 +205,20 @@ $('composer').onsubmit = event => {
   catch {$('send-error').textContent = 'Beskeden kunne ikke sendes. Prøv igen, når forbindelsen er tilbage.';}
 };
 let searchTimer;
-$('search').oninput = () => {clearTimeout(searchTimer); searchTimer = setTimeout(() => {query = $('search').value.trim(); pageSize = 250; nearBottom = true; $('clear-search').hidden = !query; schedule();},120);};
+$('search').oninput = () => {clearTimeout(searchTimer); searchTimer = setTimeout(() => {query = $('search').value.trim(); resetArchiveView(); pageSize = 250; nearBottom = true; $('clear-search').hidden = !query; schedule();},120);};
 $('clear-search').onclick = () => {$('search').value = ''; $('search').dispatchEvent(new Event('input'));};
-$('show-events').onchange = () => {showSystems = $('show-events').checked; schedule();};
-$('older').onclick = () => {pageSize += 250; nearBottom = false; loadingOlder = true; schedule();};
+$('show-events').onchange = () => {showSystems = $('show-events').checked; resetArchiveView(); pageSize = 250; schedule();};
+$('older').onclick = olderMessages;
 $('timeline').addEventListener('scroll', () => {
+  if ($('timeline').scrollTop < 100 && $('timeline').scrollHeight > $('timeline').clientHeight + 100) olderMessages();
   nearBottom = $('timeline').scrollHeight - $('timeline').scrollTop - $('timeline').clientHeight < 60;
   if (nearBottom && notice) {notice = false; $('new-messages').hidden = true; for (const [name,tab] of store.tabs) if (!active || name === active) tab.unread = 0; renderNavigation();}
 }, {passive:true});
 $('new-messages').onclick = () => {nearBottom = true; notice = false; for (const [name,tab] of store.tabs) if (!active || name === active) tab.unread = 0; schedule();};
-document.addEventListener('visibilitychange', () => {if (!document.hidden) {if (nearBottom) for (const [name,tab] of store.tabs) if (!active || name === active) tab.unread = 0; schedule();}});
+document.addEventListener('visibilitychange', () => {if (document.hidden) flushArchive(); if (!document.hidden) {if (nearBottom) for (const [name,tab] of store.tabs) if (!active || name === active) tab.unread = 0; schedule();}});
 window.addEventListener('online', () => {retry = 0; connect();});
 window.addEventListener('offline', () => {clearTimeout(retryTimer); status('Ingen internetforbindelse');});
-window.addEventListener('pagehide', () => {intentional = true; clearTimeout(retryTimer); socket?.close();});
+window.addEventListener('pagehide', () => {flushArchive(); intentional = true; clearTimeout(retryTimer); socket?.close();});
 window.addEventListener('pageshow', event => {if (event.persisted && token) {intentional = false; connect();}});
 document.addEventListener('keydown', event => {if (event.key === '/' && !/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName) && !$('workspace').hidden) {event.preventDefault(); $('search').focus();}});
 // The token travels in the URL fragment, which is never sent to the hosting server.
@@ -172,7 +226,22 @@ const appURL = new URL('./', location.href); appURL.hash = ''; appURL.search = '
 const bookmarkCode = `(()=>{if(location.hostname!=='acium.app'||location.pathname!=='/chat'){alert('Åbn din Acium-webchat først.');return}const t=new URLSearchParams(location.search).get('token');if(!t){alert('Denne side mangler et webchat-token.');return}window.open(${JSON.stringify(appURL.href)}+'#token='+encodeURIComponent(t),'_blank','noopener,noreferrer')})()`;
 $('bookmarklet').href = 'javascript:' + encodeURIComponent(bookmarkCode);
 $('bookmarklet').onclick = event => {event.preventDefault(); $('bookmarklet').textContent = 'Træk genvejen til bogmærkelinjen ↑';};
-$('demo-button').onclick = () => {
+$('save-history').onchange = () => {
+  historyEnabled = $('save-history').checked;
+  try {localStorage.setItem('stuen-save-history',historyEnabled?'yes':'no');} catch {}
+  $('clear-history').hidden = !historyEnabled; resetArchiveView();
+  if (historyEnabled) {for(const tab of store.tabs.values())for(const message of tab.messages)queueArchive(message);}
+  else {clearTimeout(archiveTimer);archiveTimer=null;archivePending=[];}
+  schedule();
+};
+$('clear-history').onclick = async () => {
+  if (!archiveScope || demo) return;
+  $('clear-history').disabled = true;
+  try {await flushArchive(); await clearScope(archiveScope); resetArchiveView(); $('history-status').textContent = 'Den gemte historik er slettet. Nye beskeder gemmes, hvis “Gem historik” er valgt.';schedule();}
+  catch {$('history-status').textContent = 'Historikken kunne ikke slettes.';}
+  finally {$('clear-history').disabled = false;}
+};
+$('demo-button').onclick = () => {resetArchiveView();
   demo = true; intentional = true; store = new ChatStore(); updateTabs(['Nova','Milo']); openWorkspace(); $('demo-label').hidden = false; status('Eksempeltilstand',true);
   const now = Date.now();
   const examples = [
