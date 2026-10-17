@@ -5,27 +5,27 @@
 <meta name="referrer" content="no-referrer">
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; connect-src wss://ws0.acium.app; img-src 'self' data:; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="theme-color" content="#11141a"><meta name="description" content="En let, uafhængig webchat til din Acium-session. Ingen installation og ingen adgangskode hos os.">
-<title>Stuen · Let webchat</title><link rel="icon" href="icon.svg" type="image/svg+xml"><link rel="stylesheet" href="style.css"><script type="module" src="app.js"></script>
+<title>Acium Webchat · Let webchat</title><link rel="icon" href="icon.svg" type="image/svg+xml"><link rel="stylesheet" href="style.css"><script type="module" src="app.js"></script>
 </head>
 <body>
 <section id="welcome" class="welcome">
   <div class="login-card">
-    <div class="brand"><span class="brand-icon">s</span> stuen<span class="beta">BETA</span></div>
+    <div class="brand"><span class="brand-icon">a</span> acium<span class="beta">BETA</span></div>
     <p class="eyebrow">DIN CHAT. LIDT MERE RO.</p>
     <h1>Samme mennesker.<br>En lettere webchat.</h1>
     <p class="intro">En enkel indgang til dine Acium-faner. Med læselige samtaler, søgning og plads til at følge med.</p>
     <ol class="steps"><li><a href="https://acium.app/" target="_blank" rel="noopener noreferrer">Log ind hos Acium <span aria-hidden="true">↗</span></a> og åbn din webchat.</li><li>Kopiér webchat-linket fra adresselinjen og indsæt det her.</li></ol>
     <form id="connect-form"><label for="chat-link">Dit webchat-link</label><input id="chat-link" type="password" placeholder="https://acium.app/chat?token=…" autocomplete="off" spellcheck="false" required><p id="login-error" class="error" role="alert"></p><button class="primary" type="submit">Åbn min chat <span aria-hidden="true">→</span></button></form>
     <p class="privacy">Dit link forbinder direkte til Acium. Vi modtager hverken link, adgangskode eller beskeder. Du kan vælge at gemme historik lokalt på enheden. Acium på din computer skal stadig køre.</p>
-    <details><summary>Åbn hurtigere næste gang</summary><p>Træk denne genvej til din bogmærkelinje. Klik på den, mens du står på din Acium-webchat, for at åbne Stuen.</p><a id="bookmarklet" class="bookmark" href="#">Åbn i Stuen ↗</a><p>Linket gemmes kun i denne fanes session. Brug “Afbryd” for at fjerne det.</p></details>
+    <details><summary>Åbn hurtigere næste gang</summary><p>Træk denne genvej til din bogmærkelinje. Klik på den, mens du står på din Acium-webchat, for at åbne Acium Webchat.</p><a id="bookmarklet" class="bookmark" href="#">Åbn i Acium Webchat ↗</a><p>Linket gemmes kun i denne fanes session. Brug “Afbryd” for at fjerne det.</p></details>
     <button id="demo-button" class="text-button" type="button">Se brugerfladen med eksempeldata</button>
     <p class="independent">Uafhængigt projekt · Ikke en officiel Acium-klient</p>
   </div>
-  <div class="welcome-art" aria-hidden="true"><div class="orbit o1"></div><div class="orbit o2"></div><div class="art-symbol">s<span>et sted at lande.</span></div><div class="art-note">Mindre støj.<br>Mere samtale.</div></div>
+  <div class="welcome-art" aria-hidden="true"><div class="orbit o1"></div><div class="orbit o2"></div><div class="art-symbol">a<span>et sted at lande.</span></div><div class="art-note">Mindre støj.<br>Mere samtale.</div></div>
 </section>
 <div id="workspace" class="workspace" hidden>
   <aside class="sidebar">
-    <div class="brand"><span class="brand-icon">s</span> stuen<span class="beta">BETA</span></div>
+    <div class="brand"><span class="brand-icon">a</span> acium<span class="beta">BETA</span></div>
     <p class="nav-label">OVERBLIK</p><button id="all-button" class="nav-item active"><span aria-hidden="true">◫</span> Alle samtaler <span id="total-unread" class="badge" hidden></span></button><button id="log-button" class="nav-item"><span aria-hidden="true">≡</span> Hændelseslog</button>
     <div class="nav-label account-label">DINE BRUGERE <span id="account-count">0</span></div><nav id="accounts" aria-label="Brugere"></nav>
     <div class="sidebar-bottom"><div class="connection"><span id="status-dot" class="status-dot"></span><span id="status" role="status">Forbinder…</span></div><button id="reconnect" class="text-button">Forbind igen</button><button id="disconnect" class="text-button muted">Afbryd</button></div>

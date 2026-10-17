@@ -7,7 +7,7 @@ let tabsSignature = '', notice = false;
 let archiveScope = '', archiveRows = [], archiveBefore = null, archiveMore = true, archiveLoading = false, archiveGeneration = 0;
 let archivePending = [], archiveTimer, archiveWriting = Promise.resolve();
 let historyEnabled = false;
-try {historyEnabled = localStorage.getItem('stuen-save-history') === 'yes';} catch {}
+try {historyEnabled = localStorage.getItem('acium-webchat-save-history') === 'yes';} catch {}
 $('save-history').checked = historyEnabled;
 $('clear-history').hidden = !historyEnabled;
 function resetArchiveView() {archiveRows = []; archiveBefore = null; archiveMore = true; archiveLoading = false; ++archiveGeneration; $('history-status').textContent = '';}
@@ -55,8 +55,8 @@ function combinedMessages() {
 const timeFormat = new Intl.DateTimeFormat('da-DK', {hour: '2-digit', minute: '2-digit'});
 const dateFormat = new Intl.DateTimeFormat('da-DK', {day: 'numeric', month: 'long', year: 'numeric'});
 function element(tag, cls, text) { const el = document.createElement(tag); if (cls) el.className = cls; if (text != null) el.textContent = text; return el; }
-function sessionGet() { try { return sessionStorage.getItem('stuen-token'); } catch { return null; } }
-function sessionSet(value) { try { value ? sessionStorage.setItem('stuen-token', value) : sessionStorage.removeItem('stuen-token'); } catch {} }
+function sessionGet() { try { return sessionStorage.getItem('acium-webchat-token'); } catch { return null; } }
+function sessionSet(value) { try { value ? sessionStorage.setItem('acium-webchat-token', value) : sessionStorage.removeItem('acium-webchat-token'); } catch {} }
 function status(text, online = false) { $('status').textContent = text; $('status-dot').classList.toggle('online', online); updateComposer(); }
 function openWorkspace() { $('welcome').hidden = true; $('workspace').hidden = false; }
 function isConnected() { return demo || socket?.readyState === WebSocket.OPEN; }
@@ -91,7 +91,7 @@ function renderNavigation() {
     $('account-count').textContent = store.names.length;
     const unread = [...store.tabs.values()].reduce((sum,t) => sum + t.unread, 0);
     $('total-unread').hidden = !unread; $('total-unread').textContent = unread > 99 ? '99+' : unread;
-    document.title = `${unread ? `(${unread}) ` : ''}${active || 'Stuen'} · Let webchat`;
+    document.title = `${unread ? `(${unread}) ` : ''}${active || 'Acium Webchat'} · Let webchat`;
   }
   $('view-title').textContent = logOnly ? 'Hændelseslog' : active || 'Alle samtaler';
   $('view-caption').textContent = active ? 'DIN BRUGER' : 'DIT OVERBLIK';
@@ -188,7 +188,7 @@ function disconnect() {
   intentional = true; ++generation; clearTimeout(retryTimer); if (socket) {socket.onclose = null; socket.close();} socket = null;
   flushArchive(); archiveScope = ''; resetArchiveView(); token = null; sessionSet(null); store = new ChatStore(); active = ''; logOnly = false; query = ''; demo = false; tabsSignature = '';
   $('search').value = ''; $('message').value = ''; $('send-error').textContent = ''; $('workspace').hidden = true; $('welcome').hidden = false;
-  document.title = 'Stuen · Let webchat'; $('chat-link').focus();
+  document.title = 'Acium Webchat · Let webchat'; $('chat-link').focus();
 }
 $('connect-form').addEventListener('submit', event => {event.preventDefault(); try {start($('chat-link').value);} catch (error) {$('login-error').textContent = error.message;} });
 $('disconnect').onclick = disconnect; $('mobile-exit').onclick = disconnect;
@@ -228,7 +228,7 @@ $('bookmarklet').href = 'javascript:' + encodeURIComponent(bookmarkCode);
 $('bookmarklet').onclick = event => {event.preventDefault(); $('bookmarklet').textContent = 'Træk genvejen til bogmærkelinjen ↑';};
 $('save-history').onchange = () => {
   historyEnabled = $('save-history').checked;
-  try {localStorage.setItem('stuen-save-history',historyEnabled?'yes':'no');} catch {}
+  try {localStorage.setItem('acium-webchat-save-history',historyEnabled?'yes':'no');} catch {}
   $('clear-history').hidden = !historyEnabled; resetArchiveView();
   if (historyEnabled) {for(const tab of store.tabs.values())for(const message of tab.messages)queueArchive(message);}
   else {clearTimeout(archiveTimer);archiveTimer=null;archivePending=[];}

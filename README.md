@@ -1,18 +1,18 @@
-# Stuen
+# Acium Webchat
 
 En let, uafhængig webchat til Acium, bygget med almindelig HTML, CSS og JavaScript. Ingen framework-runtime, tredjepartsscripts, tracking, database eller serverkode.
 
-**Åbn: https://jonasrappy.github.io/stuen-webchat/**
+**Åbn: https://jonasrappy.github.io/acium-webchat/**
 
 ## Forbind
 
 1. Start Acium på computeren og aktivér webchat som normalt.
 2. Log ind på https://acium.app/ og åbn din webchat.
-3. Kopiér webchat-linket og indsæt det i Stuen.
+3. Kopiér webchat-linket og indsæt det i Acium Webchat.
 
-Du kan også trække “Åbn i Stuen” fra startsiden til din bogmærkelinje. Klik på bogmærket, mens du står på din Acium-webchat. Det åbner Stuen med dit chat-token i URL-fragmentet og fjerner fragmentet igen straks efter indlæsning.
+Du kan også trække “Åbn i Acium Webchat” fra startsiden til din bogmærkelinje. Klik på bogmærket, mens du står på din Acium-webchat. Det åbner Acium Webchat med dit chat-token i URL-fragmentet og fjerner fragmentet igen straks efter indlæsning.
 
-Login hos Acium er stadig nødvendigt. Der er ikke implementeret et officielt OAuth-login eller automatisk retur fra deres login. Stuen erstatter browserens webchat; Acium-programmet er fortsat broen til Netstationen. Vi er ikke tilknyttet Acium eller Netstationen.
+Login hos Acium er stadig nødvendigt. Der er ikke implementeret et officielt OAuth-login eller automatisk retur fra deres login. Acium Webchat erstatter browserens webchat; Acium-programmet er fortsat broen til Netstationen. Vi er ikke tilknyttet Acium eller Netstationen.
 
 ## Funktioner
 
@@ -37,7 +37,7 @@ Den observerede serverprotokol har en `lastLine`-forespørgsel efter nyere beske
 
 Chat-token opbevares i hukommelsen og i `sessionStorage` for den aktuelle browsersession, så siden kan genindlæses. “Afbryd” sletter det. Link og beskeder sendes direkte til Aciums WebSocket-server over TLS. Token skal behandles som en adgangsnøgle. Indsæt aldrig din Acium-adgangskode her. GitHub leverer kun de statiske filer; ingen loginoplysninger eller chatindhold skal ligge i repoet.
 
-Protokollen er observeret fra den eksisterende webchat den 17. oktober 2026. Det er en uofficiel integration, som kan kræve tilpasning, hvis Acium ændrer server eller adgangsregler. Stuen omgår ingen adgangskontrol og kræver et gyldigt token.
+Protokollen er observeret fra den eksisterende webchat den 17. oktober 2026. Det er en uofficiel integration, som kan kræve tilpasning, hvis Acium ændrer server eller adgangsregler. Acium Webchat omgår ingen adgangskontrol og kræver et gyldigt token.
 
 ## Udvikling
 
