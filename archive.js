@@ -2,7 +2,7 @@
 let database;
 function open() {
   if (!database) database = new Promise((resolve,reject) => {
-    const request = indexedDB.open('stuen-history',1);
+    const request = indexedDB.open('acium-webchat-history',1);
     request.onupgradeneeded = () => {
       const store = request.result.createObjectStore('messages',{keyPath:'archiveId'});
       store.createIndex('timeline',['scope','time','archiveId']);
