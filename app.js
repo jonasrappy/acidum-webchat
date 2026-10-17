@@ -1,8 +1,11 @@
-import {ChatStore, parseToken, retryDelay} from './core.js?v=5';
-import {scopeFor, archiveId, saveMessages, loadBefore, clearScope} from './archive.js?v=5';
+import {ChatStore, parseToken, retryDelay, messageAttention, messageLinks, matchesMode} from './core.js?v=8';
+import {LocalData, exportText} from './local-data.js?v=8';
+import {scopeFor, archiveId, saveMessages, loadBefore, clearScope} from './archive.js?v=8';
 const $ = id => document.getElementById(id);
 let store = new ChatStore(), socket, token, retryTimer, retry = 0, generation = 0, intentional = false;
-let lastChatAccount = '';
+let lastChatAccount = '', localData=null, draftAccount='', draftTimer;
+let mode='all', person='', selectedPerson=null, selectedMessage=null;
+const emptyTerms=[];
 let active = '', logOnly = false, query = '', showSystems = true, pageSize = 250, frame = 0, demo = false, nearBottom = true;
 let tabsSignature = '', notice = false, liveRenderTimer = 0, lastRenderAt = 0;
 let archiveScope = '', archiveRows = [], archiveBefore = null, archiveMore = true, archiveLoading = false, archiveGeneration = 0;
@@ -29,7 +32,7 @@ async function olderMessages() {
   if (archiveLoading || loadingOlder) return;
   const retained = combinedMessages();
   if (retained.length > pageSize) {pageSize += 250; nearBottom = false; loadingOlder = true; schedule(); return;}
-  if (!historyEnabled || !archiveScope || !archiveMore || demo) return;
+  if (mode==='saved' || !historyEnabled || !archiveScope || !archiveMore || demo) return;
   archiveLoading = true; const view = archiveGeneration;
   $('history-status').textContent = 'Henter ældre beskeder fra denne enhed…';
   try {
@@ -39,7 +42,7 @@ async function olderMessages() {
       const oldest = retained.reduce((a,b)=>a.time<b.time?a:b);
       archiveBefore = {time:oldest.time,archiveId:archiveId(archiveScope,oldest)};
     }
-    const result = await loadBefore(archiveScope,active,archiveBefore,{logOnly,query,systems:showSystems});
+    const result = await loadBefore(archiveScope,active,archiveBefore,{logOnly:false,query,systems:showSystems,accept:viewAccept});
     if (view !== archiveGeneration) return;
     archiveBefore = result.before; archiveMore = result.hasMore;
     archiveRows = [...result.messages,...archiveRows].slice(-10000);
@@ -49,10 +52,41 @@ async function olderMessages() {
   } catch {if(view === archiveGeneration) $('history-status').textContent = 'Browseren kunne ikke hente den lokale historik.';}
   finally {if(view === archiveGeneration) archiveLoading = false;}
 }
-function combinedMessages() {
-  const current = store.messages(active,logOnly,query,showSystems), seen = new Set(current.map(m=>m.account+'\0'+m.key));
-  return [...archiveRows.filter(m=>!seen.has(m.account+'\0'+m.key)),...current].sort((a,b)=>a.time-b.time||a.account.localeCompare(b.account)||a.key.localeCompare(b.key));
+function termsFor(account){return localData?.triggers.get(account)||emptyTerms;}
+function viewAccept(message){
+  const terms=termsFor(message.account);
+  if(logOnly&&!message.log&&!messageAttention(message,terms))return false;
+  if(person&&message.name!==person)return false;
+  if(mode==='saved'&&!localData?.isSaved(message))return false;
+  return matchesMode(message,mode,terms);
 }
+function canClearAttention(){return ['all','mentions'].includes(mode)&&!person&&!query&&!document.querySelector('dialog[open]');}
+function combinedMessages() {
+  const current=store.messages(active,false,query,showSystems), seen=new Set(current.map(m=>m.account+'\0'+m.key));
+  const archived=mode==='saved'?[...(localData?.saved.values()||[])]:archiveRows;
+  const search=query.toLocaleLowerCase('da');
+  return [...archived.filter(m=>!seen.has(m.account+'\0'+m.key)),...current]
+    .filter(m=>(!active||m.account===active)&&(showSystems||!m.system)&&(!search||`${m.account} ${m.name} ${m.text}`.toLocaleLowerCase('da').includes(search))&&viewAccept(m))
+    .sort((a,b)=>a.time-b.time||a.account.localeCompare(b.account)||a.key.localeCompare(b.key));
+}
+function saveDraft(){clearTimeout(draftTimer);if(localData&&draftAccount)localData.setDraft(draftAccount,$('message').value);}
+function refreshLimit(){const length=$('message').value.length;$('message-limit').hidden=length<80;$('message-limit').textContent=length+'/100';}
+function clearDraft(){$('message').value='';if(localData&&draftAccount)localData.setDraft(draftAccount,'');refreshLimit();}
+function filterChanged(){resetArchiveView();pageSize=250;nearBottom=true;schedule();}
+function renderFilters(){
+  $('workspace').classList.toggle('filtered',mode!=='all'||Boolean(person));
+  for(const button of document.querySelectorAll('#view-filters [data-mode]')){const selected=button.dataset.mode===mode;button.classList.toggle('active',selected);button.setAttribute('aria-pressed',String(selected));}
+  $('person-filter').hidden=!person;$('person-filter').textContent=person+' ×';
+  $('search-toggle').classList.toggle('has-filter',mode!=='all'||Boolean(person));
+}
+function openPerson(name,account){selectedPerson={name,account};$('person-title').textContent=name;$('person-account').textContent=account;$('person-dialog').showModal();}
+function openMessage(message){selectedMessage=message;$('message-preview').textContent=message.text;$('message-action-status').textContent='';$('save-message').textContent=localData?.isSaved(message)?'Fjern fra gemte':'Gem besked';$('message-dialog').showModal();}
+function appendTextLinks(parent,text){
+  let offset=0;
+  for(const link of messageLinks(text)){const at=text.indexOf(link,offset);if(at<offset)continue;parent.append(document.createTextNode(text.slice(offset,at)));const a=element('a','',link);a.href=link;a.target='_blank';a.rel='noopener noreferrer';parent.append(a);offset=at+link.length;}
+  parent.append(document.createTextNode(text.slice(offset)));
+}
+function updateTriggerEditor(){const name=$('trigger-account').value;$('trigger-words').value=termsFor(name).join(', ');$('trigger-status').textContent='Gælder kun på denne enhed. Medsendte markeringer virker fortsat.';}
 const timeFormat = new Intl.DateTimeFormat('da-DK', {hour: '2-digit', minute: '2-digit'});
 const dateFormat = new Intl.DateTimeFormat('da-DK', {day: 'numeric', month: 'long', year: 'numeric'});
 function element(tag, cls, text) { const el = document.createElement(tag); if (cls) el.className = cls; if (text != null) el.textContent = text; return el; }
@@ -79,13 +113,15 @@ function openWorkspace() { $('welcome').hidden = true; $('workspace').hidden = f
 function isConnected() { return demo || socket?.readyState === WebSocket.OPEN; }
 function updateComposer() {
   const name = $('send-as').value, ready = Boolean(name && isConnected());
+  if(draftAccount!==name){saveDraft();draftAccount=name;$('message').value=localData?.draft(name)||'';refreshLimit();}
   $('message').disabled = !name; $('send').disabled = !ready;
-  $('send-hint').textContent = demo ? 'Eksempeltilstand · intet sendes til Netstationen.' : name ? `Du skriver som ${name}${isConnected() ? '' : ' · afventer forbindelse'}` : 'Vælg en bruger at skrive som.';
+  $('send-hint').textContent = demo ? 'Eksempeltilstand · intet sendes til chatten.' : name ? `Du skriver som ${name}${isConnected() ? '' : ' · afventer forbindelse'}` : 'Vælg en bruger at skrive som.';
 }
 function choose(name, isLog = false) {
+  saveDraft();if(isLog){mode='all';person='';}else if(active!==name)person='';
   active = name; logOnly = isLog; if(!isLog)lastChatAccount=name; resetArchiveView(); pageSize = 250; nearBottom = true; notice = false;
-  if (name && store.tabs.has(name)) { store.tabs.get(name).unread = 0; $('send-as').value = name; }
-  else if (!isLog) for (const tab of store.tabs.values()) tab.unread = 0;
+  if (name && store.tabs.has(name)) { if(canClearAttention())store.tabs.get(name).unread = 0; $('send-as').value = name; }
+  else if (canClearAttention()) for (const tab of store.tabs.values()) tab.unread = 0;
   tabsSignature = ''; schedule(); updateComposer();
 }
 function accountButton(name) {
@@ -100,6 +136,7 @@ function accountButton(name) {
   button.addEventListener('click', () => choose(name)); return button;
 }
 function renderNavigation() {
+  renderFilters();
   const signature = JSON.stringify([store.names, active, logOnly, [...store.tabs.values()].map(t => [t.unread,t.room?.name,t.room?.id])]);
   if (signature !== tabsSignature) {
     tabsSignature = signature;
@@ -123,12 +160,13 @@ function renderNavigation() {
   $('view-caption').textContent = active ? 'DIN BRUGER' : 'DIT OVERBLIK';
   const room = store.tabs.get(active)?.room;
   if ($('rooms-dialog').open) renderRooms();
-  $('view-subtitle').textContent = logOnly ? 'Markeringer og hændelser fra dine Acium-brugere.' : active ? room ? `${room.name}${room.id != null ? ` · Rum ${room.id}` : ''}` : '' : '';
+  $('view-subtitle').textContent = logOnly ? 'Markeringer og hændelser fra dine acidum-brugere.' : active ? room ? `${room.name}${room.id != null ? ` · Rum ${room.id}` : ''}` : '' : '';
   $('view-subtitle').hidden = !$('view-subtitle').textContent;
 }
 function schedule() { if (!document.hidden && !frame) frame = requestAnimationFrame(() => {frame = 0; render();}); }
 function render() {
   lastRenderAt = performance.now();
+  if(nearBottom&&canClearAttention())for(const [name,tab]of store.tabs)if(!active||active===name)tab.unread=0;
   renderNavigation();
   const timeline = $('timeline'), before = timeline.scrollHeight, top = timeline.scrollTop;
   const messages = combinedMessages(), visible = messages.slice(-pageSize);
@@ -136,18 +174,20 @@ function render() {
   for (const message of visible) {
     const nextDay = dateFormat.format(message.time);
     if (day !== nextDay) { fragment.append(element('div','day-divider', nextDay)); day = nextDay; }
-    const row = element('article', `message${message.system ? ' system' : ''}${message.private ? ' private' : ''}`);
+    const row = element('article', `message${message.system ? ' system' : ''}${message.private ? ' private' : ''}${messageAttention(message,termsFor(message.account))?' attention':''}`);
     row.dataset.id = message.id;
     row.append(element('span','avatar',message.system ? '·' : (message.name || '?').slice(0,2).toUpperCase()));
     const body = element('div'), head = element('div','message-head');
-    if (message.name) head.append(element('span','message-name',message.name));
-    const time = element('time', '', timeFormat.format(message.time)); time.dateTime = new Date(message.time).toISOString(); head.append(time);
+    if (message.name) {const name=element('button','message-name',message.name);name.type='button';name.onclick=()=>openPerson(message.name,message.account);head.append(name);}
+    const action=element('button','message-time');action.type='button';action.setAttribute('aria-label','Beskedhandlinger');
+    const time = element('time', '', timeFormat.format(message.time)); time.dateTime = new Date(message.time).toISOString();action.append(time);action.onclick=()=>openMessage(message);head.append(action);
+    if(localData?.isSaved(message))head.append(element('span','saved-marker','★'));
     if (!active) head.append(element('span','message-account',message.account));
-    body.append(head,element('p','message-text',message.text)); row.append(body); fragment.append(row);
+    const text=element('p','message-text');appendTextLinks(text,message.text);body.append(head,text); row.append(body); fragment.append(row);
   }
   // Replace only the visible, bounded window; never build a hidden DOM for each account.
-  $('messages').replaceChildren(fragment); $('empty').hidden = Boolean(visible.length); $('older').hidden = messages.length <= pageSize && !(historyEnabled && archiveScope && archiveMore && !demo);
-  $('empty-text').textContent = query ? 'Ingen beskeder matcher din søgning i den indlæste historik.' : logOnly ? 'Ingen markerede hændelser endnu.' : !store.names.length ? 'Venter på brugerfaner fra Acium. Kontrollér, at programmet kører med webchat slået til.' : 'Dine beskeder vises, så snart Acium sender dem.';
+  $('messages').replaceChildren(fragment); $('empty').hidden = Boolean(visible.length); $('older').hidden = messages.length <= pageSize && !(mode!=='saved' && historyEnabled && archiveScope && archiveMore && !demo);
+  $('empty-text').textContent = query ? 'Ingen beskeder matcher din søgning i den indlæste historik.' : logOnly ? 'Ingen markerede hændelser endnu.' : !store.names.length ? 'Venter på brugerfaner fra acidum. Kontrollér, at programmet kører med webchat slået til.' : 'Dine beskeder vises, så snart acidum sender dem.';
   if (nearBottom) timeline.scrollTop = timeline.scrollHeight;
   else if (loadingOlder) timeline.scrollTop = top + timeline.scrollHeight - before;
   else timeline.scrollTop = top;
@@ -162,6 +202,9 @@ function updateTabs(names) {
   $('send-as').replaceChildren(element('option', '', 'Vælg bruger'), ...store.names.map(name => {const option = element('option','',name); option.value = name; return option;}));
   $('send-as').firstElementChild.value = '';
   $('send-as').value = store.names.includes(previous) ? previous : store.names[0] || '';
+  const triggerName=$('trigger-account').value;
+  $('trigger-account').replaceChildren(...store.names.map(name=>{const option=element('option','',name);option.value=name;return option;}));
+  $('trigger-account').value=store.names.includes(triggerName)?triggerName:store.names[0]||'';
   updateComposer();
 }
 function ingest(payload) {
@@ -175,7 +218,7 @@ function ingest(payload) {
       const message = store.add(event);
       if (!message) continue;
       queueArchive(message);
-      const visible = (!active || active === message.account) && (!logOnly || message.log);
+      const visible = (!active || active === message.account) && viewAccept(message) && (!query||`${message.account} ${message.name} ${message.text}`.toLocaleLowerCase('da').includes(query.toLocaleLowerCase('da')));
       if (message.attention && (document.hidden || !visible || !nearBottom)) store.tab(message.account).unread++;
       if (visible && !nearBottom) notice = true;
     }
@@ -204,6 +247,7 @@ function connect() {
   socket.onerror = () => { if (current === generation) socket.close(); };
   socket.onclose = event => {
     if (current !== generation || intentional) return;
+    for(const tab of store.tabs.values())tab.rosterComplete=false;
     if (!receivedData && event.code===1005 && ++rejectedOpens>=3) {
       disconnect(false);
       $('login-error').textContent='Ingen adgang til den gemte chat lige nu. Prøv igen eller indsæt et nyt link.';
@@ -217,12 +261,17 @@ function connect() {
 function start(input) {
   const parsed = parseToken(input);
   demo = false; token = parsed; intentional = false; retry = 0; rejectedOpens=0; savedTokenSet(token); resetArchiveView();
-  archiveScope = '';
-  scopeFor(parsed).then(scope=>{if(token !== parsed)return; archiveScope = scope; if(historyEnabled) {for(const tab of store.tabs.values())for(const message of tab.messages)queueArchive(message);} schedule();});
+  localData=null;archiveScope = '';
+  scopeFor(parsed).then(scope=>{if(token !== parsed)return; archiveScope = scope;
+    let storage;try{storage=localStorage;}catch{storage={getItem:()=>null,setItem:()=>{throw new Error('Unavailable');}};}
+    localData=new LocalData(storage,scope);
+    for(const [name,terms]of localData.triggers)store.setTriggers(name,terms);
+    const current=$('send-as').value;if($('message').value)localData.setDraft(current,$('message').value);else $('message').value=localData.draft(current);refreshLimit();updateTriggerEditor(); if(historyEnabled) {for(const tab of store.tabs.values())for(const message of tab.messages)queueArchive(message);} schedule();});
   $('demo-label').hidden = true; $('chat-link').value = ''; $('login-error').textContent = '';
   openWorkspace(); connect(); schedule();
 }
 function disconnect(forget=true) {
+  saveDraft();localData=null;draftAccount='';mode='all';person='';
   intentional = true; ++generation; clearTimeout(retryTimer); clearTimeout(liveRenderTimer); liveRenderTimer=0; if (socket) {socket.onclose = null; socket.close();} socket = null;
   flushArchive(); archiveScope = ''; resetArchiveView(); token = null; if(forget)savedTokenSet(null); $('resume-saved').hidden=!savedTokenGet(); store = new ChatStore(); active = ''; logOnly = false; query = ''; demo = false; tabsSignature = '';
   $('search').value = ''; $('message').value = ''; $('send-error').textContent = ''; $('workspace').hidden = true; $('welcome').hidden = false;
@@ -237,13 +286,14 @@ $('all-button').onclick = () => choose(''); $('log-button').onclick = () => choo
 $('bottom-chat').onclick = () => choose(store.names.includes(lastChatAccount)?lastChatAccount:'',false);
 $('bottom-log').onclick = () => choose('',true);
 function openSheet(id) {
-  if(id==='rooms-dialog')renderRooms();$(id).showModal();
+  if(id==='rooms-dialog')renderRooms();if(id==='settings-dialog'){if(active)$('trigger-account').value=active;updateTriggerEditor();}$(id).showModal();
   const button=$(id==='rooms-dialog'?'bottom-rooms':'bottom-settings');button.classList.add('selected');button.setAttribute('aria-pressed','true');
 }
 $('rooms-button').onclick = $('bottom-rooms').onclick = () => openSheet('rooms-dialog');
 $('settings-button').onclick = $('bottom-settings').onclick = () => openSheet('settings-dialog');
 for(const dialog of document.querySelectorAll('dialog.sheet')) {
   dialog.querySelector('.close-sheet').onclick = () => dialog.close();
+  dialog.addEventListener('close',schedule);
   dialog.addEventListener('close',()=>{for(const id of ['bottom-rooms','bottom-settings']){$(id).classList.remove('selected');$(id).setAttribute('aria-pressed','false');}});
   dialog.addEventListener('click',event=>{if(event.target===dialog){const rect=dialog.getBoundingClientRect();if(event.clientX<rect.left||event.clientX>rect.right||event.clientY<rect.top||event.clientY>rect.bottom)dialog.close();}});
 }
@@ -268,27 +318,29 @@ function renderRooms() {
     header.append(element('span','avatar',name.slice(0,2).toUpperCase()),copy,open);card.append(header);
     const present=[...tab.presence.values()].filter(user=>user.present).sort((a,b)=>a.name.localeCompare(b.name,'da'));
     const details=element('details','room-people');details.dataset.account=name;details.open=opened.has(name)||(initial&&(active===name||store.names.length===1));
-    details.append(element('summary','',`${tab.room?'Observeret i rummet':'Observeret i samtalen'} · ${present.length}`));
+    details.append(element('summary','',`${tab.rosterComplete?'Deltagere':tab.room?'Observeret i rummet':'Observeret i samtalen'} · ${present.length}`));
+    if(tab.rosterComplete)details.append(element('p','snapshot-note',`Deltagerliste fra rumskift ${timeFormat.format(tab.roomSince)} · opdateres løbende`));
     const list=element('ul','people-list');
     for(const user of present) {
-      const li=element('li'), copy=element('span','person-copy');copy.append(element('strong','',user.name),element('small','',user.name===name?'Din bruger':`Senest set ${timeFormat.format(user.time)}`));
-      li.append(element('span','avatar',user.name.slice(0,2).toUpperCase()),copy);list.append(li);
+      const li=element('li'), button=element('button','person-button'),copy=element('span','person-copy');copy.append(element('strong','',user.name),element('small','',user.name===name?'Din bruger':user.source==='snapshot'?'Med ved rumskift':`Senest set ${timeFormat.format(user.time)}`));
+      button.append(element('span','avatar',user.name.slice(0,2).toUpperCase()),copy);button.onclick=()=>openPerson(user.name,name);li.append(button);list.append(li);
     }
     if(!present.length)details.append(element('p','setting-note','Ingen brugere observeret endnu. Listen opdateres med nye beskeder og indgange.'));
     else details.append(list);
     card.append(details);return card;
   });
   $('room-cards').replaceChildren(...cards);
-  if(!cards.length)$('room-cards').append(element('p','setting-note','Dine brugere vises, når Acium sender sine faner.'));
+  if(!cards.length)$('room-cards').append(element('p','setting-note','Dine brugere vises, når acidum sender sine faner.'));
 }
 $('send-as').onchange = () => {if(active&&$('send-as').value!==active)choose($('send-as').value);else updateComposer();};
 $('composer').onsubmit = event => {
   event.preventDefault(); const name = $('send-as').value, text = $('message').value;
   if (!text.trim() || !store.names.includes(name)) return;
+  if(text.length>100){$('send-error').textContent='Beskeden må højst være 100 tegn.';return;}
   $('send-error').textContent = '';
-  if (demo) {ingest({me:{name}, user:{name}, type:'text', text, time:Date.now()}); $('message').value = ''; return;}
+  if (demo) {ingest({me:{name}, user:{name}, type:'text', text, time:Date.now()}); clearDraft(); return;}
   if (!socket || socket.readyState !== WebSocket.OPEN) {$('send-error').textContent = 'Forbindelsen er afbrudt. Din besked er stadig i feltet.'; return;}
-  try {socket.send(JSON.stringify({name,say:text})); $('message').value = ''; $('message').focus();}
+  try {socket.send(JSON.stringify({name,say:text})); clearDraft(); $('message').focus();}
   catch {$('send-error').textContent = 'Beskeden kunne ikke sendes. Prøv igen, når forbindelsen er tilbage.';}
 };
 let searchTimer;
@@ -299,15 +351,47 @@ $('older').onclick = olderMessages;
 $('timeline').addEventListener('scroll', () => {
   if ($('timeline').scrollTop < 100 && $('timeline').scrollHeight > $('timeline').clientHeight + 100) olderMessages();
   nearBottom = $('timeline').scrollHeight - $('timeline').scrollTop - $('timeline').clientHeight < 60;
-  if (nearBottom && notice) {notice = false; $('new-messages').hidden = true; for (const [name,tab] of store.tabs) if (!logOnly && (!active || name === active)) tab.unread = 0; renderNavigation();}
+  if (nearBottom && notice) {notice = false; $('new-messages').hidden = true; for (const [name,tab] of store.tabs) if (canClearAttention() && (!active || name === active)) tab.unread = 0; renderNavigation();}
 }, {passive:true});
-$('new-messages').onclick = () => {nearBottom = true; notice = false; for (const [name,tab] of store.tabs) if (!logOnly && (!active || name === active)) tab.unread = 0; schedule();};
-document.addEventListener('visibilitychange', () => {if (document.hidden) flushArchive(); if (!document.hidden) {if (nearBottom) for (const [name,tab] of store.tabs) if (!logOnly && (!active || name === active)) tab.unread = 0; schedule();}});
+$('new-messages').onclick = () => {nearBottom = true; notice = false; for (const [name,tab] of store.tabs) if (canClearAttention() && (!active || name === active)) tab.unread = 0; schedule();};
+document.addEventListener('visibilitychange', () => {if (document.hidden) {flushArchive();saveDraft();} if (!document.hidden) {if (nearBottom) for (const [name,tab] of store.tabs) if (canClearAttention() && (!active || name === active)) tab.unread = 0; schedule();}});
 window.addEventListener('online', () => {retry = 0; connect();});
 window.addEventListener('offline', () => {clearTimeout(retryTimer); status('Ingen internetforbindelse');});
-window.addEventListener('pagehide', () => {flushArchive(); intentional = true; clearTimeout(retryTimer); socket?.close();});
+window.addEventListener('pagehide', () => {flushArchive();saveDraft(); intentional = true; clearTimeout(retryTimer); socket?.close();});
 window.addEventListener('pageshow', event => {if (event.persisted && token) {intentional = false; connect();}});
 document.addEventListener('keydown', event => {if (event.key === '/' && !/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName) && !$('workspace').hidden) {event.preventDefault();$('workspace').classList.add('search-open');$('search-toggle').setAttribute('aria-expanded','true'); $('search').focus();}});
+for(const button of document.querySelectorAll('#view-filters [data-mode]'))button.onclick=()=>{mode=button.dataset.mode;filterChanged();};
+$('person-filter').onclick=()=>{person='';filterChanged();};
+$('message').addEventListener('input',()=>{refreshLimit();clearTimeout(draftTimer);draftTimer=setTimeout(saveDraft,200);});
+$('trigger-account').onchange=updateTriggerEditor;
+$('save-triggers').onclick=()=>{
+  const account=$('trigger-account').value;if(!account||!localData)return;
+  const terms=localData.setTriggers(account,$('trigger-words').value);store.setTriggers(account,terms);
+  $('trigger-status').textContent='Gemt for '+account+' på denne enhed.';filterChanged();
+};
+$('person-mention').onclick=()=>{
+  if(!selectedPerson)return;const {name,account}=selectedPerson;
+  for(const dialog of document.querySelectorAll('dialog[open]'))dialog.close();
+  choose(account);const prefix=name+' ';$('message').value=(prefix+$('message').value).slice(0,100);saveDraft();refreshLimit();$('message').focus();
+};
+$('person-messages').onclick=()=>{
+  if(!selectedPerson)return;const {name,account}=selectedPerson;
+  for(const dialog of document.querySelectorAll('dialog[open]'))dialog.close();
+  choose(account);person=name;mode='all';$('workspace').classList.add('search-open');$('search-toggle').setAttribute('aria-expanded','true');filterChanged();
+};
+$('save-message').onclick=()=>{
+  if(!selectedMessage||!localData)return;
+  const saved=localData.toggleSaved(selectedMessage);$('save-message').textContent=localData.isSaved(selectedMessage)?'Fjern fra gemte':'Gem besked';
+  $('message-action-status').textContent=saved?'Opdateret på denne enhed.':'Browseren kunne ikke gemme permanent.';schedule();
+};
+$('copy-message').onclick=async()=>{
+  if(!selectedMessage)return;
+  try{await navigator.clipboard.writeText(selectedMessage.text);$('message-action-status').textContent='Kopieret.';}catch{$('message-action-status').textContent='Kopiering blev blokeret af browseren. Markér og kopiér teksten i stedet.';}
+};
+$('export-chat').onclick=()=>{
+  const messages=combinedMessages();const blob=new Blob([exportText(messages)],{type:'text/plain;charset=utf-8'}),url=URL.createObjectURL(blob),link=element('a');
+  link.href=url;link.download='acidum-'+new Date().toISOString().slice(0,10)+'.txt';link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
+};
 $('save-history').onchange = () => {
   historyEnabled = $('save-history').checked;
   try {localStorage.setItem('acium-webchat-save-history',historyEnabled?'yes':'no');} catch {}
@@ -323,13 +407,13 @@ $('clear-history').onclick = async () => {
   catch {$('history-status').textContent = 'Historikken kunne ikke slettes.';}
   finally {$('clear-history').disabled = false;}
 };
-function enterDemo() {resetArchiveView();
+function enterDemo() {resetArchiveView();localData=new LocalData({getItem:()=>null,setItem:()=>{}},'demo');draftAccount='';
   demo = true; intentional = true; store = new ChatStore(); updateTabs(['Nova','Milo']); openWorkspace(); $('demo-label').hidden = false; status('Eksempeltilstand',true);
   const now = Date.now();
   const examples = [
-    {name:'Nova',type:'room',room:{id:12,name:'Torvet'}},
+    {name:'Nova',type:'room',room:{id:12,name:'Torvet'},users:[{name:'Nova'},{name:'Alma'}]},
     {name:'Nova',user:'Alma',text:'Er der nogen, der er klar på en tur rundt i byen? ☀'},
-    {name:'Milo',type:'room',room:{id:7,name:'Caféen'}},
+    {name:'Milo',type:'room',room:{id:7,name:'Caféen'},users:[{name:'Milo'},{name:'Elliot'}]},
     {name:'Nova',user:'Nova',text:'Ja! Jeg er lige landet på torvet.'},
     {name:'Milo',user:'Elliot',text:'Der er kaffe på kanden. Bare kom forbi.'},
     {name:'Nova',type:'join',user:'Luna'},
@@ -337,7 +421,7 @@ function enterDemo() {resetArchiveView();
     {name:'Milo',user:'Milo',text:'Det lyder som en ret god plan.'},
     {name:'Nova',user:'Alma',text:'Vi mødes ved springvandet om fem minutter.'},
   ];
-  ingest(examples.map((e,i) => ({me:{name:e.name},user:{name:e.user||e.name},type:e.type||'text',text:e.text,room:e.room,time:now-(examples.length-i)*60000})));
+  ingest(examples.map((e,i) => ({me:{name:e.name},user:{name:e.user||e.name},type:e.type||'text',text:e.text,room:e.room,users:e.users,time:now-(examples.length-i)*60000})));
 };
 const fragment = new URLSearchParams(location.hash.slice(1)), incoming = fragment.get('token');
 if (incoming) history.replaceState(null,'',location.pathname + location.search);
