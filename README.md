@@ -18,7 +18,7 @@ Token-linkets tekniske format er `https://acium.app/chat?token=…`. Linket husk
 - Filtre til omtaler, hvisken, links og gemte beskeder. Søg i indlæst tekst eller filtrér på en bestemt afsender.
 - Tællere ved brugerne reagerer kun på navneomtaler, egne lokale triggerord og medsendte markeringer. Almindelige rumbeskeder og egne beskeder tæller ikke med.
 - Deltagerliste fra rumskiftets `users`-data, opdateret med ind- og udgange. Når et rumsnapshot ikke er modtaget, bruges observeret aktivitet. Efter forbindelsesbrud markeres listen igen som observeret, indtil et nyt snapshot modtages.
-- Tryk på et navn for at omtale personen eller se personens beskeder. Det sender ikke automatisk en besked.
+- Tryk på et navn for at omtale personen eller se personens beskeder. Det sender ikke automatisk en besked. Skriv `@` og begyndelsen af navnet for valgfri autocomplete med deltagerne i den valgte brugers rum. Enter vælger kun et forslag, hvis du selv har markeret det med piletasterne.
 - Separate lokale kladder og ekstra triggerord for hver bruger.
 - Tryk på et tidspunkt for at kopiere eller gemme en besked. Op til 200 gemte beskeder bevares separat fra den rullende historik.
 - Eksportér den aktuelt indlæste og filtrerede samtale som en tekstfil. Filen oprettes direkte i browseren.
@@ -36,7 +36,7 @@ For at chatten virker, sendes token og beskeder direkte til chatserveren over en
 
 ## Forbrug og begrænsninger
 
-Hukommelsen beholder op til 700 indgående beskeder pr. bruger. Den aktive visning tegner først de seneste 250; flere tilføjes, når du selv læser længere tilbage. Live-opdateringer samles med mindst 120 ms mellem tegninger. Skjulte faner tegnes først, når de bliver synlige. Mens du læser ældre beskeder, tegnes samtalen ikke igen for hver ny besked.
+Hukommelsen beholder op til 700 indgående beskeder pr. bruger. Den aktive visning tegner først de seneste 250; flere tilføjes, når du selv læser længere tilbage. Live-opdateringer samles med mindst 80 ms mellem tegninger. Uændrede beskedrækker genbruges; nye beskeder indsættes uden at genopbygge samtalen. Tastatur- og viewportændringer ændrer kun layout og læseposition. Aktivitet i andre samtaler tegner ikke den aktuelle beskedliste igen. Skjulte faner tegnes først, når de bliver synlige. Mens du læser ældre beskeder, tegnes samtalen ikke igen for hver ny besked.
 
 Serverprotokollens `lastLine` henter nyere beskeder. Der er ikke fundet en forespørgsel efter vilkårligt gammel serverhistorik. Lazy load bruger derfor allerede leverede beskeder og det arkiv, du har valgt at gemme lokalt. Søgning og eksport omfatter indlæste beskeder; scroll op for at hente flere fra arkivet. Gemte beskeder kan findes gennem deres eget filter.
 
@@ -53,7 +53,7 @@ npm run serve
 
 Åbn http://127.0.0.1:8765. Uden gemt login findes eksempeldata på http://127.0.0.1:8765/#demo. Filerne til hosting ligger i `dist/`; der er intet byggetrin.
 
-Node-tests kontrollerer historikgrænser, dubletter, brugeradskillelse, omtaler, lokale triggerord, deltagerlister og lokal lagring. De valgfrie `tests/*.browser.cjs` bruger `playwright-core` og Chromium, med `BROWSER_EXECUTABLE` sat til browserens sti. `ACIDUM_TEST_URL` kan ændre den lokale testadresse. Browsertest bruger syntetiske data.
+Node-tests kontrollerer historikgrænser, dubletter, brugeradskillelse, omtaler, lokale triggerord, deltagerlister og lokal lagring. De valgfrie `tests/*.browser.cjs` bruger `playwright-core` og Chromium, med `BROWSER_EXECUTABLE` sat til browserens sti. `ACIDUM_TEST_URL` kan ændre den lokale testadresse. Browsertest bruger syntetiske data. Tastaturtesten simulerer ændringer i viewporthøjde og forskydning, kontrollerer at skrivefelt og samtale forbliver synlige, og måler at uændrede beskedrækker bevares. Et fysisk iPhone-tastatur er ikke tilgængeligt i testmiljøet.
 
 ## Udgivelse
 

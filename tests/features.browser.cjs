@@ -10,9 +10,9 @@ const {chromium}=require('playwright-core');const assert=require('node:assert/st
   await page.waitForFunction(()=>document.querySelectorAll('.message').length===6);
   await page.locator('#mobile-accounts button').nth(1).click();await page.locator('#bottom-rooms').click();
   await page.waitForFunction(()=>[...document.querySelectorAll('#room-cards summary')].every(e=>e.textContent.startsWith('Deltagere')));
-  await page.locator('.person-button').filter({hasText:'Quiet'}).click();await page.locator('#person-mention').click();assert.equal(await page.locator('#message').inputValue(),'Quiet ');
+  await page.locator('.person-button').filter({hasText:'Quiet'}).click();await page.locator('#person-mention').click();assert.equal(await page.locator('#message').inputValue(),'@Quiet ');
   await page.locator('#mobile-accounts button').nth(2).click();await page.locator('#message').fill('Milo draft');
-  await page.locator('#mobile-accounts button').nth(1).click();assert.equal(await page.locator('#message').inputValue(),'Quiet ');
+  await page.locator('#mobile-accounts button').nth(1).click();assert.equal(await page.locator('#message').inputValue(),'@Quiet ');
   await page.locator('#mobile-accounts button').nth(2).click();assert.equal(await page.locator('#message').inputValue(),'Milo draft');
   console.log('Snapshot includes quiet users; participant mention and separate drafts pass');
   await page.locator('#bottom-settings').click();await page.locator('#trigger-account').selectOption('Nova');await page.locator('#trigger-words').fill('kaffe');await page.locator('#save-triggers').click();await page.locator('#settings-dialog .close-sheet').click();
@@ -25,7 +25,7 @@ const {chromium}=require('playwright-core');const assert=require('node:assert/st
   await page.locator('[data-mode="saved"]').click();await page.waitForTimeout(50);assert.equal(await page.locator('.message').count(),1);
   console.log('Local triggers, mention/private/link filters and saved messages pass');
   await page.locator('#bottom-settings').click();const downloadPromise=page.waitForEvent('download');await page.locator('#export-chat').click();const download=await downloadPromise;assert.ok(download.suggestedFilename().startsWith('acidum-'));await page.locator('#settings-dialog .close-sheet').click();
-  await page.reload();await page.waitForFunction(()=>document.querySelectorAll('.message').length>=6);assert.equal(await page.locator('#message').inputValue(),'Quiet ');
+  await page.reload();await page.waitForFunction(()=>document.querySelectorAll('.message').length>=6);assert.equal(await page.locator('#message').inputValue(),'@Quiet ');
   await page.locator('#search-toggle').click();await page.locator('[data-mode="saved"]').click();await page.waitForTimeout(50);assert.equal(await page.locator('.message').count(),1);
   await page.locator('[data-mode="all"]').click();await page.locator('#mobile-accounts button').nth(1).click();
   socket.send(JSON.stringify(event('Nova','quit',{user:{name:'Quiet'}})));await page.waitForTimeout(180);await page.locator('#bottom-rooms').click();assert.equal(await page.locator('.person-button').filter({hasText:'Quiet'}).count(),0);await page.locator('#rooms-dialog .close-sheet').click();

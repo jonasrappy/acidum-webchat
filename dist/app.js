@@ -1,5 +1,7 @@
 import {ChatStore, parseToken, retryDelay, messageAttention, messageLinks, matchesMode} from './core.js?v=8';
 import {LocalData, exportText} from './local-data.js?v=8';
+import {viewportGeometry} from './viewport.js?v=10';
+import {mentionQuery,mentionSuggestions,completeMention} from './mentions.js?v=10';
 import {scopeFor, archiveId, saveMessages, loadBefore, clearScope} from './archive.js?v=8';
 const $ = id => document.getElementById(id);
 let store = new ChatStore(), socket, token, retryTimer, retry = 0, generation = 0, intentional = false;
@@ -8,6 +10,8 @@ let mode='all', person='', selectedPerson=null, selectedMessage=null;
 const emptyTerms=[];
 let active = '', logOnly = false, query = '', showSystems = true, pageSize = 250, frame = 0, demo = false, nearBottom = true;
 let tabsSignature = '', notice = false, liveRenderTimer = 0, lastRenderAt = 0;
+let incomingViewDirty=false,incomingNavDirty=false,filterSignature='',headerSignature='',roomsSignature='';
+const renderedRows=new Map();
 let archiveScope = '', archiveRows = [], archiveBefore = null, archiveMore = true, archiveLoading = false, archiveGeneration = 0;
 let archivePending = [], archiveTimer, archiveWriting = Promise.resolve();
 let historyEnabled = false;
@@ -71,9 +75,10 @@ function combinedMessages() {
 }
 function saveDraft(){clearTimeout(draftTimer);if(localData&&draftAccount)localData.setDraft(draftAccount,$('message').value);}
 function refreshLimit(){const length=$('message').value.length;$('message-limit').hidden=length<80;$('message-limit').textContent=length+'/100';}
-function clearDraft(){$('message').value='';if(localData&&draftAccount)localData.setDraft(draftAccount,'');refreshLimit();}
+function clearDraft(){hideMentions();$('message').value='';if(localData&&draftAccount)localData.setDraft(draftAccount,'');refreshLimit();}
 function filterChanged(){resetArchiveView();pageSize=250;nearBottom=true;schedule();}
 function renderFilters(){
+  const signature=mode+'\0'+person;if(signature===filterSignature)return;filterSignature=signature;
   $('workspace').classList.toggle('filtered',mode!=='all'||Boolean(person));
   for(const button of document.querySelectorAll('#view-filters [data-mode]')){const selected=button.dataset.mode===mode;button.classList.toggle('active',selected);button.setAttribute('aria-pressed',String(selected));}
   $('person-filter').hidden=!person;$('person-filter').textContent=person+' ×';
@@ -109,11 +114,11 @@ function status(text, online = false) {
   $('mobile-connection').classList.toggle('online',online); $('mobile-connection').title=text;
   $('settings-status').textContent=text; updateComposer();
 }
-function openWorkspace() { $('welcome').hidden = true; $('workspace').hidden = false; document.body.classList.add('chat-open'); updateViewport(); }
+function openWorkspace() { $('welcome').hidden = true; $('workspace').hidden = false; document.body.classList.add('chat-open'); document.documentElement.classList.add('chat-open'); updateViewport(); }
 function isConnected() { return demo || socket?.readyState === WebSocket.OPEN; }
 function updateComposer() {
   const name = $('send-as').value, ready = Boolean(name && isConnected());
-  if(draftAccount!==name){saveDraft();draftAccount=name;$('message').value=localData?.draft(name)||'';refreshLimit();}
+  if(draftAccount!==name){saveDraft();draftAccount=name;dismissedMention='';$('message').value=localData?.draft(name)||'';refreshLimit();hideMentions();}
   $('message').disabled = !name; $('send').disabled = !ready;
   $('send-hint').textContent = demo ? 'Eksempeltilstand · intet sendes til chatten.' : name ? `Du skriver som ${name}${isConnected() ? '' : ' · afventer forbindelse'}` : 'Vælg en bruger at skrive som.';
 }
@@ -156,12 +161,16 @@ function renderNavigation() {
       $(id).classList.toggle('selected',selected);$(id).setAttribute('aria-pressed',String(selected));
     }
   }
-  $('view-title').textContent = logOnly ? 'Hændelseslog' : active || 'Alle samtaler';
-  $('view-caption').textContent = active ? 'DIN BRUGER' : 'DIT OVERBLIK';
-  const room = store.tabs.get(active)?.room;
-  if ($('rooms-dialog').open) renderRooms();
-  $('view-subtitle').textContent = logOnly ? 'Markeringer og hændelser fra dine acidum-brugere.' : active ? room ? `${room.name}${room.id != null ? ` · Rum ${room.id}` : ''}` : '' : '';
-  $('view-subtitle').hidden = !$('view-subtitle').textContent;
+  const room=store.tabs.get(active)?.room;
+  const header=JSON.stringify([active,logOnly,room?.name,room?.id]);
+  if(header!==headerSignature){
+    headerSignature=header;
+    $('view-title').textContent=logOnly?'Hændelseslog':active||'Alle samtaler';
+    $('view-caption').textContent=active?'DIN BRUGER':'DIT OVERBLIK';
+    $('view-subtitle').textContent=logOnly?'Markeringer og hændelser fra dine acidum-brugere.':room?`${room.name}${room.id!=null?' · Rum '+room.id:''}`:'';
+    $('view-subtitle').hidden=!$('view-subtitle').textContent;
+  }
+  if($('rooms-dialog').open)renderRooms();
 }
 function schedule() { if (!document.hidden && !frame) frame = requestAnimationFrame(() => {frame = 0; render();}); }
 function render() {
@@ -170,29 +179,45 @@ function render() {
   renderNavigation();
   const timeline = $('timeline'), before = timeline.scrollHeight, top = timeline.scrollTop;
   const messages = combinedMessages(), visible = messages.slice(-pageSize);
-  const fragment = document.createDocumentFragment(); let day = '';
-  for (const message of visible) {
-    const nextDay = dateFormat.format(message.time);
-    if (day !== nextDay) { fragment.append(element('div','day-divider', nextDay)); day = nextDay; }
-    const row = element('article', `message${message.system ? ' system' : ''}${message.private ? ' private' : ''}${messageAttention(message,termsFor(message.account))?' attention':''}`);
-    row.dataset.id = message.id;
-    row.append(element('span','avatar',message.system ? '·' : (message.name || '?').slice(0,2).toUpperCase()));
-    const body = element('div'), head = element('div','message-head');
-    if (message.name) {const name=element('button','message-name',message.name);name.type='button';name.onclick=()=>openPerson(message.name,message.account);head.append(name);}
-    const action=element('button','message-time');action.type='button';action.setAttribute('aria-label','Beskedhandlinger');
-    const time = element('time', '', timeFormat.format(message.time)); time.dateTime = new Date(message.time).toISOString();action.append(time);action.onclick=()=>openMessage(message);head.append(action);
-    if(localData?.isSaved(message))head.append(element('span','saved-marker','★'));
-    if (!active) head.append(element('span','message-account',message.account));
-    const text=element('p','message-text');appendTextLinks(text,message.text);body.append(head,text); row.append(body); fragment.append(row);
+  const desired=[];let day='';
+  for(const message of visible){
+    const nextDay=dateFormat.format(message.time);
+    if(day!==nextDay){desired.push({key:'day:'+nextDay,day:nextDay});day=nextDay;}
+    desired.push({key:JSON.stringify([message.account,message.key]),message});
   }
-  // Replace only the visible, bounded window; never build a hidden DOM for each account.
-  $('messages').replaceChildren(fragment); $('empty').hidden = Boolean(visible.length); $('older').hidden = messages.length <= pageSize && !(mode!=='saved' && historyEnabled && archiveScope && archiveMore && !demo);
+  const keys=new Set(desired.map(item=>item.key));
+  // Drop only rows that leave the visible window. Unchanged rows keep their DOM and selection.
+  for(const [key,node]of renderedRows)if(!keys.has(key)){node.remove();renderedRows.delete(key);}
+  const container=$('messages');let cursor=container.firstChild;
+  for(const item of desired){
+    let node=renderedRows.get(item.key);
+    if(!node){node=item.message?createMessageRow(item.message):element('div','day-divider',item.day);renderedRows.set(item.key,node);}
+    if(item.message)patchMessageRow(node,item.message);
+    if(node===cursor)cursor=cursor.nextSibling;else container.insertBefore(node,cursor);
+  }
+  $('empty').hidden=Boolean(visible.length);$('older').hidden=messages.length<=pageSize&&!(mode!=='saved'&&historyEnabled&&archiveScope&&archiveMore&&!demo);
   $('empty-text').textContent = query ? 'Ingen beskeder matcher din søgning i den indlæste historik.' : logOnly ? 'Ingen markerede hændelser endnu.' : !store.names.length ? 'Venter på brugerfaner fra acidum. Kontrollér, at programmet kører med webchat slået til.' : 'Dine beskeder vises, så snart acidum sender dem.';
   if (nearBottom) timeline.scrollTop = timeline.scrollHeight;
   else if (loadingOlder) timeline.scrollTop = top + timeline.scrollHeight - before;
   else timeline.scrollTop = top;
   loadingOlder = false;
   $('new-messages').hidden = !notice || nearBottom;
+}
+function createMessageRow(message){
+  const row=element('article',`message${message.system?' system':''}${message.private?' private':''}`);row.dataset.id=message.id;
+  row.append(element('span','avatar',message.system?'·':(message.name||'?').slice(0,2).toUpperCase()));
+  const body=element('div'),head=element('div','message-head');
+  if(message.name){const name=element('button','message-name',message.name);name.type='button';name.onclick=()=>openPerson(message.name,message.account);head.append(name);}
+  const action=element('button','message-time');action.type='button';action.setAttribute('aria-label','Beskedhandlinger');
+  const time=element('time','',timeFormat.format(message.time));time.dateTime=new Date(message.time).toISOString();action.append(time);action.onclick=()=>openMessage(message);
+  const star=element('span','saved-marker','★'),account=element('span','message-account',message.account);
+  head.append(action,star,account);row._star=star;row._account=account;
+  const text=element('p','message-text');appendTextLinks(text,message.text);body.append(head,text);row.append(body);return row;
+}
+function patchMessageRow(row,message){
+  row.classList.toggle('attention',messageAttention(message,termsFor(message.account)));
+  const saved=Boolean(localData?.isSaved(message));if(row._star.hidden===saved)row._star.hidden=!saved;
+  if(row._account.hidden!==Boolean(active))row._account.hidden=Boolean(active);
 }
 let loadingOlder = false;
 function updateTabs(names) {
@@ -211,7 +236,7 @@ function ingest(payload) {
   const events = Array.isArray(payload) ? payload : [payload];
   for (const event of events.slice(0,10000)) {
     if (Array.isArray(event?.tabs)) {
-      updateTabs(event.tabs);
+      updateTabs(event.tabs);incomingViewDirty=true;incomingNavDirty=true;
       for (const name of store.names) if (socket?.readyState === WebSocket.OPEN)
         socket.send(JSON.stringify({name, lastLine: store.tab(name).lastLine}));
     } else {
@@ -219,15 +244,19 @@ function ingest(payload) {
       if (!message) continue;
       queueArchive(message);
       const visible = !document.querySelector('dialog[open]') && (!active || active === message.account) && viewAccept(message) && (!query||`${message.account} ${message.name} ${message.text}`.toLocaleLowerCase('da').includes(query.toLocaleLowerCase('da')));
-      if (message.attention && (document.hidden || !visible || !nearBottom)) store.tab(message.account).unread++;
+      if (message.attention && (document.hidden || !visible || !nearBottom)){store.tab(message.account).unread++;incomingNavDirty=true;}
+      if(visible&&(showSystems||!message.system))incomingViewDirty=true;
+      if(message.type==='room'||$('rooms-dialog').open)incomingNavDirty=true;
       if (visible && !nearBottom) notice = true;
     }
   }
   if(!document.hidden && !liveRenderTimer) liveRenderTimer=setTimeout(()=>{
     liveRenderTimer=0;if(document.hidden)return;
-    if(nearBottom)schedule();
-    else {lastRenderAt=performance.now();renderNavigation();$('new-messages').hidden=!notice;}
-  },Math.max(0,120-(performance.now()-lastRenderAt)));
+    const viewDirty=incomingViewDirty,navDirty=incomingNavDirty;incomingViewDirty=false;incomingNavDirty=false;
+    if(viewDirty&&nearBottom)schedule();
+    else {lastRenderAt=performance.now();if(navDirty)renderNavigation();$('new-messages').hidden=!notice;}
+    if(!$('mention-menu').hidden)refreshMentions();
+  },Math.max(0,80-(performance.now()-lastRenderAt)));
 }
 function connect() {
   if (!token || intentional || demo) return;
@@ -271,11 +300,11 @@ function start(input) {
   openWorkspace(); connect(); schedule();
 }
 function disconnect(forget=true) {
-  saveDraft();localData=null;draftAccount='';mode='all';person='';
+  saveDraft();localData=null;draftAccount='';mode='all';person='';hideMentions();renderedRows.clear();$('messages').replaceChildren();$('room-cards').replaceChildren();roomsSignature='';headerSignature='';filterSignature='';selectedPerson=null;selectedMessage=null;$('message-preview').textContent='';incomingViewDirty=false;incomingNavDirty=false;
   intentional = true; ++generation; clearTimeout(retryTimer); clearTimeout(liveRenderTimer); liveRenderTimer=0; if (socket) {socket.onclose = null; socket.close();} socket = null;
   flushArchive(); archiveScope = ''; resetArchiveView(); token = null; if(forget)savedTokenSet(null); $('resume-saved').hidden=!savedTokenGet(); store = new ChatStore(); active = ''; logOnly = false; query = ''; demo = false; tabsSignature = '';
   $('search').value = ''; $('message').value = ''; $('send-error').textContent = ''; $('workspace').hidden = true; $('welcome').hidden = false;
-  document.title = 'acidum · webchat'; document.body.classList.remove('chat-open'); for(const dialog of document.querySelectorAll('dialog[open]'))dialog.close(); $('chat-link').focus();
+  document.title = 'acidum · webchat'; document.body.classList.remove('chat-open','keyboard-open','compact-viewport'); document.documentElement.classList.remove('chat-open'); for(const dialog of document.querySelectorAll('dialog[open]'))dialog.close(); $('chat-link').focus();
 }
 $('connect-form').addEventListener('submit', event => {event.preventDefault(); try {start($('chat-link').value);} catch (error) {$('login-error').textContent = error.message;} });
 $('disconnect').onclick = () => disconnect(); $('mobile-exit').onclick = () => disconnect();
@@ -299,17 +328,41 @@ for(const dialog of document.querySelectorAll('dialog.sheet')) {
 }
 $('search-toggle').onclick = () => {
   const open=$('workspace').classList.toggle('search-open');$('search-toggle').setAttribute('aria-expanded',String(open));
-  if(open)$('search').focus();
+  if(open)$('search').focus({preventScroll:true});
 };
+let viewportFrame=0, viewportSignature='', focusTimers=[], viewportBaseline=0, viewportWidth=0;
+function isEditing(){return document.activeElement?.matches('textarea,input:not([type=checkbox]):not([type=radio]):not([type=button]):not([type=submit]),[contenteditable=true]')||false;}
 function updateViewport() {
-  const height=Math.round(window.visualViewport?.height || window.innerHeight);
-  document.documentElement.style.setProperty('--app-height',height+'px');
-  document.body.classList.toggle('keyboard-open',Boolean(window.visualViewport && height < window.innerHeight-120));
-  if(!$('workspace').hidden&&nearBottom)schedule();
+  const viewport=window.visualViewport, editing=isEditing(), mobile=window.matchMedia('(max-width:700px)').matches;
+  if(!editing||viewportWidth!==window.innerWidth){viewportBaseline=Math.max(window.innerHeight,document.documentElement.clientHeight);viewportWidth=window.innerWidth;}
+  const layoutHeight=Math.max(window.innerHeight,document.documentElement.clientHeight,viewportBaseline);
+  const geometry=viewportGeometry({height:viewport?.height||window.innerHeight,layoutHeight,offsetTop:viewport?.offsetTop||0,editing,mobile,scale:viewport?.scale||1});
+  const signature=JSON.stringify(geometry);
+  if(signature===viewportSignature)return;
+  viewportSignature=signature;
+  const style=document.documentElement.style;
+  style.setProperty('--app-height',geometry.height+'px');
+  style.setProperty('--viewport-top',geometry.top+'px');
+  style.setProperty('--viewport-bottom',geometry.bottom+'px');
+  document.body.classList.toggle('keyboard-open',geometry.keyboard);
+  document.body.classList.toggle('compact-viewport',geometry.compact);
+  if(!$('workspace').hidden&&nearBottom)requestAnimationFrame(()=>{$('timeline').scrollTop=$('timeline').scrollHeight;});
 }
-window.visualViewport?.addEventListener('resize',updateViewport,{passive:true});
-window.addEventListener('resize',updateViewport,{passive:true});
+function queueViewport(){if(!viewportFrame)viewportFrame=requestAnimationFrame(()=>{viewportFrame=0;updateViewport();});}
+function settleFocusViewport(){
+  for(const timer of focusTimers)clearTimeout(timer);
+  queueViewport();
+  // Keyboard opening/closing is animated; a few bounded checks cover delayed events.
+  focusTimers=[80,250,500].map(delay=>setTimeout(queueViewport,delay));
+}
+window.visualViewport?.addEventListener('resize',queueViewport,{passive:true});
+window.visualViewport?.addEventListener('scroll',queueViewport,{passive:true});
+window.addEventListener('resize',queueViewport,{passive:true});
+window.addEventListener('orientationchange',()=>{viewportBaseline=0;settleFocusViewport();},{passive:true});
+document.addEventListener('focusin',settleFocusViewport);
+document.addEventListener('focusout',settleFocusViewport);
 function renderRooms() {
+  const signature=JSON.stringify([active,store.names,[...store.tabs.values()].map(tab=>[tab.presenceRevision,tab.rosterComplete,tab.room?.id,tab.roomSince])]);if(signature===roomsSignature)return;roomsSignature=signature;
   const initial=!$('room-cards').children.length, opened=new Set([...$('room-cards').querySelectorAll('details[open]')].map(el=>el.dataset.account));
   const cards=store.names.map(name=>{
     const tab=store.tabs.get(name), card=element('section','room-card'), header=element('div','room-card-header');
@@ -340,11 +393,11 @@ $('composer').onsubmit = event => {
   $('send-error').textContent = '';
   if (demo) {ingest({me:{name}, user:{name}, type:'text', text, time:Date.now()}); clearDraft(); return;}
   if (!socket || socket.readyState !== WebSocket.OPEN) {$('send-error').textContent = 'Forbindelsen er afbrudt. Din besked er stadig i feltet.'; return;}
-  try {socket.send(JSON.stringify({name,say:text})); clearDraft(); $('message').focus();}
+  try {socket.send(JSON.stringify({name,say:text})); clearDraft(); $('message').focus({preventScroll:true});}
   catch {$('send-error').textContent = 'Beskeden kunne ikke sendes. Prøv igen, når forbindelsen er tilbage.';}
 };
 let searchTimer;
-$('search').oninput = () => {clearTimeout(searchTimer); searchTimer = setTimeout(() => {query = $('search').value.trim(); resetArchiveView(); pageSize = 250; nearBottom = true; $('clear-search').hidden = !query; schedule();},120);};
+$('search').oninput = () => {clearTimeout(searchTimer); searchTimer = setTimeout(() => {query = $('search').value.trim(); resetArchiveView(); pageSize = 250; nearBottom = true; $('clear-search').hidden = !query; schedule();},80);};
 $('clear-search').onclick = () => {$('search').value = ''; $('search').dispatchEvent(new Event('input'));};
 $('show-events').onchange = () => {showSystems = $('show-events').checked; resetArchiveView(); pageSize = 250; schedule();};
 $('older').onclick = olderMessages;
@@ -359,10 +412,48 @@ window.addEventListener('online', () => {retry = 0; connect();});
 window.addEventListener('offline', () => {clearTimeout(retryTimer); status('Ingen internetforbindelse');});
 window.addEventListener('pagehide', () => {flushArchive();saveDraft(); intentional = true; clearTimeout(retryTimer); socket?.close();});
 window.addEventListener('pageshow', event => {if (event.persisted && token) {intentional = false; connect();}});
-document.addEventListener('keydown', event => {if (event.key === '/' && !/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName) && !$('workspace').hidden) {event.preventDefault();$('workspace').classList.add('search-open');$('search-toggle').setAttribute('aria-expanded','true'); $('search').focus();}});
+document.addEventListener('keydown', event => {if (event.key === '/' && !/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName) && !$('workspace').hidden) {event.preventDefault();$('workspace').classList.add('search-open');$('search-toggle').setAttribute('aria-expanded','true'); $('search').focus({preventScroll:true});}});
 for(const button of document.querySelectorAll('#view-filters [data-mode]'))button.onclick=()=>{mode=button.dataset.mode;filterChanged();};
 $('person-filter').onclick=()=>{person='';filterChanged();};
-$('message').addEventListener('input',()=>{refreshLimit();clearTimeout(draftTimer);draftTimer=setTimeout(saveDraft,200);});
+let mentionState={query:null,names:[],selected:-1,key:''}, dismissedMention='';
+function hideMentions(){
+  if($('mention-menu').hidden&&!mentionState.query&&!$('mention-suggestions').children.length)return;
+  $('mention-menu').hidden=true;if($('mention-suggestions').children.length)$('mention-suggestions').replaceChildren();$('message').setAttribute('aria-expanded','false');$('message').removeAttribute('aria-activedescendant');
+  mentionState={query:null,names:[],selected:-1,key:''};
+}
+function refreshMentions(){
+  const input=$('message');if(document.activeElement!==input){hideMentions();return;}
+  const query=mentionQuery(input.value,input.selectionStart??input.value.length), tab=store.tabs.get($('send-as').value);
+  const key=query?query.start+':'+query.end+':'+query.prefix:'';
+  if(!key||key===dismissedMention){hideMentions();return;}
+  const names=mentionSuggestions([...(tab?.presence.values()||[])].filter(user=>user.present).map(user=>user.name),query);
+  if(!names.length){hideMentions();return;}
+  if(key!==mentionState.key)mentionState.selected=-1;
+  mentionState={query,names,key,selected:Math.min(mentionState.selected,names.length-1)};
+  $('mention-caption').textContent=tab?.rosterComplete?'I rummet':'Observerede brugere';
+  $('mention-suggestions').replaceChildren(...names.map((name,index)=>{
+    const button=element('button','mention-option',name);button.type='button';button.id='mention-option-'+index;button.tabIndex=-1;button.setAttribute('role','option');button.setAttribute('aria-selected',String(index===mentionState.selected));
+    button.addEventListener('pointerdown',event=>event.preventDefault());button.onclick=()=>insertMention(index);return button;
+  }));
+  $('mention-menu').hidden=false;input.setAttribute('aria-expanded','true');
+  if(mentionState.selected>=0){input.setAttribute('aria-activedescendant','mention-option-'+mentionState.selected);const option=$('mention-suggestions').children[mentionState.selected];const list=$('mention-suggestions');if(option.offsetTop<list.scrollTop)list.scrollTop=option.offsetTop;else if(option.offsetTop+option.offsetHeight>list.scrollTop+list.clientHeight)list.scrollTop=option.offsetTop+option.offsetHeight-list.clientHeight;}
+  else input.removeAttribute('aria-activedescendant');
+}
+function insertMention(index){
+  const completion=completeMention($('message').value,mentionState.query,mentionState.names[index]);
+  if(!completion){$('send-error').textContent='Der er ikke plads til navnet inden for 100 tegn.';return;}
+  $('message').value=completion.text;$('message').setSelectionRange(completion.caret,completion.caret);hideMentions();saveDraft();refreshLimit();$('message').focus({preventScroll:true});
+}
+$('message').addEventListener('keydown',event=>{
+  if(event.isComposing||$('mention-menu').hidden)return;
+  if(event.key==='Escape'){event.preventDefault();dismissedMention=mentionState.key;hideMentions();}
+  else if(event.key==='ArrowDown'||event.key==='ArrowUp'){event.preventDefault();const count=mentionState.names.length;mentionState.selected=event.key==='ArrowDown'?(mentionState.selected+1)%count:(mentionState.selected<0?count-1:(mentionState.selected+count-1)%count);refreshMentions();}
+  else if((event.key==='Enter'||event.key==='Tab')&&mentionState.selected>=0){event.preventDefault();insertMention(mentionState.selected);}
+});
+$('message').addEventListener('keyup',event=>{if(['ArrowLeft','ArrowRight','Home','End'].includes(event.key)||((event.ctrlKey||event.metaKey)&&event.key.toLowerCase()==='a'))refreshMentions();});
+$('message').addEventListener('click',refreshMentions);
+$('message').addEventListener('blur',hideMentions);
+$('message').addEventListener('input',()=>{dismissedMention='';refreshLimit();refreshMentions();clearTimeout(draftTimer);draftTimer=setTimeout(saveDraft,200);});
 $('trigger-account').onchange=updateTriggerEditor;
 $('save-triggers').onclick=()=>{
   const account=$('trigger-account').value;if(!account||!localData)return;
@@ -372,7 +463,7 @@ $('save-triggers').onclick=()=>{
 $('person-mention').onclick=()=>{
   if(!selectedPerson)return;const {name,account}=selectedPerson;
   for(const dialog of document.querySelectorAll('dialog[open]'))dialog.close();
-  choose(account);const prefix=name+' ';$('message').value=(prefix+$('message').value).slice(0,100);saveDraft();refreshLimit();$('message').focus();
+  choose(account);const prefix='@'+name+' ';$('message').value=(prefix+$('message').value).slice(0,100);saveDraft();refreshLimit();$('message').focus({preventScroll:true});
 };
 $('person-messages').onclick=()=>{
   if(!selectedPerson)return;const {name,account}=selectedPerson;

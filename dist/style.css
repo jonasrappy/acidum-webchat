@@ -28,3 +28,22 @@ svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.7;stroke
 .welcome .login-guide{font-size:12px;color:var(--muted);line-height:1.75;margin:0 0 18px}.welcome .login-guide a{color:var(--accent);text-decoration:underline;text-underline-offset:3px}
 .view-filters{display:flex;gap:6px;padding:0 36px 10px;overflow-x:auto;scrollbar-width:none;flex-shrink:0}.view-filters button{flex:none;border:1px solid #34413e;border-radius:20px;background:transparent;color:#9aaea3;padding:7px 12px;min-height:34px;font-size:11px;white-space:nowrap}.view-filters button.active{color:var(--accent);background:#25382b;border-color:#526e58}.view-filters button:last-child:not([data-mode]){color:#c2c9ef;border-color:#565d7c}.has-filter{color:var(--accent)!important}.message-name,.message-time{border:0;background:transparent;color:inherit;padding:0;font:inherit;text-align:left}.message-name{font-size:12px;font-weight:650;color:var(--text)}.message-name:hover{text-decoration:underline;text-underline-offset:3px}.message-time{font-size:10px;color:#7d8797;padding:3px 0}.message-time:hover{color:var(--accent)}.message.attention .message-text{color:#deefda;border-left:2px solid #6b9d70;padding-left:9px}.message-text a{color:#b8d6ed;text-decoration:underline;text-underline-offset:3px;overflow-wrap:anywhere}.saved-marker{font-size:10px;color:#ddcb8b}.message-limit{font-size:10px;color:#a3b4a9;white-space:nowrap}.person-button{display:flex;width:100%;align-items:center;gap:9px;background:transparent;border:0;color:var(--text);padding:3px 0;text-align:left;min-height:40px}.person-button:hover .person-copy strong{color:var(--accent)}.snapshot-note{font-size:9px;line-height:1.7;color:#9aaa9e;margin:0 0 8px}.sheet-actions{display:flex;gap:10px;flex-wrap:wrap}.sheet-actions button{flex:1;min-width:130px}.message-preview{font-size:14px;line-height:1.7;white-space:pre-wrap;overflow-wrap:anywhere;background:#202a34;border-radius:10px;padding:14px;margin:0 0 18px}.setting-select,.setting-input{display:block;background:#202a34;color:var(--text);border:1px solid #405046;border-radius:9px;padding:10px;font:inherit;width:100%;margin:8px 0 12px}.setting-input{resize:vertical;font-size:14px;min-height:70px}.setting-select{font-size:13px}.setting-note[for]{display:block}.people-list li{padding:4px 0}
 @media(max-width:700px){.view-filters{display:none;padding:0 14px 9px;gap:6px;background:#141a21}.search-open .view-filters,.filtered .view-filters{display:flex}.view-filters button{min-height:36px;font-size:11px;padding:7px 11px}.setting-input,.setting-select{font-size:16px}.message-name{font-size:12px}.message-time{font-size:9px}.person-button{min-height:44px}.message-limit{font-size:9px}}
+/* Keep the root stationary; only the conversation scrolls while writing. */
+@media(max-width:700px){
+  html.chat-open{height:100%;overflow:hidden;overscroll-behavior:none}
+  body.chat-open{position:fixed;inset:0;width:100%;height:100%;overflow:hidden;overscroll-behavior:none}
+  body.chat-open .workspace{position:fixed;top:0;left:0;right:0;width:100%;max-width:none;height:var(--app-height,100dvh);transform:translateY(var(--viewport-top,0px));overflow:hidden}
+  .chat-main{min-height:0;overflow:hidden}
+  .composer-wrap{position:relative;z-index:2;flex-shrink:0;padding-bottom:max(8px,env(safe-area-inset-bottom))}
+  .keyboard-open .composer-wrap{padding-bottom:8px}
+  .compact-viewport .mobile-accounts,.compact-viewport .view-filters{display:none}
+  .compact-viewport .chat-header{min-height:44px;padding-top:2px;padding-bottom:2px}
+  .sheet{position:fixed;top:auto;bottom:var(--viewport-bottom,0px);margin:0;max-height:calc(var(--app-height,100dvh) - 16px)}
+  .keyboard-open .sheet{padding-bottom:16px}
+}
+.mention-menu{position:absolute;left:12px;right:12px;bottom:calc(100% + 4px);z-index:5;max-width:520px;border:1px solid #43564a;border-radius:12px;background:#1a2520;box-shadow:0 6px 24px #0006;overflow:hidden}
+.mention-menu>p{margin:0;padding:8px 12px;font-size:10px;color:#94b19e;border-bottom:1px solid #34473a}
+#mention-suggestions{position:relative;max-height:min(220px,calc(var(--app-height,100dvh) * .4));overflow:auto;overscroll-behavior:contain;scrollbar-width:thin}
+.mention-option{display:block;width:100%;border:0;border-bottom:1px solid #2d3d32;background:transparent;color:#d5ebdc;min-height:42px;padding:10px 13px;font-size:14px;text-align:left}
+.mention-option:hover,.mention-option[aria-selected=true]{background:#355740;color:#e6f6e9}
+@media(max-width:700px){.mention-option{min-height:44px}.mention-menu{left:11px;right:11px}}
