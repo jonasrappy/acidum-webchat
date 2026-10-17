@@ -25,6 +25,18 @@ export function describe(event) {
     default: return null;
   }
 }
+// Honor Acium log/notify markers without needing to load its trigger configuration.
+export function needsAttention(event) {
+  if (!['text','priv'].includes(event?.type)) return false;
+  const account = event.me?.name;
+  if (typeof account !== 'string' || !account) return false;
+  const sender = event.type === 'priv' ? event.from?.name : event.user?.name;
+  const normalize = value => String(value || '').normalize('NFKC').toLocaleLowerCase('da');
+  if (normalize(sender) === normalize(account)) return false;
+  if (event.notify === true || event.log === true) return true;
+  const name = normalize(account).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return new RegExp(`(^|[^\\p{L}\\p{N}_])${name}(?=$|[^\\p{L}\\p{N}_])`, 'u').test(normalize(event.text));
+}
 export class ChatStore {
   constructor(limit = MAX_MESSAGES) { this.limit = limit; this.tabs = new Map(); this.names = []; this.serial = 0; }
   tab(name) {
@@ -43,7 +55,7 @@ export class ChatStore {
     const tab = this.tab(event.me.name);
     const key = JSON.stringify([time, event.type, description.name, description.text, Boolean(event.log), Boolean(event.notify)]);
     if (tab.keys.has(key)) return null;
-    const message = {id: ++this.serial, key, time, account: event.me.name, type: event.type, log: Boolean(event.log || event.notify || event.type === 'log'), ...description};
+    const message = {id: ++this.serial, key, time, account: event.me.name, type: event.type, log: Boolean(event.log || event.notify || event.type === 'log'), attention: needsAttention(event), ...description};
     tab.keys.add(key); tab.messages.push(message); tab.lastLine = Math.max(tab.lastLine, time);
     if (event.type === 'room' && time >= tab.roomSince) {
       tab.room = {name: String(event.room?.name || 'Ukendt rum'), id: event.room?.id};

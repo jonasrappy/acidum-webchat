@@ -1,5 +1,5 @@
-import {ChatStore, parseToken, retryDelay} from './core.js?v=3';
-import {scopeFor, archiveId, saveMessages, loadBefore, clearScope} from './archive.js?v=3';
+import {ChatStore, parseToken, retryDelay} from './core.js?v=4';
+import {scopeFor, archiveId, saveMessages, loadBefore, clearScope} from './archive.js?v=4';
 const $ = id => document.getElementById(id);
 let store = new ChatStore(), socket, token, retryTimer, retry = 0, generation = 0, intentional = false;
 let lastChatAccount = '';
@@ -81,7 +81,7 @@ function accountButton(name) {
   const button = element('button', 'nav-item'); button.type = 'button';
   button.classList.toggle('active', active === name && !logOnly);
   const label=element('span','account-copy');label.append(element('span','account-name',name));
-  const room=store.tabs.get(name)?.room;label.append(element('span','account-room',room?.name || 'Rumnavn afventes'));
+  const room=store.tabs.get(name)?.room;if(room?.name)label.append(element('span','account-room',room.name));
   button.append(element('span', 'avatar', name.slice(0,2).toUpperCase()),label);
   button.setAttribute('aria-pressed',String(active === name && !logOnly));
   const unread = store.tabs.get(name)?.unread;
@@ -112,7 +112,8 @@ function renderNavigation() {
   $('view-caption').textContent = active ? 'DIN BRUGER' : 'DIT OVERBLIK';
   const room = store.tabs.get(active)?.room;
   if ($('rooms-dialog').open) renderRooms();
-  $('view-subtitle').textContent = logOnly ? 'Markeringer og hændelser fra dine Acium-brugere.' : active ? room ? `${room.name}${room.id != null ? ` · Rum ${room.id}` : ''}` : 'Samtalen for denne bruger.' : 'Beskeder fra alle dine brugere, samlet ét sted.';
+  $('view-subtitle').textContent = logOnly ? 'Markeringer og hændelser fra dine Acium-brugere.' : active ? room ? `${room.name}${room.id != null ? ` · Rum ${room.id}` : ''}` : '' : '';
+  $('view-subtitle').hidden = !$('view-subtitle').textContent;
 }
 function schedule() { if (!document.hidden && !frame) frame = requestAnimationFrame(() => {frame = 0; render();}); }
 function render() {
@@ -164,7 +165,7 @@ function ingest(payload) {
       if (!message) continue;
       queueArchive(message);
       const visible = (!active || active === message.account) && (!logOnly || message.log);
-      if (document.hidden || !visible || !nearBottom) store.tab(message.account).unread++;
+      if (message.attention && (document.hidden || !visible || !nearBottom)) store.tab(message.account).unread++;
       if (visible && !nearBottom) notice = true;
     }
   }

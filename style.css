@@ -7,3 +7,12 @@ svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.7;stroke
 }
 @media(max-width:700px) and (max-height:580px){.chat-header{min-height:64px;padding-top:8px;padding-bottom:8px}.chat-header #view-subtitle{display:none}.mobile-accounts{padding-top:6px;padding-bottom:6px;min-height:60px}.mobile-accounts .nav-item{min-height:46px}.bottom-nav{padding-top:3px;padding-bottom:3px}.bottom-nav button{min-height:41px}.bottom-nav button svg{height:18px;width:18px}.composer-hint{display:none}}
 @media(max-width:700px){.keyboard-open .bottom-nav{display:none}.keyboard-open .composer-hint{display:none}.keyboard-open .chat-header{min-height:60px;padding-top:7px;padding-bottom:7px}.keyboard-open .chat-header #view-subtitle{display:none}.keyboard-open .mobile-accounts{padding-top:5px;padding-bottom:5px;min-height:58px}.keyboard-open .new-messages{bottom:72px}}
+
+@media(max-width:700px){
+  .chat-header #view-caption,.composer-hint{display:none}
+  .chat-header{min-height:56px;padding:7px 16px}
+  .chat-header #view-subtitle:empty{display:none}
+  .mobile-accounts{min-height:58px;padding-top:6px;padding-bottom:6px}
+  .mobile-accounts .nav-item{min-height:44px}
+  .keyboard-open .chat-header{min-height:56px}
+}
