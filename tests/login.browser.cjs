@@ -6,7 +6,8 @@ const {chromium}=require('playwright-core');const assert=require('node:assert/st
   const context=await browser.newContext({viewport:{width:390,height:844}});
   await context.routeWebSocket('wss://ws0.acium.app/**',ws=>ws.send(JSON.stringify({tabs:['Fixture']})));
   let page=await context.newPage();await page.goto(url);
-  assert.equal(await page.locator('#welcome p:not(:empty)').count(),0);
+  assert.equal(await page.locator('#welcome p:not(:empty)').count(),1);
+  assert.equal(await page.locator('#link-guide a').getAttribute('href'),'https://acium.app/');
   assert.equal(await page.locator('#welcome input').count(),1);
   await page.screenshot({path:'/tmp/acium-minimal-login.png'});
   await page.locator('#chat-link').fill(fixture);await page.locator('#connect-form').evaluate(f=>f.requestSubmit());
