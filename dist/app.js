@@ -1,9 +1,10 @@
-import {ChatStore, parseToken, retryDelay} from './core.js';
-import {scopeFor, archiveId, saveMessages, loadBefore, clearScope} from './archive.js';
+import {ChatStore, parseToken, retryDelay} from './core.js?v=3';
+import {scopeFor, archiveId, saveMessages, loadBefore, clearScope} from './archive.js?v=3';
 const $ = id => document.getElementById(id);
 let store = new ChatStore(), socket, token, retryTimer, retry = 0, generation = 0, intentional = false;
+let lastChatAccount = '';
 let active = '', logOnly = false, query = '', showSystems = true, pageSize = 250, frame = 0, demo = false, nearBottom = true;
-let tabsSignature = '', notice = false;
+let tabsSignature = '', notice = false, liveRenderTimer = 0, lastRenderAt = 0;
 let archiveScope = '', archiveRows = [], archiveBefore = null, archiveMore = true, archiveLoading = false, archiveGeneration = 0;
 let archivePending = [], archiveTimer, archiveWriting = Promise.resolve();
 let historyEnabled = false;
@@ -57,16 +58,21 @@ const dateFormat = new Intl.DateTimeFormat('da-DK', {day: 'numeric', month: 'lon
 function element(tag, cls, text) { const el = document.createElement(tag); if (cls) el.className = cls; if (text != null) el.textContent = text; return el; }
 function sessionGet() { try { return sessionStorage.getItem('acium-webchat-token'); } catch { return null; } }
 function sessionSet(value) { try { value ? sessionStorage.setItem('acium-webchat-token', value) : sessionStorage.removeItem('acium-webchat-token'); } catch {} }
-function status(text, online = false) { $('status').textContent = text; $('status-dot').classList.toggle('online', online); updateComposer(); }
-function openWorkspace() { $('welcome').hidden = true; $('workspace').hidden = false; }
+function status(text, online = false) {
+  $('status').textContent = text; $('status-dot').classList.toggle('online', online);
+  $('mobile-connection').textContent = demo ? 'Eksempel' : online ? 'Online' : 'Offline';
+  $('mobile-connection').classList.toggle('online',online); $('mobile-connection').title=text;
+  $('settings-status').textContent=text; updateComposer();
+}
+function openWorkspace() { $('welcome').hidden = true; $('workspace').hidden = false; document.body.classList.add('chat-open'); updateViewport(); }
 function isConnected() { return demo || socket?.readyState === WebSocket.OPEN; }
 function updateComposer() {
   const name = $('send-as').value, ready = Boolean(name && isConnected());
-  $('message').disabled = !ready; $('send').disabled = !ready;
+  $('message').disabled = !name; $('send').disabled = !ready;
   $('send-hint').textContent = demo ? 'Eksempeltilstand · intet sendes til Netstationen.' : name ? `Du skriver som ${name}${isConnected() ? '' : ' · afventer forbindelse'}` : 'Vælg en bruger at skrive som.';
 }
 function choose(name, isLog = false) {
-  active = name; logOnly = isLog; resetArchiveView(); pageSize = 250; nearBottom = true; notice = false;
+  active = name; logOnly = isLog; if(!isLog)lastChatAccount=name; resetArchiveView(); pageSize = 250; nearBottom = true; notice = false;
   if (name && store.tabs.has(name)) { store.tabs.get(name).unread = 0; $('send-as').value = name; }
   else if (!isLog) for (const tab of store.tabs.values()) tab.unread = 0;
   tabsSignature = ''; schedule(); updateComposer();
@@ -74,32 +80,43 @@ function choose(name, isLog = false) {
 function accountButton(name) {
   const button = element('button', 'nav-item'); button.type = 'button';
   button.classList.toggle('active', active === name && !logOnly);
-  button.append(element('span', 'avatar', name.slice(0,2).toUpperCase()), element('span', '', name));
+  const label=element('span','account-copy');label.append(element('span','account-name',name));
+  const room=store.tabs.get(name)?.room;label.append(element('span','account-room',room?.name || 'Rumnavn afventes'));
+  button.append(element('span', 'avatar', name.slice(0,2).toUpperCase()),label);
+  button.setAttribute('aria-pressed',String(active === name && !logOnly));
   const unread = store.tabs.get(name)?.unread;
   if (unread) button.append(element('span', 'badge', unread > 99 ? '99+' : String(unread)));
   button.addEventListener('click', () => choose(name)); return button;
 }
 function renderNavigation() {
-  const signature = JSON.stringify([store.names, active, logOnly, [...store.tabs.values()].map(t => t.unread)]);
+  const signature = JSON.stringify([store.names, active, logOnly, [...store.tabs.values()].map(t => [t.unread,t.room?.name,t.room?.id])]);
   if (signature !== tabsSignature) {
     tabsSignature = signature;
     $('accounts').replaceChildren(...store.names.map(accountButton));
     const all = element('button', 'nav-item', 'Alle'); all.classList.toggle('active', !active && !logOnly); all.onclick = () => choose('');
     const log = element('button', 'nav-item', 'Log'); log.classList.toggle('active', logOnly); log.onclick = () => choose('', true);
-    $('mobile-accounts').replaceChildren(all, log, ...store.names.map(accountButton));
+    const scrollLeft=$('mobile-accounts').scrollLeft;
+    $('mobile-accounts').replaceChildren(all, ...store.names.map(accountButton));
+    $('mobile-accounts').scrollLeft=scrollLeft;
     $('all-button').classList.toggle('active', !active && !logOnly); $('log-button').classList.toggle('active', logOnly);
     $('account-count').textContent = store.names.length;
     const unread = [...store.tabs.values()].reduce((sum,t) => sum + t.unread, 0);
     $('total-unread').hidden = !unread; $('total-unread').textContent = unread > 99 ? '99+' : unread;
-    document.title = `${unread ? `(${unread}) ` : ''}${active || 'Acium Webchat'} · Let webchat`;
+    document.title = `${unread ? `(${unread}) ` : ''}${active ? active+' · ' : ''}acium`;
+    $('bottom-unread').hidden=!unread;
+    for(const [id,selected] of [['bottom-chat',!logOnly],['bottom-log',logOnly]]) {
+      $(id).classList.toggle('selected',selected);$(id).setAttribute('aria-pressed',String(selected));
+    }
   }
   $('view-title').textContent = logOnly ? 'Hændelseslog' : active || 'Alle samtaler';
   $('view-caption').textContent = active ? 'DIN BRUGER' : 'DIT OVERBLIK';
   const room = store.tabs.get(active)?.room;
+  if ($('rooms-dialog').open) renderRooms();
   $('view-subtitle').textContent = logOnly ? 'Markeringer og hændelser fra dine Acium-brugere.' : active ? room ? `${room.name}${room.id != null ? ` · Rum ${room.id}` : ''}` : 'Samtalen for denne bruger.' : 'Beskeder fra alle dine brugere, samlet ét sted.';
 }
 function schedule() { if (!document.hidden && !frame) frame = requestAnimationFrame(() => {frame = 0; render();}); }
 function render() {
+  lastRenderAt = performance.now();
   renderNavigation();
   const timeline = $('timeline'), before = timeline.scrollHeight, top = timeline.scrollTop;
   const messages = combinedMessages(), visible = messages.slice(-pageSize);
@@ -151,8 +168,11 @@ function ingest(payload) {
       if (visible && !nearBottom) notice = true;
     }
   }
-  if (nearBottom) schedule();
-  else if (!document.hidden) {renderNavigation(); $('new-messages').hidden = !notice;}
+  if(!document.hidden && !liveRenderTimer) liveRenderTimer=setTimeout(()=>{
+    liveRenderTimer=0;if(document.hidden)return;
+    if(nearBottom)schedule();
+    else {lastRenderAt=performance.now();renderNavigation();$('new-messages').hidden=!notice;}
+  },Math.max(0,120-(performance.now()-lastRenderAt)));
 }
 function connect() {
   if (!token || intentional || demo) return;
@@ -185,16 +205,64 @@ function start(input) {
   openWorkspace(); connect(); schedule();
 }
 function disconnect() {
-  intentional = true; ++generation; clearTimeout(retryTimer); if (socket) {socket.onclose = null; socket.close();} socket = null;
+  intentional = true; ++generation; clearTimeout(retryTimer); clearTimeout(liveRenderTimer); liveRenderTimer=0; if (socket) {socket.onclose = null; socket.close();} socket = null;
   flushArchive(); archiveScope = ''; resetArchiveView(); token = null; sessionSet(null); store = new ChatStore(); active = ''; logOnly = false; query = ''; demo = false; tabsSignature = '';
   $('search').value = ''; $('message').value = ''; $('send-error').textContent = ''; $('workspace').hidden = true; $('welcome').hidden = false;
-  document.title = 'Acium Webchat · Let webchat'; $('chat-link').focus();
+  document.title = 'acium · webchat'; document.body.classList.remove('chat-open'); for(const dialog of document.querySelectorAll('dialog[open]'))dialog.close(); $('chat-link').focus();
 }
 $('connect-form').addEventListener('submit', event => {event.preventDefault(); try {start($('chat-link').value);} catch (error) {$('login-error').textContent = error.message;} });
 $('disconnect').onclick = disconnect; $('mobile-exit').onclick = disconnect;
+$('settings-reconnect').onclick = () => {retry=0;if(!demo)connect();};
 $('reconnect').onclick = () => {retry = 0; if (!demo) connect();};
 $('all-button').onclick = () => choose(''); $('log-button').onclick = () => choose('',true);
-$('send-as').onchange = updateComposer;
+$('bottom-chat').onclick = () => choose(store.names.includes(lastChatAccount)?lastChatAccount:'',false);
+$('bottom-log').onclick = () => choose('',true);
+function openSheet(id) {
+  if(id==='rooms-dialog')renderRooms();$(id).showModal();
+  const button=$(id==='rooms-dialog'?'bottom-rooms':'bottom-settings');button.classList.add('selected');button.setAttribute('aria-pressed','true');
+}
+$('rooms-button').onclick = $('bottom-rooms').onclick = () => openSheet('rooms-dialog');
+$('settings-button').onclick = $('bottom-settings').onclick = () => openSheet('settings-dialog');
+for(const dialog of document.querySelectorAll('dialog.sheet')) {
+  dialog.querySelector('.close-sheet').onclick = () => dialog.close();
+  dialog.addEventListener('close',()=>{for(const id of ['bottom-rooms','bottom-settings']){$(id).classList.remove('selected');$(id).setAttribute('aria-pressed','false');}});
+  dialog.addEventListener('click',event=>{if(event.target===dialog){const rect=dialog.getBoundingClientRect();if(event.clientX<rect.left||event.clientX>rect.right||event.clientY<rect.top||event.clientY>rect.bottom)dialog.close();}});
+}
+$('search-toggle').onclick = () => {
+  const open=$('workspace').classList.toggle('search-open');$('search-toggle').setAttribute('aria-expanded',String(open));
+  if(open)$('search').focus();
+};
+function updateViewport() {
+  const height=Math.round(window.visualViewport?.height || window.innerHeight);
+  document.documentElement.style.setProperty('--app-height',height+'px');
+  document.body.classList.toggle('keyboard-open',Boolean(window.visualViewport && height < window.innerHeight-120));
+  if(!$('workspace').hidden&&nearBottom)schedule();
+}
+window.visualViewport?.addEventListener('resize',updateViewport,{passive:true});
+window.addEventListener('resize',updateViewport,{passive:true});
+function renderRooms() {
+  const initial=!$('room-cards').children.length, opened=new Set([...$('room-cards').querySelectorAll('details[open]')].map(el=>el.dataset.account));
+  const cards=store.names.map(name=>{
+    const tab=store.tabs.get(name), card=element('section','room-card'), header=element('div','room-card-header');
+    const copy=element('div','room-card-copy');copy.append(element('strong','',name),element('span','',tab.room ? `${tab.room.name}${tab.room.id!=null?' · '+tab.room.id:''}` : 'Rumnavn afventes'));
+    const open=element('button','soft-button','Åbn chat');open.onclick=()=>{choose(name);$('rooms-dialog').close();};
+    header.append(element('span','avatar',name.slice(0,2).toUpperCase()),copy,open);card.append(header);
+    const present=[...tab.presence.values()].filter(user=>user.present).sort((a,b)=>a.name.localeCompare(b.name,'da'));
+    const details=element('details','room-people');details.dataset.account=name;details.open=opened.has(name)||(initial&&(active===name||store.names.length===1));
+    details.append(element('summary','',`${tab.room?'Observeret i rummet':'Observeret i samtalen'} · ${present.length}`));
+    const list=element('ul','people-list');
+    for(const user of present) {
+      const li=element('li'), copy=element('span','person-copy');copy.append(element('strong','',user.name),element('small','',user.name===name?'Din bruger':`Senest set ${timeFormat.format(user.time)}`));
+      li.append(element('span','avatar',user.name.slice(0,2).toUpperCase()),copy);list.append(li);
+    }
+    if(!present.length)details.append(element('p','setting-note','Ingen brugere observeret endnu. Listen opdateres med nye beskeder og indgange.'));
+    else details.append(list);
+    card.append(details);return card;
+  });
+  $('room-cards').replaceChildren(...cards);
+  if(!cards.length)$('room-cards').append(element('p','setting-note','Dine brugere vises, når Acium sender sine faner.'));
+}
+$('send-as').onchange = () => {if(active&&$('send-as').value!==active)choose($('send-as').value);else updateComposer();};
 $('composer').onsubmit = event => {
   event.preventDefault(); const name = $('send-as').value, text = $('message').value;
   if (!text.trim() || !store.names.includes(name)) return;
@@ -212,15 +280,15 @@ $('older').onclick = olderMessages;
 $('timeline').addEventListener('scroll', () => {
   if ($('timeline').scrollTop < 100 && $('timeline').scrollHeight > $('timeline').clientHeight + 100) olderMessages();
   nearBottom = $('timeline').scrollHeight - $('timeline').scrollTop - $('timeline').clientHeight < 60;
-  if (nearBottom && notice) {notice = false; $('new-messages').hidden = true; for (const [name,tab] of store.tabs) if (!active || name === active) tab.unread = 0; renderNavigation();}
+  if (nearBottom && notice) {notice = false; $('new-messages').hidden = true; for (const [name,tab] of store.tabs) if (!logOnly && (!active || name === active)) tab.unread = 0; renderNavigation();}
 }, {passive:true});
-$('new-messages').onclick = () => {nearBottom = true; notice = false; for (const [name,tab] of store.tabs) if (!active || name === active) tab.unread = 0; schedule();};
-document.addEventListener('visibilitychange', () => {if (document.hidden) flushArchive(); if (!document.hidden) {if (nearBottom) for (const [name,tab] of store.tabs) if (!active || name === active) tab.unread = 0; schedule();}});
+$('new-messages').onclick = () => {nearBottom = true; notice = false; for (const [name,tab] of store.tabs) if (!logOnly && (!active || name === active)) tab.unread = 0; schedule();};
+document.addEventListener('visibilitychange', () => {if (document.hidden) flushArchive(); if (!document.hidden) {if (nearBottom) for (const [name,tab] of store.tabs) if (!logOnly && (!active || name === active)) tab.unread = 0; schedule();}});
 window.addEventListener('online', () => {retry = 0; connect();});
 window.addEventListener('offline', () => {clearTimeout(retryTimer); status('Ingen internetforbindelse');});
 window.addEventListener('pagehide', () => {flushArchive(); intentional = true; clearTimeout(retryTimer); socket?.close();});
 window.addEventListener('pageshow', event => {if (event.persisted && token) {intentional = false; connect();}});
-document.addEventListener('keydown', event => {if (event.key === '/' && !/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName) && !$('workspace').hidden) {event.preventDefault(); $('search').focus();}});
+document.addEventListener('keydown', event => {if (event.key === '/' && !/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName) && !$('workspace').hidden) {event.preventDefault();$('workspace').classList.add('search-open');$('search-toggle').setAttribute('aria-expanded','true'); $('search').focus();}});
 // The token travels in the URL fragment, which is never sent to the hosting server.
 const appURL = new URL('./', location.href); appURL.hash = ''; appURL.search = '';
 const bookmarkCode = `(()=>{if(location.hostname!=='acium.app'||location.pathname!=='/chat'){alert('Åbn din Acium-webchat først.');return}const t=new URLSearchParams(location.search).get('token');if(!t){alert('Denne side mangler et webchat-token.');return}window.open(${JSON.stringify(appURL.href)}+'#token='+encodeURIComponent(t),'_blank','noopener,noreferrer')})()`;

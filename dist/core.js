@@ -28,7 +28,7 @@ export function describe(event) {
 export class ChatStore {
   constructor(limit = MAX_MESSAGES) { this.limit = limit; this.tabs = new Map(); this.names = []; this.serial = 0; }
   tab(name) {
-    if (!this.tabs.has(name)) this.tabs.set(name, {messages: [], keys: new Set(), lastLine: 0, unread: 0, room: null});
+    if (!this.tabs.has(name)) this.tabs.set(name, {messages: [], keys: new Set(), lastLine: 0, unread: 0, room: null, roomSince: -Infinity, presence: new Map(), presenceRevision: 0});
     return this.tabs.get(name);
   }
   setTabs(names) {
@@ -45,7 +45,19 @@ export class ChatStore {
     if (tab.keys.has(key)) return null;
     const message = {id: ++this.serial, key, time, account: event.me.name, type: event.type, log: Boolean(event.log || event.notify || event.type === 'log'), ...description};
     tab.keys.add(key); tab.messages.push(message); tab.lastLine = Math.max(tab.lastLine, time);
-    if (event.type === 'room') tab.room = {name: String(event.room?.name || 'Ukendt rum'), id: event.room?.id};
+    if (event.type === 'room' && time >= tab.roomSince) {
+      tab.room = {name: String(event.room?.name || 'Ukendt rum'), id: event.room?.id};
+      tab.roomSince = time; tab.presence.clear(); tab.presenceRevision++;
+      tab.presence.set(event.me.name,{name:event.me.name,time,present:true});
+    }
+    // This is observed presence, not a complete server roster. Whispers do not prove room presence.
+    if (['text','join','part','quit'].includes(event.type) && typeof event.user?.name === 'string' && time >= tab.roomSince) {
+      const name = event.user.name, previous = tab.presence.get(name);
+      if (!previous || time >= previous.time) {
+        tab.presence.set(name,{name,time,present:event.type==='text'||event.type==='join'});tab.presenceRevision++;
+        if(tab.presence.size>500)tab.presence.delete(tab.presence.keys().next().value);
+      }
+    }
     while (tab.messages.length > this.limit) tab.keys.delete(tab.messages.shift().key);
     return message;
   }

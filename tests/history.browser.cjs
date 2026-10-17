@@ -12,7 +12,7 @@ for(const count of [500,700,950]){await page.locator('#timeline').evaluate(el=>{
 await page.reload();await page.waitForFunction(()=>document.querySelectorAll('.message').length===250);console.log('Session reload initially renders only 250 rows');
 const isolated=await page.evaluate(async()=>{const {scopeFor,loadBefore}=await import('/archive.js');return (await loadBefore(await scopeFor('different_history_token'),'',null)).messages.length;});assert.equal(isolated,0);
 console.log('Different login archive isolated:',isolated===0);
-await page.locator('#clear-history').click();await page.waitForFunction(()=>document.querySelector('#history-status').textContent.includes('slettet'));
+await page.locator('#settings-button').click();await page.locator('#clear-history').click();await page.waitForFunction(()=>document.querySelector('#history-status').textContent.includes('slettet'));
 const cleared=await page.evaluate(async()=>{const {scopeFor,loadBefore}=await import('/archive.js');return (await loadBefore(await scopeFor('test_history_token_123'),'',null)).messages.length;});assert.equal(cleared,0);
 console.log('Clear archive:',cleared===0);
 const cap = await page.evaluate(async()=>{

@@ -1,4 +1,4 @@
-# Acium Webchat
+# acium
 
 En let, uafhængig webchat til Acium, bygget med almindelig HTML, CSS og JavaScript. Ingen framework-runtime, tredjepartsscripts, tracking, database eller serverkode.
 
@@ -10,7 +10,7 @@ En let, uafhængig webchat til Acium, bygget med almindelig HTML, CSS og JavaScr
 2. Log ind på https://acium.app/ og åbn din webchat.
 3. Kopiér webchat-linket og indsæt det i Acium Webchat.
 
-Du kan også trække “Åbn i Acium Webchat” fra startsiden til din bogmærkelinje. Klik på bogmærket, mens du står på din Acium-webchat. Det åbner Acium Webchat med dit chat-token i URL-fragmentet og fjerner fragmentet igen straks efter indlæsning.
+Du kan også trække “Åbn i acium” fra startsiden til din bogmærkelinje. Klik på bogmærket, mens du står på din Acium-webchat. Det åbner Acium Webchat med dit chat-token i URL-fragmentet og fjerner fragmentet igen straks efter indlæsning.
 
 Login hos Acium er stadig nødvendigt. Der er ikke implementeret et officielt OAuth-login eller automatisk retur fra deres login. Acium Webchat erstatter browserens webchat; Acium-programmet er fortsat broen til Netstationen. Vi er ikke tilknyttet Acium eller Netstationen.
 
@@ -24,12 +24,14 @@ Login hos Acium er stadig nødvendigt. Der er ikke implementeret et officielt OA
 - Vælg hvilken af dine brugere du skriver som.
 - Privatbeskeder og rumskift vises; der er ingen separat brugerflade til at starte hvisken eller skifte rum.
 - Automatisk genforbindelse med stigende ventetid og tilfældig variation.
-- Responsivt layout, tastaturbetjening og `/` som søge-genvej.
+- Mobilvisning med bundnavigation, hurtige brugerfaner, store trykfelter og separate rum- og indstillingspaneler.
+- Visning af rum og observerede brugere separat for hver konto. Det er ikke en fuld deltagerliste: den bygges af almindelige beskeder og ind-/udgange, nulstilles ved rumskift og ignorerer hvisken og gamle genafspillede hændelser. Hvis serverens begrænsede historik ikke indeholder et rumskift, vises “Rumnavn afventes”.
+- Layoutet tilpasser højden til browserens synlige viewport, når skærmtastaturet ændrer pladsen. Tastaturbetjening og `/` som søge-genvej.
 - Eksempeltilstand uden netværksforbindelse til Acium.
 
 ## Forbrug og privatliv
 
-Højst 700 beskeder pr. bruger gemmes i hukommelsen. Den aktive visning tegner først de nyeste 250; ældre beholdte beskeder kan hentes frem med en knap. Nye beskeder samles i browserens animation frame, og skjulte faner tegnes først, når de bliver synlige. Genforbindelse beder om historik efter det senest modtagne tidsstempel og fjerner gentagelser blandt de beholdte beskeder.
+Højst 700 beskeder pr. bruger gemmes i hukommelsen. Den aktive visning tegner først de nyeste 250; ældre beholdte beskeder kan hentes frem med en knap. Live-opdateringer samles med mindst 120 ms mellem tegninger og tegnes i browserens animation frame, og skjulte faner tegnes først, når de bliver synlige. Genforbindelse beder om historik efter det senest modtagne tidsstempel og fjerner gentagelser blandt de beholdte beskeder.
 
 Gamle beskeder falder ud af hukommelsen. Som standard gemmes historik ikke på disk. Vælg “Gem historik” for at gemme beskeder lokalt i browserens IndexedDB. Når du scroller op, hentes ældre beskeder i portioner på 250, og din placering bevares. Den første visning har højst 250 beskeder; flere DOM-rækker tilføjes kun, når du selv læser længere tilbage. Mens du læser ældre beskeder, tegnes samtalen ikke igen for hver ny besked. Arkivet holder højst 10.000 beskeder pr. webchat-login, adskilt efter en SHA-256-identifikator for tokenet; selve tokenet gemmes ikke i arkivet. Ved et nyt token starter et separat arkiv. “Slet historik” sletter arkivet for det aktuelle login; “Gem historik” kan slås fra for at stoppe ny lagring. “Afbryd” sletter tokenet, men bevarer et eventuelt lokalt arkiv.
 
@@ -67,3 +69,5 @@ Repoets Pages-indstilling peger på `gh-pages` og `/`. GitHub bygger og udgiver 
 Node-tests dækker tokenvalidering, 20.000 indgående beskeder med begrænset historik, gentagelser, genoptagelsestidsstempel, adskilte brugere, filtre, ugyldige beskeder og ventetider ved genforbindelse. Browserkontrol er udført på desktop og mobil, inkl. tekstindsættelse uden HTML-fortolkning. Live forbindelse til to eksisterende Acium-brugerfaner er kontrolleret uden at sende chatbeskeder. Lokal historik testes også i en rigtig browser med syntetiske WebSocket-beskeder: første indlæsning, lazy load fra hukommelse og IndexedDB, bevaret scrollplacering, genindlæsning, adskilte login og sletning.
 
 For den valgfrie browsertest: installér `playwright-core` lokalt som udviklingsværktøj, start den lokale server, og kør `tests/history.browser.cjs` med `BROWSER_EXECUTABLE` sat til en Chromium-browser. Testen bruger udelukkende syntetiske beskeder og en simuleret WebSocket; den kontakter ikke Acium. `STUEN_TEST_URL` kan ændre testserverens adresse (roden af siden).
+
+Mobiltesten `tests/mobile.browser.cjs` kontrollerer seks skærmstørrelser fra 320 pixels til tablet og liggende mobil samt brugerskift, rumoversigt, indstillinger, søgning og navigation tilbage fra loggen.
