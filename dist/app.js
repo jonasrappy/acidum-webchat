@@ -218,7 +218,7 @@ function ingest(payload) {
       const message = store.add(event);
       if (!message) continue;
       queueArchive(message);
-      const visible = (!active || active === message.account) && viewAccept(message) && (!query||`${message.account} ${message.name} ${message.text}`.toLocaleLowerCase('da').includes(query.toLocaleLowerCase('da')));
+      const visible = !document.querySelector('dialog[open]') && (!active || active === message.account) && viewAccept(message) && (!query||`${message.account} ${message.name} ${message.text}`.toLocaleLowerCase('da').includes(query.toLocaleLowerCase('da')));
       if (message.attention && (document.hidden || !visible || !nearBottom)) store.tab(message.account).unread++;
       if (visible && !nearBottom) notice = true;
     }

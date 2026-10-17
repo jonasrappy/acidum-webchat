@@ -23,6 +23,9 @@ const assert=require('node:assert/strict');
   await send({type:'join',notify:true});assert.equal(await page.locator('#mobile-accounts .badge').textContent(),'2');
   await page.locator('#mobile-accounts button').nth(1).click();await page.waitForTimeout(150);
   assert.equal(await page.locator('#mobile-accounts .badge').count(),0);
+  await page.locator('#bottom-settings').click();await send({text:'Punktum, er du her?'});
+  assert.equal(await page.locator('#mobile-accounts .badge').textContent(),'1');
+  await page.locator('#settings-dialog .close-sheet').click();await page.waitForTimeout(150);assert.equal(await page.locator('#mobile-accounts .badge').count(),0);
   assert.deepEqual(errors,[]);
   console.log('Compact mobile layout, unknown rooms, attention-only counts and clearing: passed');
  } finally {await browser.close();}
