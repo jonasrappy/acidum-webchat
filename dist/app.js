@@ -1,5 +1,5 @@
-import {ChatStore, parseToken, retryDelay} from './core.js?v=4';
-import {scopeFor, archiveId, saveMessages, loadBefore, clearScope} from './archive.js?v=4';
+import {ChatStore, parseToken, retryDelay} from './core.js?v=5';
+import {scopeFor, archiveId, saveMessages, loadBefore, clearScope} from './archive.js?v=5';
 const $ = id => document.getElementById(id);
 let store = new ChatStore(), socket, token, retryTimer, retry = 0, generation = 0, intentional = false;
 let lastChatAccount = '';
@@ -56,8 +56,19 @@ function combinedMessages() {
 const timeFormat = new Intl.DateTimeFormat('da-DK', {hour: '2-digit', minute: '2-digit'});
 const dateFormat = new Intl.DateTimeFormat('da-DK', {day: 'numeric', month: 'long', year: 'numeric'});
 function element(tag, cls, text) { const el = document.createElement(tag); if (cls) el.className = cls; if (text != null) el.textContent = text; return el; }
-function sessionGet() { try { return sessionStorage.getItem('acium-webchat-token'); } catch { return null; } }
-function sessionSet(value) { try { value ? sessionStorage.setItem('acium-webchat-token', value) : sessionStorage.removeItem('acium-webchat-token'); } catch {} }
+function savedTokenGet() {
+  try {const saved=localStorage.getItem('acium-webchat-token');if(saved)return saved;} catch {}
+  try {return sessionStorage.getItem('acium-webchat-token');} catch {return null;}
+}
+function savedTokenSet(value) {
+  let persisted=false;
+  try {value?localStorage.setItem('acium-webchat-token',value):localStorage.removeItem('acium-webchat-token');persisted=true;} catch {}
+  try {
+    if(value&&!persisted)sessionStorage.setItem('acium-webchat-token',value);
+    else sessionStorage.removeItem('acium-webchat-token');
+  } catch {}
+}
+let rejectedOpens=0;
 function status(text, online = false) {
   $('status').textContent = text; $('status-dot').classList.toggle('online', online);
   $('mobile-connection').textContent = demo ? 'Eksempel' : online ? 'Online' : 'Offline';
@@ -184,14 +195,20 @@ function connect() {
   status(retry ? 'Forbinder igen…' : 'Forbinder…');
   try { socket = new WebSocket(`wss://ws0.acium.app/chat/ws?token=${encodeURIComponent(token)}`); }
   catch { status('Kunne ikke starte forbindelsen'); return; }
+  let receivedData=false;
   socket.onopen = () => { if (current !== generation) return; status('Forbundet', true); };
   socket.onmessage = event => {
     if (current !== generation || typeof event.data !== 'string' || event.data.length > 8_000_000) return;
-    try { const data = JSON.parse(event.data); retry = 0; ingest(data); } catch { /* Ignore malformed protocol frames without logging private contents. */ }
+    try { const data = JSON.parse(event.data); receivedData=true; rejectedOpens=0; retry = 0; ingest(data); } catch { /* Ignore malformed protocol frames without logging private contents. */ }
   };
   socket.onerror = () => { if (current === generation) socket.close(); };
-  socket.onclose = () => {
+  socket.onclose = event => {
     if (current !== generation || intentional) return;
+    if (!receivedData && event.code===1005 && ++rejectedOpens>=3) {
+      disconnect(false);
+      $('login-error').textContent='Ingen adgang til den gemte chat lige nu. Prøv igen eller indsæt et nyt link.';
+      return;
+    }
     if (!navigator.onLine) { status('Ingen internetforbindelse'); return; }
     const delay = retryDelay(retry++); status(`Afbrudt · prøver igen om ${Math.ceil(delay / 1000)} s`);
     retryTimer = setTimeout(connect, delay);
@@ -199,20 +216,21 @@ function connect() {
 }
 function start(input) {
   const parsed = parseToken(input);
-  demo = false; token = parsed; intentional = false; retry = 0; sessionSet(token); resetArchiveView();
+  demo = false; token = parsed; intentional = false; retry = 0; rejectedOpens=0; savedTokenSet(token); resetArchiveView();
   archiveScope = '';
   scopeFor(parsed).then(scope=>{if(token !== parsed)return; archiveScope = scope; if(historyEnabled) {for(const tab of store.tabs.values())for(const message of tab.messages)queueArchive(message);} schedule();});
   $('demo-label').hidden = true; $('chat-link').value = ''; $('login-error').textContent = '';
   openWorkspace(); connect(); schedule();
 }
-function disconnect() {
+function disconnect(forget=true) {
   intentional = true; ++generation; clearTimeout(retryTimer); clearTimeout(liveRenderTimer); liveRenderTimer=0; if (socket) {socket.onclose = null; socket.close();} socket = null;
-  flushArchive(); archiveScope = ''; resetArchiveView(); token = null; sessionSet(null); store = new ChatStore(); active = ''; logOnly = false; query = ''; demo = false; tabsSignature = '';
+  flushArchive(); archiveScope = ''; resetArchiveView(); token = null; if(forget)savedTokenSet(null); $('resume-saved').hidden=!savedTokenGet(); store = new ChatStore(); active = ''; logOnly = false; query = ''; demo = false; tabsSignature = '';
   $('search').value = ''; $('message').value = ''; $('send-error').textContent = ''; $('workspace').hidden = true; $('welcome').hidden = false;
   document.title = 'acium · webchat'; document.body.classList.remove('chat-open'); for(const dialog of document.querySelectorAll('dialog[open]'))dialog.close(); $('chat-link').focus();
 }
 $('connect-form').addEventListener('submit', event => {event.preventDefault(); try {start($('chat-link').value);} catch (error) {$('login-error').textContent = error.message;} });
-$('disconnect').onclick = disconnect; $('mobile-exit').onclick = disconnect;
+$('disconnect').onclick = () => disconnect(); $('mobile-exit').onclick = () => disconnect();
+$('resume-saved').onclick = () => {const saved=savedTokenGet();if(saved)start(saved);};
 $('settings-reconnect').onclick = () => {retry=0;if(!demo)connect();};
 $('reconnect').onclick = () => {retry = 0; if (!demo) connect();};
 $('all-button').onclick = () => choose(''); $('log-button').onclick = () => choose('',true);
@@ -290,11 +308,6 @@ window.addEventListener('offline', () => {clearTimeout(retryTimer); status('Inge
 window.addEventListener('pagehide', () => {flushArchive(); intentional = true; clearTimeout(retryTimer); socket?.close();});
 window.addEventListener('pageshow', event => {if (event.persisted && token) {intentional = false; connect();}});
 document.addEventListener('keydown', event => {if (event.key === '/' && !/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName) && !$('workspace').hidden) {event.preventDefault();$('workspace').classList.add('search-open');$('search-toggle').setAttribute('aria-expanded','true'); $('search').focus();}});
-// The token travels in the URL fragment, which is never sent to the hosting server.
-const appURL = new URL('./', location.href); appURL.hash = ''; appURL.search = '';
-const bookmarkCode = `(()=>{if(location.hostname!=='acium.app'||location.pathname!=='/chat'){alert('Åbn din Acium-webchat først.');return}const t=new URLSearchParams(location.search).get('token');if(!t){alert('Denne side mangler et webchat-token.');return}window.open(${JSON.stringify(appURL.href)}+'#token='+encodeURIComponent(t),'_blank','noopener,noreferrer')})()`;
-$('bookmarklet').href = 'javascript:' + encodeURIComponent(bookmarkCode);
-$('bookmarklet').onclick = event => {event.preventDefault(); $('bookmarklet').textContent = 'Træk genvejen til bogmærkelinjen ↑';};
 $('save-history').onchange = () => {
   historyEnabled = $('save-history').checked;
   try {localStorage.setItem('acium-webchat-save-history',historyEnabled?'yes':'no');} catch {}
@@ -310,7 +323,7 @@ $('clear-history').onclick = async () => {
   catch {$('history-status').textContent = 'Historikken kunne ikke slettes.';}
   finally {$('clear-history').disabled = false;}
 };
-$('demo-button').onclick = () => {resetArchiveView();
+function enterDemo() {resetArchiveView();
   demo = true; intentional = true; store = new ChatStore(); updateTabs(['Nova','Milo']); openWorkspace(); $('demo-label').hidden = false; status('Eksempeltilstand',true);
   const now = Date.now();
   const examples = [
@@ -328,4 +341,12 @@ $('demo-button').onclick = () => {resetArchiveView();
 };
 const fragment = new URLSearchParams(location.hash.slice(1)), incoming = fragment.get('token');
 if (incoming) history.replaceState(null,'',location.pathname + location.search);
-try {const saved = incoming || sessionGet(); if (saved) start(saved);} catch {sessionSet(null); $('login-error').textContent = 'Linket kunne ikke åbnes. Indsæt dit webchat-link igen.';}
+try {
+  const saved=incoming||savedTokenGet();
+  if(location.hash==='#demo'&&!saved)enterDemo();
+  else if(saved)start(saved);
+} catch {
+  if(!incoming)savedTokenSet(null);
+  $('resume-saved').hidden=!savedTokenGet();
+  $('login-error').textContent='Linket kunne ikke åbnes. Indsæt dit webchat-link igen.';
+}

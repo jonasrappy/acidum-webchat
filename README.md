@@ -10,7 +10,7 @@ En let, uafhængig webchat til Acium, bygget med almindelig HTML, CSS og JavaScr
 2. Log ind på https://acium.app/ og åbn din webchat.
 3. Kopiér webchat-linket og indsæt det i Acium Webchat.
 
-Du kan også trække “Åbn i acium” fra startsiden til din bogmærkelinje. Klik på bogmærket, mens du står på din Acium-webchat. Det åbner Acium Webchat med dit chat-token i URL-fragmentet og fjerner fragmentet igen straks efter indlæsning.
+Dit link huskes automatisk på denne enhed. Næste gang du åbner siden, forbindes chatten igen. “Afbryd og fjern login” sletter det gemte link.
 
 Login hos Acium er stadig nødvendigt. Der er ikke implementeret et officielt OAuth-login eller automatisk retur fra deres login. Acium Webchat erstatter browserens webchat; Acium-programmet er fortsat broen til Netstationen. Vi er ikke tilknyttet Acium eller Netstationen.
 
@@ -37,7 +37,7 @@ Gamle beskeder falder ud af hukommelsen. Som standard gemmes historik ikke på d
 
 Den observerede serverprotokol har en `lastLine`-forespørgsel efter nyere beskeder. Der er ikke fundet en forespørgsel efter vilkårligt ældre serverhistorik. Lazy load kan derfor vise den historik, Acium har leveret, og den historik du selv har valgt at gemme fremover. Søgning viser først matches i indlæst historik; scroll op eller brug knappen for at søge videre i det lokale arkiv. Der er ikke målt en bestemt CPU-besparelse sammenlignet med den officielle webchat.
 
-Chat-token opbevares i hukommelsen og i `sessionStorage` for den aktuelle browsersession, så siden kan genindlæses. “Afbryd” sletter det. Link og beskeder sendes direkte til Aciums WebSocket-server over TLS. Token skal behandles som en adgangsnøgle. Indsæt aldrig din Acium-adgangskode her. GitHub leverer kun de statiske filer; ingen loginoplysninger eller chatindhold skal ligge i repoet.
+Chat-token opbevares i hukommelsen og i browserens `localStorage`, så det huskes efter lukning af faner og browser. Tidligere gemte sessioner overføres automatisk. Midlertidige forbindelsesfejl sletter ikke tokenet. Efter tre serverlukninger uden data (kode 1005) vises indtastningsfeltet igen med mulighed for at prøve det gemte link; linket bevares, fordi serveren ikke giver en entydig forklaring. Hvis vedvarende lagring er blokeret af browseren, forsøges lagring kun for fanens session. “Afbryd” sletter det. Link og beskeder sendes direkte til Aciums WebSocket-server over TLS. Token skal behandles som en adgangsnøgle. Indsæt aldrig din Acium-adgangskode her. GitHub leverer kun de statiske filer; ingen loginoplysninger eller chatindhold skal ligge i repoet.
 
 Protokollen er observeret fra den eksisterende webchat den 17. oktober 2026. Det er en uofficiel integration, som kan kræve tilpasning, hvis Acium ændrer server eller adgangsregler. Acium Webchat omgår ingen adgangskontrol og kræver et gyldigt token.
 
@@ -50,7 +50,7 @@ npm test
 npm run serve
 ```
 
-Åbn http://127.0.0.1:8765 og brug eksempeltilstanden. Alle filer til hosting findes i `dist/`.
+Åbn http://127.0.0.1:8765. Eksempeltilstanden findes på http://127.0.0.1:8765/#demo uden et gemt login. Alle filer til hosting findes i `dist/`.
 
 ## Udgiv på GitHub Pages
 
@@ -71,3 +71,5 @@ Node-tests dækker tokenvalidering, 20.000 indgående beskeder med begrænset hi
 For den valgfrie browsertest: installér `playwright-core` lokalt som udviklingsværktøj, start den lokale server, og kør `tests/history.browser.cjs` med `BROWSER_EXECUTABLE` sat til en Chromium-browser. Testen bruger udelukkende syntetiske beskeder og en simuleret WebSocket; den kontakter ikke Acium. `STUEN_TEST_URL` kan ændre testserverens adresse (roden af siden).
 
 Mobiltesten `tests/mobile.browser.cjs` kontrollerer seks skærmstørrelser fra 320 pixels til tablet og liggende mobil samt brugerskift, rumoversigt, indstillinger, søgning og navigation tilbage fra loggen.
+
+`tests/login.browser.cjs` kontrollerer den minimale forside, genåbning af faner, gendannelse af browserlagring, migration fra sessionslagring, manuel fjernelse af login og bevarelse af linket ved netværksfejl eller gentagne serverlukninger. Kun syntetiske tokens bruges i testen.

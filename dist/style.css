@@ -16,3 +16,11 @@ svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.7;stroke
   .mobile-accounts .nav-item{min-height:44px}
   .keyboard-open .chat-header{min-height:56px}
 }
+
+/* The entry screen only asks for the link; returning visitors connect automatically. */
+.welcome{display:flex;min-height:100dvh;align-items:center;justify-content:center;padding:24px}
+.welcome .login-card{width:100%;max-width:350px;padding:0;margin:0}
+.welcome .brand{font-size:26px;letter-spacing:-.7px;line-height:1;margin:0 0 28px;justify-content:center}
+.welcome #chat-link{font-size:16px;padding:15px;border-radius:11px}
+.welcome .primary{border-radius:11px;min-height:48px;margin-top:12px}
+.welcome #resume-saved{display:block;text-align:center;margin:14px auto 0;min-height:44px}
