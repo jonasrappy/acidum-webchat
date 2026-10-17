@@ -5,23 +5,19 @@
 <meta name="referrer" content="no-referrer">
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; connect-src wss://ws0.acium.app; img-src 'self' data:; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="theme-color" content="#11141a"><meta name="description" content="En let, uafhængig webchat til din Acium-session. Ingen installation og ingen adgangskode hos os.">
-<title>acium · webchat</title><link rel="icon" href="icon.svg" type="image/svg+xml"><link rel="stylesheet" href="style.css?v=4"><script type="module" src="app.js?v=4"></script>
+<title>acium · webchat</title><link rel="icon" href="icon.svg" type="image/svg+xml"><link rel="stylesheet" href="style.css?v=5"><script type="module" src="app.js?v=5"></script>
 </head>
 <body>
 <section id="welcome" class="welcome">
   <div class="login-card">
-    <div class="brand"><span class="brand-icon">a</span> acium</div>
-    <p class="eyebrow">DIN CHAT. LIDT MERE RO.</p>
-    <h1>Samme mennesker.<br>En lettere webchat.</h1>
-    <p class="intro">En enkel indgang til dine Acium-faner. Med læselige samtaler, søgning og plads til at følge med.</p>
-    <ol class="steps"><li><a href="https://acium.app/" target="_blank" rel="noopener noreferrer">Log ind hos Acium <span aria-hidden="true">↗</span></a> og åbn din webchat.</li><li>Kopiér webchat-linket fra adresselinjen og indsæt det her.</li></ol>
-    <form id="connect-form"><label for="chat-link">Dit webchat-link</label><input id="chat-link" type="password" placeholder="https://acium.app/chat?token=…" autocomplete="off" spellcheck="false" required><p id="login-error" class="error" role="alert"></p><button class="primary" type="submit">Åbn min chat <span aria-hidden="true">→</span></button></form>
-    <p class="privacy">Dit link forbinder direkte til Acium. Vi modtager hverken link, adgangskode eller beskeder. Du kan vælge at gemme historik lokalt på enheden. Acium på din computer skal stadig køre.</p>
-    <details><summary>Åbn hurtigere næste gang</summary><p>Træk denne genvej til din bogmærkelinje. Klik på den, mens du står på din Acium-webchat, for at åbne acium.</p><a id="bookmarklet" class="bookmark" href="#">Åbn i acium ↗</a><p>Linket gemmes kun i denne fanes session. Brug “Afbryd” for at fjerne det.</p></details>
-    <button id="demo-button" class="text-button" type="button">Se brugerfladen med eksempeldata</button>
-    <p class="independent">Uafhængigt projekt · Ikke en officiel Acium-klient</p>
+    <h1 class="brand"><span class="brand-icon" aria-hidden="true">a</span> acium</h1>
+    <form id="connect-form">
+      <input id="chat-link" type="password" aria-label="Dit Acium-webchat-link" placeholder="Indsæt dit webchat-link" autocomplete="off" spellcheck="false" required>
+      <p id="login-error" class="error" role="alert"></p>
+      <button class="primary" type="submit">Åbn chat <span aria-hidden="true">→</span></button>
+    </form>
+    <button id="resume-saved" class="text-button" type="button" hidden>Prøv det gemte link igen</button>
   </div>
-  <div class="welcome-art" aria-hidden="true"><div class="orbit o1"></div><div class="orbit o2"></div><div class="art-symbol">a<span>din chat. dit overblik.</span></div><div class="art-note">Mindre støj.<br>Mere samtale.</div></div>
 </section>
 <div id="workspace" class="workspace" hidden>
   <aside class="sidebar">
@@ -50,5 +46,5 @@
 <section class="settings-group"><h3>Forbindelse</h3><div class="settings-connection"><span id="settings-status">Forbinder…</span><button id="settings-reconnect" class="soft-button">Forbind igen</button></div></section>
 <section class="settings-group"><h3>Visning</h3><label class="setting-row" for="show-events"><span><strong>Vis ind- og udgange</strong><small>Rumskift og andre hændelser i samtalen</small></span><input id="show-events" type="checkbox" checked></label></section>
 <section class="settings-group"><h3>Historik på denne enhed</h3><label class="setting-row" for="save-history"><span><strong>Gem historik</strong><small>Op til 10.000 beskeder · kun i din browser</small></span><input id="save-history" type="checkbox"></label><p class="setting-note">Scroll op i samtalen for at hente ældre gemte beskeder. Slår du lagring fra, bevares allerede gemte beskeder, indtil du sletter dem.</p><button id="clear-history" class="soft-button danger" hidden>Slet gemt historik</button></section>
-<section class="settings-group"><button id="mobile-exit" class="soft-button danger">Afbryd og fjern login</button><p class="setting-note">Dit webchat-link fjernes fra denne session. Gemt historik bevares.</p></section><p class="sheet-footnote">acium · Uafhængig webchat. Acium-programmet på din computer skal fortsat køre.</p></dialog>
+<section class="settings-group"><button id="mobile-exit" class="soft-button danger">Afbryd og fjern login</button><p class="setting-note">Dit gemte webchat-link fjernes fra denne browser. Gemt historik bevares.</p></section><p class="sheet-footnote">acium · Uafhængig webchat. Acium-programmet på din computer skal fortsat køre.</p></dialog>
 </body></html>
