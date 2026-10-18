@@ -2,7 +2,7 @@
 
 **[Åbn acidum](https://jonasrappy.github.io/acidum-webchat/)**
 
-En let webchat med mobilnavigation og flere brugere. Almindelig HTML, CSS og JavaScript, uden framework, tracking eller egen backend.
+En let webchat med mobilnavigation og flere brugere. Bygget med Svelte 5 og Vite, uden tracking eller egen backend.
 
 ## Forbind
 
@@ -41,7 +41,7 @@ For at chatten virker, sendes token og beskeder direkte til chatserveren over en
 
 ## Forbrug og begrænsninger
 
-Hukommelsen beholder op til 700 indgående beskeder pr. bruger. Den aktive visning tegner først de seneste 250; flere tilføjes, når du selv læser længere tilbage. Live-opdateringer samles med mindst 80 ms mellem tegninger. Uændrede beskedrækker genbruges; nye beskeder indsættes uden at genopbygge samtalen. Tastatur- og viewportændringer ændrer kun layout og læseposition. Aktivitet i andre samtaler tegner ikke den aktuelle beskedliste igen. Skjulte faner tegnes først, når de bliver synlige. Mens du læser ældre beskeder, tegnes samtalen ikke igen for hver ny besked.
+Hukommelsen beholder op til 700 indgående beskeder pr. bruger. Den aktive visning tegner først de seneste 250; flere tilføjes, når du selv læser længere tilbage. Live-opdateringer samles med mindst 80 ms mellem tegninger. Keyed Svelte-komponenter genbruger uændrede beskedrækker og afsenderblokke. Beskeddata bruger rå reaktiv tilstand uden dybe proxies. Rumoversigt og indstillinger hentes først, når de bruges; arkivkoden hentes først, når lokal historik bruges. Tastatur- og viewportændringer ændrer kun layout og læseposition. Aktivitet i andre samtaler tegner ikke den aktuelle beskedliste igen. Skjulte faner tegnes først, når de bliver synlige. Mens du læser ældre beskeder, tegnes samtalen ikke igen for hver ny besked.
 
 Serverprotokollens `lastLine` henter nyere beskeder. Der er ikke fundet en forespørgsel efter vilkårligt gammel serverhistorik. Lazy load bruger derfor allerede leverede beskeder og det arkiv, du har valgt at gemme lokalt. Søgning og eksport omfatter indlæste beskeder; scroll op for at hente flere fra arkivet.
 
@@ -54,20 +54,24 @@ Integrationen bygger på observeret protokol og kan kræve tilpasning ved ændri
 ## Udvikling og test
 
 ```sh
+npm ci
+npm run check
 npm test
-npm run serve
+npm run dev
 ```
 
-Åbn http://127.0.0.1:8765. Uden gemt login findes eksempeldata på http://127.0.0.1:8765/#demo. Filerne til hosting ligger i `dist/`; der er intet byggetrin.
+Åbn http://127.0.0.1:8765. Uden gemt login findes eksempeldata på http://127.0.0.1:8765/#demo. Kildekoden ligger i `src/`, komponenternes CSS ligger ved komponenterne, og fælles tema/layout ligger i `src/style.css`. `public/` indeholder ikon, manifest og service worker. `npm run build` skriver den aktuelle produktion til `dist/` og fjerner tidligere byggefiler. `npm run preview` viser det færdige build lokalt.
 
-Node-tests kontrollerer historikgrænser, dubletter, brugeradskillelse, omtaler, programmarkeringer, beskedalarmer, gruppering, deltagerlister og lokal lagring. De valgfrie `tests/*.browser.cjs` bruger `playwright-core` og Chromium, med `BROWSER_EXECUTABLE` sat til browserens sti. `ACIDUM_TEST_URL` kan ændre den lokale testadresse. Browsertest bruger syntetiske data. Tastaturtesten simulerer ændringer i viewporthøjde og forskydning, kontrollerer at skrivefelt og samtale forbliver synlige, og måler at uændrede beskedrækker bevares. Et fysisk iPhone-tastatur er ikke tilgængeligt i testmiljøet.
+Node-tests kontrollerer historikgrænser, dubletter, brugeradskillelse, omtaler, programmarkeringer, beskedalarmer, gruppering, deltagerlister og lokal lagring. `npm run test:browser` kører `tests/*.browser.cjs` mod en startet preview-server med `playwright-core` og Chromium. Sæt `BROWSER_EXECUTABLE` til browserens sti. `ACIDUM_TEST_URL` kan ændre den lokale testadresse. Browsertest bruger syntetiske data. Tastaturtesten simulerer ændringer i viewporthøjde og forskydning, kontrollerer at skrivefelt og samtale forbliver synlige, og måler at uændrede beskedrækker bevares. Et fysisk iPhone-tastatur er ikke tilgængeligt i testmiljøet.
 
 ## Udgivelse
 
 Pages bruger roden af grenen `gh-pages`:
 
 ```sh
+npm run check
 npm test
+npm run build
 git push origin main
 git subtree push --prefix dist origin gh-pages
 ```
