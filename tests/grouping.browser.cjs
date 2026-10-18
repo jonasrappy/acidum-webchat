@@ -13,7 +13,7 @@ const {chromium}=require('playwright-core');const assert=require('node:assert/st
   await page.evaluate(()=>{window.firstAuthorGroup=document.querySelector('.message-name').closest('.message-group');window.firstAuthorHeader=window.firstAuthorGroup.querySelector('.message-group-head');});
   socket.send(JSON.stringify(event('text',{text:'heysa'})));await page.waitForFunction(()=>document.querySelectorAll('.message').length===5);
   const group=page.locator('.message-group').filter({hasText:'heysa'});
-  assert.equal(await group.count(),1);assert.equal(await group.locator('.message').count(),4);assert.equal(await group.locator('.message-name').count(),1);assert.equal(await group.locator('.avatar').count(),1);assert.equal(await group.locator('time').count(),4);
+  assert.equal(await group.count(),1);assert.equal(await group.locator('.message').count(),4);assert.equal(await group.locator('.message-name').count(),1);assert.equal(await group.locator('.avatar').count(),0);assert.equal(await group.locator('time').count(),4);
   assert.deepEqual(await group.locator('.movement-icon').allTextContents(),['→','←','→']);
   const movementColors=await group.locator('.movement-icon').evaluateAll(nodes=>nodes.map(n=>getComputedStyle(n).color));assert.equal(movementColors[0],movementColors[2]);assert.notEqual(movementColors[0],movementColors[1]);
   assert.deepEqual(await group.locator('.message-text').allTextContents(),['er kommet ind','har forladt chatten','er kommet ind','heysa']);

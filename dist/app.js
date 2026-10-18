@@ -168,7 +168,7 @@ function accountButton(name) {
   button.classList.toggle('active', active === name && !logOnly);
   const label=element('span','account-copy');label.append(element('span','account-name',name));
   const room=store.tabs.get(name)?.room;if(room?.name)label.append(element('span','account-room',room.name));
-  button.append(element('span', 'avatar', name.slice(0,2).toUpperCase()),label);
+  button.append(label);
   button.setAttribute('aria-pressed',String(active === name && !logOnly));
   const unread = store.tabs.get(name)?.unread;
   if (unread) button.append(element('span', 'badge', unread > 99 ? '99+' : String(unread)));
@@ -227,7 +227,6 @@ function createMessageGroup(group){
   const {name:sender,account:accountName}=group;
   const node=element('section','message-group'),head=element('header','message-group-head'),author=element('div','message-group-author');
   if(group.name){
-    head.append(element('span','avatar',group.name.slice(0,2).toUpperCase()));
     const name=element('button','message-name',sender);name.type='button';name.onclick=()=>openPerson(sender,accountName);author.append(name);
     if(group.kind==='private')author.append(element('span','private-label','Hvisken'));
     node._account=element('span','message-account',group.account);author.append(node._account);head.append(author);node.append(head);
@@ -430,7 +429,7 @@ function renderRooms() {
     const tab=store.tabs.get(name), card=element('section','room-card'), header=element('div','room-card-header');
     const copy=element('div','room-card-copy');copy.append(element('strong','',name),element('span','',tab.room ? `${tab.room.name}${tab.room.id!=null?' · '+tab.room.id:''}` : 'Rumnavn afventes'));
     const open=element('button','soft-button','Åbn chat');open.onclick=()=>{choose(name);$('rooms-dialog').close();};
-    header.append(element('span','avatar',name.slice(0,2).toUpperCase()),copy,open);card.append(header);
+    header.append(copy,open);card.append(header);
     const present=[...tab.presence.values()].filter(user=>user.present).sort((a,b)=>a.name.localeCompare(b.name,'da'));
     const details=element('details','room-people');details.dataset.account=name;details.open=opened.has(name)||(initial&&(active===name||store.names.length===1));
     details.append(element('summary','',`${tab.rosterComplete?'Deltagere':tab.room?'Observeret i rummet':'Observeret i samtalen'} · ${present.length}`));
@@ -438,7 +437,7 @@ function renderRooms() {
     const list=element('ul','people-list');
     for(const user of present) {
       const li=element('li'), button=element('button','person-button'),copy=element('span','person-copy');copy.append(element('strong','',user.name),element('small','',user.name===name?'Din bruger':user.source==='snapshot'?'Med ved rumskift':`Senest set ${timeFormat.format(user.time)}`));
-      button.append(element('span','avatar',user.name.slice(0,2).toUpperCase()),copy);button.onclick=()=>openPerson(user.name,name);li.append(button);list.append(li);
+      button.append(copy);button.onclick=()=>openPerson(user.name,name);li.append(button);list.append(li);
     }
     if(!present.length)details.append(element('p','setting-note','Ingen brugere observeret endnu. Listen opdateres med nye beskeder og indgange.'));
     else details.append(list);

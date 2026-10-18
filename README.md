@@ -14,10 +14,10 @@ Token-linkets tekniske format er `https://acium.app/chat?token=…`. Linket husk
 
 ## Funktioner
 
-- Samlet samtale eller én bruger ad gangen, med kompakt mobilnavigation.
+- Samlet samtale eller én bruger ad gangen, med kompakt mobilnavigation. Navne vises uden gentagne felter med initialer i navigation, deltagerlister og beskedblokke.
 - Hvisken-knap på både mobil og computer. Gemte beskeder åbnes fra Mere/Indstillinger. Søg i indlæst tekst eller filtrér på en bestemt afsender.
 - Beskedtekst på 16 px som standard. Under Mere/Indstillinger → Visning kan størrelsen justeres fra 10 til 30 px med forhåndsvisning; valget huskes på enheden.
-- Sammenhængende indgange, udgange og tekst fra samme person samles i én blok med ét navn og én avatar. Hver linje beholder sit tidspunkt og sine beskedhandlinger. Grøn højrepil viser indgang; rød venstrepil viser udgang eller at personen har forladt chatten. Baggrunden skifter mellem blokkene. En anden person, brugerfane, dato eller et rumskift starter en ny blok; hvisken holdes separat fra almindelige rumbeskeder.
+- Sammenhængende indgange, udgange og tekst fra samme person samles i én blok med navnet vist én gang. Hver linje beholder sit tidspunkt og sine beskedhandlinger. Grøn højrepil viser indgang; rød venstrepil viser udgang eller at personen har forladt chatten. Baggrunden skifter mellem blokkene. En anden person, brugerfane, dato eller et rumskift starter en ny blok; hvisken holdes separat fra almindelige rumbeskeder.
 - Triggerord styres i programmet. Webchatten følger de medsendte `log`-/`notify`-markeringer og markerer også brugernavnet uden forskel på store og små bogstaver. Tællere reagerer på disse markeringer og navneomtaler; almindelig rumtrafik tæller ikke. Programmarkeringer respekteres også på egne beskeder.
 - Nye `notify`-markeringer kan give et banner, en valgfri lyd og systemnotifikationer efter dit samtykke. Historik og gamle gentagelser udløser ikke beskedalarmer.
 - Deltagerliste fra rumskiftets `users`-data, opdateret med ind- og udgange. Når et rumsnapshot ikke er modtaget, bruges observeret aktivitet. Efter forbindelsesbrud markeres listen igen som observeret, indtil et nyt snapshot modtages.
