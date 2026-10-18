@@ -3,10 +3,10 @@ import {LocalData,exportText} from '../dist/local-data.js';
 import {matchesMode,messageLinks} from '../dist/core.js';
 const storage=()=>{const map=new Map();return {getItem:k=>map.get(k),setItem:(k,v)=>map.set(k,v)};};
 const message=(i=1)=>({account:'Test',key:String(i),time:1700000000000+i,name:'Guest',type:'text',text:'Hej Test'});
-test('drafts, saved messages and triggers survive reopening, stay scoped and obey limits',()=>{
+test('drafts and saved messages survive reopening, stay scoped and obey limits',()=>{
  const disk=storage(), data=new LocalData(disk,'one');data.setDraft('Test','hello');data.setDraft('Other','different');
- data.setTriggers('Test','kaffe, kaffe, mønt');for(let i=0;i<205;i++)data.toggleSaved(message(i));
- const reopened=new LocalData(disk,'one');assert.equal(reopened.draft('Test'),'hello');assert.equal(reopened.draft('Other'),'different');assert.deepEqual(reopened.triggers.get('Test'),['kaffe','mønt']);
+ for(let i=0;i<205;i++)data.toggleSaved(message(i));
+ const reopened=new LocalData(disk,'one');assert.equal(reopened.draft('Test'),'hello');assert.equal(reopened.draft('Other'),'different');
  assert.equal(reopened.saved.size,200);assert.equal(reopened.isSaved(message(0)),false);assert.equal(reopened.isSaved(message(204)),true);
  assert.equal(new LocalData(disk,'two').draft('Test'),'');assert.equal(new LocalData(disk,'two').saved.size,0);
  reopened.toggleSaved(message(204));assert.equal(reopened.isSaved(message(204)),false);

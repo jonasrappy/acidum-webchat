@@ -8,7 +8,7 @@ test('mention suggestions match names without changing ordinary writing or email
 });
 test('completion replaces the current token, preserves surrounding text and respects the message limit',()=>{
  const text='Hej @d, kommer du?';const query=mentionQuery(text,6);
- assert.deepEqual(completeMention(text,query,'Damm'),{text:'Hej @Damm, kommer du?',caret:9});
- assert.deepEqual(completeMention('@d',mentionQuery('@d'),'Damm'),{text:'@Damm ',caret:6});
+ assert.deepEqual(completeMention(text,query,'Damm'),{text:'Hej Damm, kommer du?',caret:8});
+ assert.deepEqual(completeMention('@d',mentionQuery('@d'),'Damm'),{text:'Damm ',caret:5});
  assert.equal(completeMention('x'.repeat(97)+' @d',mentionQuery('x'.repeat(97)+' @d'),'Damm'),null);
 });

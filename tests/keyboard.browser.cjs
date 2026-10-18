@@ -10,7 +10,10 @@ const {chromium}=require('playwright-core');const assert=require('node:assert/st
   await page.routeWebSocket('wss://ws0.acium.app/**',ws=>{socket=ws;ws.send(JSON.stringify({tabs:['Nova','Milo']}));ws.onMessage(raw=>{const data=JSON.parse(raw);if(data.say!==undefined)sent.push(data);else if(data.lastLine===0)ws.send(JSON.stringify(fixtures[data.name]||[]));});});
   await page.goto(process.env.ACIDUM_TEST_URL||'http://127.0.0.1:8765/');await page.locator('#chat-link').fill('synthetic_keyboard_login_123');await page.locator('#connect-form').evaluate(form=>form.requestSubmit());
   await page.waitForFunction(()=>document.querySelectorAll('.message').length===250);await page.locator('#mobile-accounts button').nth(1).click();await page.waitForTimeout(150);
-  await page.evaluate(()=>{window.savedRow=document.querySelector('#messages .message:last-child');window.mutations={added:0,removed:0};new MutationObserver(records=>{for(const r of records){window.mutations.added+=r.addedNodes.length;window.mutations.removed+=r.removedNodes.length;}}).observe(document.querySelector('#messages'),{childList:true,subtree:true});});
+  assert.equal(await page.locator('.message.continuation').count(),249);assert.equal(await page.locator('.message time').count(),250);
+  const grouping=await page.locator('#messages').evaluate(container=>{const rows=[...container.querySelectorAll('.message')];return {font:getComputedStyle(rows[0].querySelector('.message-text')).fontSize,first:rows[0].offsetHeight,second:rows[1].offsetHeight,alternating:rows.every((row,i)=>i===0||row.classList.contains('alternate')!==rows[i-1].classList.contains('alternate')),hiddenName:getComputedStyle(rows[1].querySelector('.message-name')).display};});
+  assert.equal(grouping.font,'17px');assert.equal(grouping.hiddenName,'none');assert.ok(grouping.second<grouping.first);assert.equal(grouping.alternating,true);
+  await page.evaluate(()=>{window.savedRow=document.querySelector('#messages .message:last-child');window.savedStripe=window.savedRow.classList.contains('alternate');window.mutations={added:0,removed:0};new MutationObserver(records=>{for(const r of records){window.mutations.added+=r.addedNodes.length;window.mutations.removed+=r.removedNodes.length;}}).observe(document.querySelector('#messages'),{childList:true,subtree:true});});
   socket.send(JSON.stringify(event('Milo','text',{user:{name:'Elliot'},text:'Other room traffic'})));await page.waitForTimeout(150);
   assert.deepEqual(await page.evaluate(()=>window.mutations),{added:0,removed:0});
   await page.locator('#message').fill('@d');assert.equal(await page.locator('.mention-option').count(),3);
@@ -18,8 +21,8 @@ const {chromium}=require('playwright-core');const assert=require('node:assert/st
   const bounds=await page.evaluate(()=>{const box=id=>{const r=document.getElementById(id).getBoundingClientRect();return {top:r.top,bottom:r.bottom,height:r.height};};return {shell:box('workspace'),composer:document.querySelector('.composer-wrap').getBoundingClientRect().bottom,conversation:box('timeline'),scrollY,keyboard:document.body.classList.contains('keyboard-open')};});
   assert.equal(bounds.shell.top,130);assert.equal(bounds.shell.height,440);assert.ok(Math.abs(bounds.composer-570)<1);assert.ok(bounds.conversation.height>150);assert.equal(bounds.keyboard,true);assert.equal(bounds.scrollY,0);
   assert.deepEqual(await page.evaluate(()=>window.mutations),{added:0,removed:0});
-  await page.locator('.mention-option').filter({hasText:'Damm'}).click();assert.equal(await page.locator('#message').inputValue(),'@Damm ');assert.equal(await page.locator('#message').evaluate(el=>document.activeElement===el),true);assert.equal(sent.length,0);
-  await page.locator('#message').fill('@d');await page.locator('#message').press('ArrowDown');await page.locator('#message').press('Enter');assert.equal(await page.locator('#message').inputValue(),'@Damm ');assert.equal(sent.length,0);
+  await page.locator('.mention-option').filter({hasText:'Damm'}).click();assert.equal(await page.locator('#message').inputValue(),'Damm ');assert.equal(await page.locator('#message').evaluate(el=>document.activeElement===el),true);assert.equal(sent.length,0);
+  await page.locator('#message').fill('@d');await page.locator('#message').press('ArrowDown');await page.locator('#message').press('Enter');assert.equal(await page.locator('#message').inputValue(),'Damm ');assert.equal(sent.length,0);
   await page.locator('#message').fill('@d');await page.locator('#message').press('Enter');await page.waitForTimeout(20);assert.equal(sent.at(-1).say,'@d');
   await page.locator('#message').fill('hej @d bare almindelig tekst');assert.equal(await page.locator('#mention-menu').isVisible(),false);
   await page.locator('#message').fill('mail@example.com');assert.equal(await page.locator('#mention-menu').isVisible(),false);
@@ -29,6 +32,7 @@ const {chromium}=require('playwright-core');const assert=require('node:assert/st
   assert.equal(await page.locator('#workspace').evaluate(el=>el.getBoundingClientRect().top),0);assert.equal(await page.locator('.bottom-nav').isVisible(),true);
   socket.send(JSON.stringify(event('Nova','text',{user:{name:'Alma'},text:'New message'})));await page.waitForTimeout(150);
   assert.equal(await page.evaluate(()=>window.savedRow.isConnected),true);
+  assert.equal(await page.evaluate(()=>window.savedRow.classList.contains('alternate')===window.savedStripe),true);
   const mutations=await page.evaluate(()=>window.mutations);assert.ok(mutations.added<=2&&mutations.removed<=2,JSON.stringify(mutations));console.log('One new message reuses existing rows:',JSON.stringify(mutations));
   await page.locator('#mobile-accounts button').nth(2).click();await page.locator('#message').fill('@d');assert.equal(await page.locator('.mention-option').textContent(),'Dorte');
   assert.deepEqual(errors,[]);console.log('Restored viewport and separate room suggestions pass');

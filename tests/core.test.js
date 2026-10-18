@@ -1,6 +1,6 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {ChatStore, parseToken, retryDelay, needsAttention} from '../dist/core.js';
+import {ChatStore, parseToken, retryDelay, needsAttention, messageAttention} from '../dist/core.js';
 const event = (i, name='Test') => ({type:'text',me:{name},user:{name:'Guest'},text:`message ${i}`,time:1700000000000+i});
 test('tokens accept the official link and reject other hosts, missing tokens and arbitrary URL strings', () => {
  assert.equal(parseToken('https://acium.app/chat?token=example_token_123#log'),'example_token_123');
@@ -54,10 +54,11 @@ test('attention badges only match names or server trigger flags, never ordinary 
  assert.equal(needsAttention({...base,notify:true}),true);
  assert.equal(needsAttention({...base,log:true}),true);
  assert.equal(needsAttention({...base,type:'join',notify:true}),false);
- assert.equal(needsAttention({...base,user:{name:'Punktum'},text:'Punktum',notify:true}),false);
+ assert.equal(needsAttention({...base,user:{name:'Punktum'},text:'Punktum',notify:true}),true);
+ assert.equal(needsAttention({...base,user:{name:'Punktum'},text:'Punktum'}),false);
  assert.equal(needsAttention({...base,me:{name:'A+B'},text:'Hej A+B!'}),true);
  assert.equal(needsAttention({...base,me:{name:'Søren'},text:'Hej SØREN!'}),true);
- assert.equal(needsAttention({...base,type:'priv',from:{name:'Punktum'},notify:true}),false);
+ assert.equal(needsAttention({...base,type:'priv',from:{name:'Punktum'},notify:true}),true);
  const store=new ChatStore();store.setTabs(['Punktum']);
  assert.equal(store.add({...base,time:1}).attention,false);
  assert.equal(store.add({...base,time:2,text:'Hej Punktum'}).attention,true);
@@ -71,10 +72,13 @@ test('room snapshot includes quiet users and stays separate from later movements
  assert.equal(s.tab('Test').presence.has('Quiet'),false);assert.equal(s.tab('Test').presence.get('New').present,true);
  assert.equal(s.tab('Other').presence.size,0);
 });
-test('local triggers match whole words and are isolated by account',()=>{
- const s=new ChatStore();s.setTabs(['Test','Other']);s.setTriggers('Test',['kaffe']);
- assert.equal(s.add({...event(1),text:'Er der kaffe?'}).attention,true);
- assert.equal(s.add({...event(2,'Other'),text:'Er der kaffe?'}).attention,false);
- assert.equal(s.add({...event(3),text:'kaffemaskine'}).attention,false);
- s.setTriggers('Other',['kaffe']);assert.equal(s.tab('Other').messages[0].attention,true);
+test('desktop markers stay account-specific and distinguish log highlighting from notifications',()=>{
+ const s=new ChatStore();s.setTabs(['Test','Other']);
+ const notify=s.add({...event(1),text:'Er der kaffe?',notify:true});
+ const plain=s.add({...event(2,'Other'),text:'Er der kaffe?'});
+ const log=s.add({...event(3),text:'En markeret besked',log:true});
+ const self=s.add({...event(4),user:{name:'Test'},notify:true});
+ for(const message of [notify,log,self]){assert.equal(message.attention,true);assert.equal(messageAttention(message),true);}
+ assert.equal(messageAttention(plain),false);assert.equal(log.serverNotify,false);assert.equal(notify.serverNotify,true);
+ assert.equal(messageAttention(JSON.parse(JSON.stringify(log))),true);
 });

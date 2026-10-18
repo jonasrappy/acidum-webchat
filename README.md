@@ -15,11 +15,13 @@ Token-linkets tekniske format er `https://acium.app/chat?token=…`. Linket husk
 ## Funktioner
 
 - Samlet samtale eller én bruger ad gangen, med kompakt mobilnavigation.
-- Filtre til omtaler, hvisken, links og gemte beskeder. Søg i indlæst tekst eller filtrér på en bestemt afsender.
-- Tællere ved brugerne reagerer kun på navneomtaler, egne lokale triggerord og medsendte markeringer. Almindelige rumbeskeder og egne beskeder tæller ikke med.
+- Hvisken-knap på både mobil og computer. Gemte beskeder åbnes fra Mere/Indstillinger. Søg i indlæst tekst eller filtrér på en bestemt afsender.
+- Læsbar beskedtekst på 17 px i kompakte rækker med diskret skiftende baggrund. Samme afsender i samme samtale deler navn og avatar på sammenhængende beskeder; hver besked har sit eget tidspunkt.
+- Triggerord styres i programmet. Webchatten følger de medsendte `log`-/`notify`-markeringer og markerer også brugernavnet uden forskel på store og små bogstaver. Tællere reagerer på disse markeringer og navneomtaler; almindelig rumtrafik tæller ikke. Programmarkeringer respekteres også på egne beskeder.
+- Nye `notify`-markeringer kan give et banner, en valgfri lyd og systemnotifikationer efter dit samtykke. Historik og gamle gentagelser udløser ikke beskedalarmer.
 - Deltagerliste fra rumskiftets `users`-data, opdateret med ind- og udgange. Når et rumsnapshot ikke er modtaget, bruges observeret aktivitet. Efter forbindelsesbrud markeres listen igen som observeret, indtil et nyt snapshot modtages.
-- Tryk på et navn for at omtale personen eller se personens beskeder. Det sender ikke automatisk en besked. Skriv `@` og begyndelsen af navnet for valgfri autocomplete med deltagerne i den valgte brugers rum. Enter vælger kun et forslag, hvis du selv har markeret det med piletasterne.
-- Separate lokale kladder og ekstra triggerord for hver bruger.
+- Tryk på et navn for at omtale personen eller se personens beskeder. Det sender ikke automatisk en besked. Skriv `@` og begyndelsen af navnet for valgfri autocomplete med deltagerne i den valgte brugers rum. Valg af et forslag indsætter kun brugernavnet og fjerner `@`. Enter vælger kun et forslag, hvis du selv har markeret det med piletasterne.
+- Separate lokale kladder for hver bruger. Der gemmes ingen lokal triggerkonfiguration i webchatten.
 - Tryk på et tidspunkt for at kopiere eller gemme en besked. Op til 200 gemte beskeder bevares separat fra den rullende historik.
 - Eksportér den aktuelt indlæste og filtrerede samtale som en tekstfil. Filen oprettes direkte i browseren.
 - Skriv som den valgte bruger med grænse på 100 tegn og tæller nær grænsen.
@@ -28,7 +30,7 @@ Token-linkets tekniske format er `https://acium.app/chat?token=…`. Linket husk
 
 ## Data og privatliv
 
-Alt, acidum selv gemmer, ligger i browseren: login-link, kladder, triggerord, gemte beskeder og eventuelt historik. Data tilknyttes det aktuelle login via en SHA-256-identifikator, så kladder og gemte beskeder fra forskellige login ikke blandes. Selve tokenet gemmes separat i browserens `localStorage`; tidligere sessionslagring overføres automatisk. Hvis browseren blokerer vedvarende lagring, forsøges sessionslagring i stedet.
+Alt, acidum selv gemmer, ligger i browseren: login-link, kladder, gemte beskeder, indstillinger for beskedalarmer og eventuelt historik. Data tilknyttes det aktuelle login via en SHA-256-identifikator, så kladder og gemte beskeder fra forskellige login ikke blandes. Selve tokenet gemmes separat i browserens `localStorage`; tidligere sessionslagring overføres automatisk. Hvis browseren blokerer vedvarende lagring, forsøges sessionslagring i stedet.
 
 For at chatten virker, sendes token og beskeder direkte til chatserveren over en krypteret WebSocket. GitHub Pages leverer kun sidens statiske filer. Ingen chatdata eller adgangskoder skal ligge i repoet. Del ikke dit token-link med andre.
 
@@ -38,9 +40,11 @@ For at chatten virker, sendes token og beskeder direkte til chatserveren over en
 
 Hukommelsen beholder op til 700 indgående beskeder pr. bruger. Den aktive visning tegner først de seneste 250; flere tilføjes, når du selv læser længere tilbage. Live-opdateringer samles med mindst 80 ms mellem tegninger. Uændrede beskedrækker genbruges; nye beskeder indsættes uden at genopbygge samtalen. Tastatur- og viewportændringer ændrer kun layout og læseposition. Aktivitet i andre samtaler tegner ikke den aktuelle beskedliste igen. Skjulte faner tegnes først, når de bliver synlige. Mens du læser ældre beskeder, tegnes samtalen ikke igen for hver ny besked.
 
-Serverprotokollens `lastLine` henter nyere beskeder. Der er ikke fundet en forespørgsel efter vilkårligt gammel serverhistorik. Lazy load bruger derfor allerede leverede beskeder og det arkiv, du har valgt at gemme lokalt. Søgning og eksport omfatter indlæste beskeder; scroll op for at hente flere fra arkivet. Gemte beskeder kan findes gennem deres eget filter.
+Serverprotokollens `lastLine` henter nyere beskeder. Der er ikke fundet en forespørgsel efter vilkårligt gammel serverhistorik. Lazy load bruger derfor allerede leverede beskeder og det arkiv, du har valgt at gemme lokalt. Søgning og eksport omfatter indlæste beskeder; scroll op for at hente flere fra arkivet. Gemte beskeder kan åbnes fra Mere/Indstillinger.
 
 Deltagerlisten er fra det seneste modtagne rumskift og de efterfølgende hændelser. Ved manglende data kan den være ufuldstændig. Der er ingen udokumenterede kommandoer til at flytte brugere eller starte hvisken. En hvisken, som modtages, kan læses og filtreres.
+
+Systemnotifikationer aktiveres under Mere/Indstillinger. På iPhone skal acidum tilføjes til hjemmeskærmen og åbnes derfra, før notifikationer kan aktiveres. Beskedalarmer kræver, at siden stadig kan modtage data på sin chatforbindelse. Der er ingen push-backend til at vække en lukket eller suspenderet app. Den lille service worker viser kun notifikationer fra den aktive side og åbner den relevante bruger; den cacher ikke chats eller login-link.
 
 Integrationen bygger på observeret protokol og kan kræve tilpasning ved ændringer på serveren. Der er ikke målt en bestemt CPU-besparelse.
 
@@ -53,7 +57,7 @@ npm run serve
 
 Åbn http://127.0.0.1:8765. Uden gemt login findes eksempeldata på http://127.0.0.1:8765/#demo. Filerne til hosting ligger i `dist/`; der er intet byggetrin.
 
-Node-tests kontrollerer historikgrænser, dubletter, brugeradskillelse, omtaler, lokale triggerord, deltagerlister og lokal lagring. De valgfrie `tests/*.browser.cjs` bruger `playwright-core` og Chromium, med `BROWSER_EXECUTABLE` sat til browserens sti. `ACIDUM_TEST_URL` kan ændre den lokale testadresse. Browsertest bruger syntetiske data. Tastaturtesten simulerer ændringer i viewporthøjde og forskydning, kontrollerer at skrivefelt og samtale forbliver synlige, og måler at uændrede beskedrækker bevares. Et fysisk iPhone-tastatur er ikke tilgængeligt i testmiljøet.
+Node-tests kontrollerer historikgrænser, dubletter, brugeradskillelse, omtaler, programmarkeringer, beskedalarmer, deltagerlister og lokal lagring. De valgfrie `tests/*.browser.cjs` bruger `playwright-core` og Chromium, med `BROWSER_EXECUTABLE` sat til browserens sti. `ACIDUM_TEST_URL` kan ændre den lokale testadresse. Browsertest bruger syntetiske data. Tastaturtesten simulerer ændringer i viewporthøjde og forskydning, kontrollerer at skrivefelt og samtale forbliver synlige, og måler at uændrede beskedrækker bevares. Et fysisk iPhone-tastatur er ikke tilgængeligt i testmiljøet.
 
 ## Udgivelse
 

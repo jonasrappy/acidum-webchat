@@ -20,7 +20,7 @@ const assert=require('node:assert/strict');
   await send({text:'Hej @PUNKTUM!'});assert.equal(await page.locator('#mobile-accounts .badge').textContent(),'1');
   await send({notify:true});assert.equal(await page.locator('#mobile-accounts .badge').textContent(),'2');
   await send({user:{name:'Punktum'},text:'Punktum',notify:true});
-  await send({type:'join',notify:true});assert.equal(await page.locator('#mobile-accounts .badge').textContent(),'2');
+  await send({type:'join',notify:true});assert.equal(await page.locator('#mobile-accounts .badge').textContent(),'3');
   await page.locator('#mobile-accounts button').nth(1).click();await page.waitForTimeout(150);
   assert.equal(await page.locator('#mobile-accounts .badge').count(),0);
   await page.locator('#bottom-settings').click();await send({text:'Punktum, er du her?'});
