@@ -1,5 +1,6 @@
 <script>
   import Sheet from './Sheet.svelte';
+  import Help from './Help.svelte';
   import { formatTime } from '../lib/format.js';
   let { session } = $props();
   let expanded = $state({});
@@ -19,14 +20,18 @@
 <Sheet
   id="rooms-dialog"
   title="Rum & brugere"
-  eyebrow="DINE BRUGERE"
   open={session.dialogs.rooms}
   onclose={() => session.closeDialog('rooms')}
 >
-  <p class="sheet-intro">
-    Et overblik for hver af dine brugere. Deltagerlisten hentes ved rumskift og opdateres med ind-
-    og udgange.
-  </p>
+  {#snippet tools()}
+    <Help label="Om rum og deltagere" inline>
+      <p>Deltagerlisten hentes ved rumskift og opdateres med ind- og udgange.</p>
+      <p>
+        “Observeret” betyder, at en fuld deltagerliste endnu ikke er modtaget. Ved afbrudt
+        forbindelse kan listen være forældet.
+      </p>
+    </Help>
+  {/snippet}
   <div id="room-cards">
     {#each session.accounts as account (account.name)}
       <section class="room-card">
@@ -38,7 +43,11 @@
                 : 'Rumnavn afventes'}</span
             >
           </div>
-          <button class="soft-button" onclick={() => openChat(account.name)}>Åbn chat</button>
+          <button
+            class="soft-button"
+            aria-label={`Åbn chat som ${account.name}`}
+            onclick={() => openChat(account.name)}>Åbn chat</button
+          >
         </div>
         <details
           class="room-people"
@@ -47,15 +56,14 @@
           ontoggle={(event) => (expanded[account.name] = event.currentTarget.open)}
         >
           <summary
-            >{account.complete
-              ? 'Deltagere'
-              : account.room
-                ? 'Observeret i rummet'
-                : 'Observeret i samtalen'} · {account.people.length}</summary
+            ><span
+              >{account.complete
+                ? 'Deltagere'
+                : account.room
+                  ? 'Observeret i rummet'
+                  : 'Observeret i samtalen'}</span
+            ><span class="people-count">{account.people.length}</span></summary
           >
-          {#if account.complete}<p class="snapshot-note">
-              Deltagerliste fra rumskift {formatTime(account.roomSince)} · opdateres løbende
-            </p>{/if}
           {#if account.people.length}
             <ul class="people-list">
               {#each account.people as person (person.name)}
@@ -68,7 +76,7 @@
                         >{person.name === account.name
                           ? 'Din bruger'
                           : person.source === 'snapshot'
-                            ? 'Med ved rumskift'
+                            ? ''
                             : 'Senest set ' + formatTime(person.time)}</small
                       ></span
                     ></button
@@ -76,38 +84,20 @@
                 </li>
               {/each}
             </ul>
-          {:else}<p class="setting-note">
-              Ingen brugere observeret endnu. Listen opdateres med nye beskeder og indgange.
-            </p>{/if}
+          {:else}<p class="setting-note">Ingen deltagere observeret endnu.</p>{/if}
         </details>
       </section>
     {:else}<p class="setting-note">Dine brugere vises, når acidum sender sine faner.</p>{/each}
   </div>
-  <p class="sheet-footnote">
-    Hvis vi ikke har modtaget rumskiftets deltagerliste, vises kun observerede brugere. Ved afbrudt
-    forbindelse kan listen være forældet.
-  </p>
 </Sheet>
 
 <style>
-  .sheet-intro {
-    color: #b6bfaa;
-    font-size: 12px;
-    line-height: 1.65;
-    margin: 0 0 18px;
-  }
-  .sheet-footnote {
-    color: #a5b095;
-    font-size: 11px;
-    line-height: 1.6;
-    margin: 20px 0 0;
-  }
   .room-card {
-    border: 1px solid #4a573b;
+    border: 1px solid #515847;
     border-radius: 3px;
     padding: 13px;
     margin-bottom: 10px;
-    background: #2d3325;
+    background: #2a2e24;
   }
   .room-card-header {
     display: flex;
@@ -129,29 +119,49 @@
   }
   .room-card-copy > span {
     color: #bdcaa8;
-    font: 11px/1.5 var(--mono);
+    font-size: 14px;
     overflow-wrap: anywhere;
   }
   .room-people {
-    padding-top: 11px;
     margin: 12px 0 0;
-    border-top: 1px solid #4a573b;
+    border-top: 1px solid #515847;
   }
   .room-people > summary {
-    min-height: 34px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 44px;
     color: #d2dfbf;
     cursor: pointer;
-    font: 11px/1.7 var(--mono);
+    font-size: 14px;
+    font-weight: 600;
+    list-style: none;
   }
-  .snapshot-note {
-    margin: 0 0 8px;
-    color: #a6b591;
-    font: 10px/1.6 var(--mono);
+  .room-people > summary::-webkit-details-marker {
+    display: none;
+  }
+  .room-people > summary::before {
+    content: '';
+    width: 7px;
+    height: 7px;
+    flex: none;
+    border-right: 1.5px solid currentColor;
+    border-bottom: 1.5px solid currentColor;
+    transform: rotate(-45deg);
+    margin-right: 4px;
+  }
+  .room-people[open] > summary::before {
+    transform: rotate(45deg) translateY(-2px);
+  }
+  .people-count {
+    margin-left: auto;
+    color: var(--muted);
+    font-variant-numeric: tabular-nums;
   }
   .people-list {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 3px 14px;
+    gap: 0 16px;
     list-style: none;
     margin: 0;
     padding: 0;
@@ -165,8 +175,8 @@
     align-items: center;
     gap: 9px;
     width: 100%;
-    min-height: 44px;
-    padding: 7px 0;
+    min-height: 48px;
+    padding: 8px 0;
     background: transparent;
     border: 0;
     color: var(--text);
@@ -182,13 +192,16 @@
     min-width: 0;
   }
   .person-copy strong {
-    font-size: 14px;
+    font-size: 15px;
     font-weight: 600;
     overflow-wrap: anywhere;
   }
   .person-copy small {
     color: #a5b295;
-    font-size: 11px;
+    font-size: 12px;
+  }
+  .person-copy small:empty {
+    display: none;
   }
   @media (max-width: 700px) {
     .room-card {

@@ -1,11 +1,13 @@
 <script>
-  let { id, title, eyebrow = '', open, onclose, children } = $props();
+  let { id, title, eyebrow = '', open, onclose, children, tools } = $props();
   let dialog;
 
   $effect(() => {
     if (!dialog) return;
-    if (open && !dialog.open) dialog.showModal();
-    else if (!open && dialog.open) dialog.close();
+    if (open && !dialog.open) {
+      dialog.showModal();
+      dialog.querySelector('.sheet-body').scrollTop = 0;
+    } else if (!open && dialog.open) dialog.close();
   });
 
   function closed() {
@@ -24,71 +26,113 @@
     )
       dialog.close();
   }
+
+  function trapFocus(event) {
+    if (event.key !== 'Tab') return;
+    const controls = [
+      ...dialog.querySelectorAll('button, input, select, textarea, a[href], summary, [tabindex]'),
+    ].filter(
+      (node) => node.tabIndex >= 0 && !node.matches(':disabled') && node.getClientRects().length,
+    );
+    const first = controls[0];
+    const last = controls.at(-1);
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault();
+      last?.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault();
+      first?.focus({ preventScroll: true });
+    }
+  }
 </script>
 
 <dialog
   bind:this={dialog}
   {id}
   class="sheet"
+  aria-modal="true"
   aria-labelledby={id.replace('-dialog', '-title')}
   onclose={closed}
-  onpointerdown={backdrop}
+  onclick={backdrop}
+  onkeydown={trapFocus}
 >
-  <div class="sheet-handle" aria-hidden="true"></div>
   <header class="sheet-header">
     <div>
       {#if eyebrow}<p class="eyebrow">{eyebrow}</p>{/if}
       <h2 id={id.replace('-dialog', '-title')}>{title}</h2>
     </div>
-    <button class="icon-button close-sheet" aria-label="Luk" onclick={() => dialog.close()}
-      >×</button
-    >
+    <div class="sheet-tools">
+      {#if tools}{@render tools()}{/if}
+      <button class="icon-button close-sheet" aria-label="Luk" onclick={() => dialog.close()}
+        >×</button
+      >
+    </div>
   </header>
-  {@render children()}
+  <div class="sheet-body">{@render children()}</div>
 </dialog>
 
 <style>
   .sheet {
-    width: min(520px, calc(100% - 32px));
+    width: min(540px, calc(100% - 32px));
     max-height: 85dvh;
-    padding: 24px;
-    overflow: auto;
+    padding: 0;
+    overflow: hidden;
     overscroll-behavior: contain;
     scrollbar-width: thin;
     color: var(--text);
-    background: #262920;
-    border: 1px solid #68774e;
-    border-top: 3px solid var(--accent);
-    border-radius: 4px;
-    box-shadow: 8px 8px 0 #0005;
+    background: var(--panel);
+    border: 1px solid #68705b;
+    border-radius: 8px;
+    box-shadow: 0 16px 60px #0006;
+  }
+  .sheet[open] {
+    display: flex;
+    flex-direction: column;
   }
   .sheet::backdrop {
-    background: #080b06c9;
+    background: #090b08bf;
   }
-  .sheet-handle {
-    display: none;
+  .sheet-body {
+    min-height: 0;
+    padding: 16px 24px 24px;
+    overflow: auto;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
+    scroll-padding-block: 12px;
   }
   .sheet-header {
+    position: relative;
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 12px;
-    margin-bottom: 17px;
+    flex: none;
+    min-height: 76px;
+    padding: 16px 20px 16px 24px;
+    border-bottom: 1px solid var(--line);
+  }
+  .sheet-header > div:first-child {
+    min-width: 0;
   }
   .sheet-header h2 {
     margin: 0;
-    font-size: 25px;
+    font-size: 22px;
     font-weight: 750;
-    letter-spacing: -0.8px;
-    line-height: 1.1;
+    letter-spacing: -0.5px;
+    line-height: 1.25;
+    overflow-wrap: anywhere;
   }
   .sheet-header .eyebrow {
     color: #c4d3a8;
   }
   .close-sheet {
-    align-self: flex-start;
     font-size: 28px;
     line-height: 1;
+  }
+  .sheet-tools {
+    display: flex;
+    align-items: center;
+    flex: none;
   }
 
   @media (max-width: 700px) {
@@ -98,32 +142,26 @@
       bottom: var(--viewport-bottom, 0px);
       width: 100%;
       max-width: none;
-      max-height: calc(var(--app-height, 100dvh) - 16px);
+      max-height: calc(var(--app-height, 100dvh) - max(12px, env(safe-area-inset-top)));
       margin: 0;
-      padding: 10px 18px max(18px, env(safe-area-inset-bottom));
       border-right: 0;
       border-bottom: 0;
       border-left: 0;
-      border-radius: 6px 6px 0 0;
+      border-radius: 10px 10px 0 0;
       box-shadow: none;
     }
-    .sheet-handle {
-      display: block;
-      width: 30px;
-      height: 3px;
-      margin: 0 auto 18px;
-      background: #718454;
-      border-radius: 1px;
+    .sheet-header {
+      min-height: 68px;
+      padding: 12px 12px 12px 20px;
     }
     .sheet-header h2 {
-      font-size: 25px;
+      font-size: 22px;
     }
-    .sheet .close-sheet {
-      width: 40px;
-      height: 40px;
+    .sheet-body {
+      padding: 16px 20px max(20px, env(safe-area-inset-bottom));
     }
 
-    :global(.keyboard-open) .sheet {
+    :global(.keyboard-open) .sheet-body {
       padding-bottom: 16px;
     }
   }

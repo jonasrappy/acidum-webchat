@@ -1,5 +1,5 @@
 <script>
-  import { keyboardTabs } from '../actions/tabs.js';
+  import { keyboardTabs, revealTab } from '../actions/tabs.js';
   import Icon from './Icon.svelte';
   import AccountButton from './AccountButton.svelte';
   let { session, position } = $props();
@@ -18,8 +18,9 @@
       role="tab"
       aria-selected={!session.active && !session.logOnly}
       aria-controls="timeline"
-      tabindex={!session.active ? 0 : -1}
+      tabindex={!session.active || session.logOnly ? 0 : -1}
       class:active={!session.active && !session.logOnly}
+      use:revealTab={!session.active && !session.logOnly}
       onclick={() => session.choose('')}>Alle</button
     >
     {#each session.accounts as account (account.name)}
@@ -35,18 +36,22 @@
   <nav class="bottom-nav" aria-label="Hovednavigation">
     <button
       id="bottom-chat"
-      class:selected={!session.logOnly}
+      class:selected={!session.logOnly && !session.dialogOpen}
       aria-pressed={!session.logOnly}
+      aria-label={session.totalUnread
+        ? `Samtaler · ${session.totalUnread} beskedalarmer`
+        : 'Samtaler'}
       onclick={() => session.chooseLastChat()}
       ><Icon name="chat" /><span>Samtaler</span><span
         id="bottom-unread"
         class="nav-dot"
+        aria-hidden="true"
         hidden={!session.totalUnread}
       ></span></button
     >
     <button
       id="bottom-log"
-      class:selected={session.logOnly}
+      class:selected={session.logOnly && !session.dialogOpen}
       aria-pressed={session.logOnly}
       onclick={() => session.choose('', true)}><Icon name="log" /><span>Log</span></button
     >
@@ -54,12 +59,14 @@
       id="bottom-rooms"
       class:selected={session.dialogs.rooms}
       aria-pressed={session.dialogs.rooms}
+      aria-haspopup="dialog"
       onclick={() => session.openDialog('rooms')}><Icon name="room" /><span>Rum</span></button
     >
     <button
       id="bottom-settings"
       class:selected={session.dialogs.settings}
       aria-pressed={session.dialogs.settings}
+      aria-haspopup="dialog"
       onclick={() => session.openDialog('settings')}
       ><Icon name="settings" /><span>Mere</span></button
     >

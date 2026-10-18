@@ -4,8 +4,9 @@
 </script>
 
 {#if group.showDay}<div class="day-divider">{group.day}</div>{/if}
-<section
+<div
   class="message-group"
+  role="group"
   class:alternate={group.alternate}
   class:has-attention={group.attention}
   class:superuser={group.superuser}
@@ -30,7 +31,12 @@
         {#if group.kind === 'private'}<span class="private-label">Hvisken</span>{/if}
       {/if}
     </div>
-    <div class="message-accounts" aria-label="Dine brugere" hidden={Boolean(session.active)}>
+    <div
+      class="message-accounts"
+      role="group"
+      aria-label="Dine brugere"
+      hidden={Boolean(session.active)}
+    >
       {#each group.accounts as name (name)}<span class="message-account" title={name}>{name}</span
         >{/each}
     </div>
@@ -41,7 +47,7 @@
         onopen={(message) => session.openMessage(message)}
       />{/each}
   </div>
-</section>
+</div>
 
 <style>
   .day-divider {
@@ -50,7 +56,7 @@
     gap: 12px;
     margin: 12px 0 16px;
     color: #a7ad9b;
-    font: 10px/1.5 var(--mono);
+    font: 12px/1.5 var(--mono);
   }
   .day-divider::before,
   .day-divider::after {
@@ -60,7 +66,7 @@
     background: var(--line);
   }
   .message-group {
-    --time-gutter: clamp(35px, calc(var(--message-font, 16px) * 2.4), 51px);
+    --time-gutter: clamp(44px, calc(var(--message-font, 16px) * 2.4), 52px);
     padding: 8px 10px;
     margin-bottom: 6px;
     border-radius: 3px;
@@ -75,8 +81,8 @@
     display: flex;
     align-items: flex-start;
     justify-content: space-between;
-    gap: 10px;
-    margin-bottom: 3px;
+    gap: 8px;
+    margin-bottom: 2px;
   }
   .message-group-author {
     display: flex;
@@ -85,12 +91,14 @@
     flex-wrap: wrap;
     gap: 7px;
     min-width: 0;
-    min-height: 21px;
+    min-height: 24px;
   }
   .message-name {
     background: transparent;
     border: 0;
-    padding: 0;
+    min-height: 24px;
+    min-width: 24px;
+    padding: 1px 0;
     color: inherit;
     text-align: left;
   }
@@ -127,7 +135,7 @@
     align-items: center;
     justify-content: flex-end;
     gap: 4px;
-    max-width: 64%;
+    max-width: 52%;
     margin: -8px -10px 0 auto;
     padding: 4px 7px;
     border: 1px solid #53613c;
@@ -142,7 +150,7 @@
     border: 0;
     background: transparent;
     color: #e2f5bd;
-    font: 11px/1.4 var(--mono);
+    font: 12px/1.4 var(--mono);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -157,11 +165,11 @@
     border-left: 2px solid #baa6e3;
     padding: 1px 0 1px 5px;
     color: #cebee9;
-    font: 10px/1.4 var(--mono);
+    font: 11px/1.4 var(--mono);
   }
   @media (max-width: 700px) {
     .day-divider {
-      font-size: 10px;
+      font-size: 11px;
       margin: 10px 0 13px;
     }
     .message-group {

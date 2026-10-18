@@ -1,9 +1,9 @@
 <script>
-  let { label, children } = $props();
+  let { label, children, inline = false } = $props();
 </script>
 
-<details class="settings-help">
-  <summary aria-label={label}><span aria-hidden="true">?</span></summary>
+<details class="settings-help" class:inline>
+  <summary aria-label={label} title={label}><span aria-hidden="true">?</span></summary>
   <div class="settings-help-text">{@render children()}</div>
 </details>
 
@@ -14,8 +14,8 @@
     right: 0;
     display: grid;
     place-items: center;
-    width: 32px;
-    height: 32px;
+    width: 44px;
+    height: 44px;
     color: var(--muted);
     cursor: pointer;
     list-style: none;
@@ -33,7 +33,7 @@
     height: 18px;
     border: 1px solid currentColor;
     border-radius: 50%;
-    font: 600 11px/1 var(--mono);
+    font: 600 12px/1 var(--mono);
   }
   .settings-help > summary:hover,
   .settings-help[open] > summary {
@@ -45,7 +45,7 @@
     background: #2b3522;
     border-left: 2px solid #a0b873;
     color: #c4cdb7;
-    font-size: 12px;
+    font-size: 14px;
     line-height: 1.65;
   }
   .settings-help-text :global(p) {
@@ -58,5 +58,19 @@
     padding: 7px 0 0;
     border: 0;
     background: transparent;
+  }
+  .inline > summary {
+    position: static;
+  }
+  .inline .settings-help-text {
+    position: absolute;
+    z-index: 1;
+    top: 100%;
+    left: 12px;
+    right: 12px;
+    padding: 14px;
+    border: 1px solid var(--control-line);
+    border-left: 2px solid var(--accent);
+    box-shadow: 0 8px 20px #0005;
   }
 </style>

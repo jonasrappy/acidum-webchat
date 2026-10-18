@@ -137,28 +137,23 @@
 <style>
   .settings-group {
     position: relative;
-    padding: 18px 0;
-    border-bottom: 1px solid #414c34;
+    padding: 20px 0;
+    border-bottom: 1px solid var(--line);
+    --help-top: 8px;
   }
   .settings-group:first-of-type {
-    padding-top: 7px;
-    --help-top: -3px;
+    padding-top: 4px;
+    --help-top: -8px;
   }
   .settings-group h3 {
     display: flex;
     gap: 8px;
     align-items: center;
-    color: #c4d4a8;
-    font: 10px/1.5 var(--mono);
-    letter-spacing: 1.2px;
-    text-transform: uppercase;
+    color: var(--muted);
+    font-size: 13px;
+    font-weight: 650;
+    letter-spacing: 0.2px;
     margin: 0 0 14px;
-  }
-  .settings-group h3::before {
-    content: '';
-    width: 5px;
-    height: 5px;
-    background: var(--accent);
   }
   .settings-group > .soft-button {
     margin: 0 5px 5px 0;
@@ -168,7 +163,7 @@
     align-items: center;
     justify-content: space-between;
     gap: 16px;
-    min-height: 48px;
+    min-height: 52px;
     cursor: pointer;
   }
   .setting-row > span {
@@ -177,7 +172,7 @@
     gap: 5px;
   }
   .setting-row strong {
-    font-size: 14px;
+    font-size: 15px;
     font-weight: 600;
   }
 
@@ -232,7 +227,8 @@
     justify-content: space-between;
     gap: 12px;
     color: var(--muted);
-    font: 11px/1.5 var(--mono);
+    font-size: 13px;
+    overflow-wrap: anywhere;
   }
   #mobile-exit {
     display: flex;
@@ -243,18 +239,18 @@
     align-items: center;
     justify-content: space-between;
     gap: 10px;
-    font-size: 14px;
+    font-size: 15px;
     font-weight: 600;
     margin: 9px 0 4px;
   }
   .text-size-label output {
     color: var(--accent);
-    font: 12px/1.5 var(--mono);
+    font: 13px/1.5 var(--mono);
   }
   #text-size {
     display: block;
     width: 100%;
-    height: 38px;
+    height: 44px;
     margin: 0;
     accent-color: var(--accent);
     cursor: pointer;
@@ -273,11 +269,8 @@
     margin: 5px 0 14px;
   }
   @media (max-width: 700px) {
-    .settings-group {
-      padding-block: 17px;
-    }
     .settings-connection {
-      font-size: 11px;
+      gap: 8px;
     }
   }
 </style>

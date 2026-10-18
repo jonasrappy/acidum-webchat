@@ -1,5 +1,6 @@
 <script>
   import { badgeText } from '../lib/format.js';
+  import { revealTab } from '../actions/tabs.js';
   let { account, active, onclick, tab = false } = $props();
 </script>
 
@@ -13,6 +14,7 @@
   aria-controls={tab ? 'timeline' : undefined}
   tabindex={tab ? (active ? 0 : -1) : undefined}
   {onclick}
+  use:revealTab={tab && active}
 >
   <span class="account-copy">
     <span class="account-name">{account.name}</span>
@@ -30,13 +32,14 @@
     min-width: 0;
   }
   .account-name {
-    font-size: 14px;
+    font-size: 15px;
     font-weight: 650;
     overflow: hidden;
     text-overflow: ellipsis;
   }
   .account-room {
-    font: 11px/1.3 var(--mono);
+    font-size: 12px;
+    line-height: 1.4;
     color: var(--muted);
     white-space: nowrap;
     overflow: hidden;

@@ -8,11 +8,12 @@
 
 <aside class="sidebar">
   <Brand />
-  <p class="nav-label">OVERBLIK</p>
+  <p class="nav-label">Overblik</p>
   <button
     id="all-button"
     class="nav-item"
     class:active={!session.active && !session.logOnly}
+    aria-pressed={!session.active && !session.logOnly}
     onclick={() => session.choose('')}
   >
     <Icon name="chat" /> Alle samtaler
@@ -24,10 +25,11 @@
     id="log-button"
     class="nav-item"
     class:active={session.logOnly}
+    aria-pressed={session.logOnly}
     onclick={() => session.choose('', true)}><Icon name="log" /> Hændelseslog</button
   >
   <div class="nav-label account-label">
-    DINE BRUGERE <span id="account-count">{session.accounts.length}</span>
+    Dine brugere <span id="account-count">{session.accounts.length}</span>
   </div>
   <nav id="accounts" aria-label="Brugere">
     {#each session.accounts as account (account.name)}
@@ -56,8 +58,8 @@
 
 <style>
   .nav-label {
-    font: 10px/1.5 var(--mono);
-    letter-spacing: 1.1px;
+    font-size: 12px;
+    font-weight: 600;
     color: var(--muted);
   }
   .sidebar {
@@ -69,7 +71,7 @@
     overflow: auto;
   }
   .sidebar :global(.brand) {
-    margin: 0 10px 38px;
+    margin: 0 10px 28px;
   }
   .nav-label {
     margin: 0 11px 8px;
@@ -98,7 +100,7 @@
     gap: 7px;
     align-items: center;
     color: var(--muted);
-    font: 11px/1.5 var(--mono);
+    font-size: 12px;
     margin-bottom: 5px;
   }
   .status-dot {
@@ -113,7 +115,7 @@
   }
   .sidebar-bottom .text-button {
     margin-right: 14px;
-    font-size: 11px;
+    font-size: 13px;
   }
   @media (max-width: 1000px) and (min-width: 701px) {
     .sidebar {

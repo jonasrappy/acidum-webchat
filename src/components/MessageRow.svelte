@@ -59,7 +59,8 @@
     display: grid;
     grid-template-columns: minmax(0, 1fr) var(--time-gutter);
     gap: 9px;
-    padding: 2px 0;
+    padding: 1px 0;
+    min-height: 28px;
   }
   .message-content {
     grid-column: 1;
@@ -84,7 +85,7 @@
   }
   .message.system .message-text {
     color: #a6b09a;
-    font-size: max(10px, calc(var(--message-font, 16px) - 4px));
+    font-size: max(12px, calc(var(--message-font, 16px) - 2px));
     line-height: 1.5;
   }
   .message-content.movement {
@@ -98,6 +99,7 @@
     background: transparent;
     color: inherit;
     text-align: left;
+    min-height: 26px;
   }
   .followable:hover .message-text {
     text-decoration: underline;
@@ -124,29 +126,30 @@
   .message-meta {
     position: relative;
     display: flex;
-    align-items: baseline;
+    align-items: flex-start;
     justify-content: flex-end;
     gap: 2px;
     grid-column: 2;
     grid-row: 1;
-    padding-top: 2px;
     white-space: nowrap;
   }
   .message-time,
   .message time {
     color: #a0a995;
-    font: clamp(10px, calc(var(--message-font, 16px) - 7px), 15px)/1.3 var(--mono);
+    font: clamp(11px, calc(var(--message-font, 16px) - 6px), 15px)/1.3 var(--mono);
     font-variant-numeric: tabular-nums;
   }
   .message-time {
-    min-height: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    min-width: 44px;
+    min-height: 26px;
+    padding: 4px 0;
   }
   .message-time:hover,
   .message-time:hover time {
     color: var(--accent);
-  }
-  .message.system .message-meta {
-    padding-top: 1px;
   }
   .message.attention .message-text {
     color: #f1f9da;

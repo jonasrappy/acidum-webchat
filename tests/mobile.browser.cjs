@@ -100,7 +100,7 @@ const assert = require('node:assert/strict');
       .isVisible(),
     false,
   );
-  await page.locator('#settings-dialog').evaluate((el) => (el.scrollTop = 0));
+  await page.locator('#settings-dialog .sheet-body').evaluate((el) => (el.scrollTop = 0));
   await page.screenshot({ path: '/tmp/acidum-qa-mobile-settings.png' });
   await page.locator('#save-history').check();
   await page.locator('#settings-dialog .close-sheet').click();

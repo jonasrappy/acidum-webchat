@@ -114,6 +114,7 @@
         dismissed = '';
       }}
       aria-label="Send som"
+      title="Send som"
       ><option value="">Vælg bruger</option
       >{#each session.accounts as account (account.name)}<option value={account.name}
           >{account.name}</option
@@ -134,6 +135,7 @@
       onkeyup={moved}
       placeholder="Skriv en besked…"
       aria-label="Besked"
+      aria-describedby={session.composer.error ? 'send-error' : undefined}
       role="combobox"
       aria-autocomplete="list"
       aria-controls="mention-suggestions"
@@ -154,7 +156,8 @@
       class="send-button"
       type="submit"
       aria-label="Send besked"
-      disabled={!session.composer.account || !session.online}><Icon name="send" /></button
+      disabled={!session.composer.account || !session.online || !session.composer.text.trim()}
+      ><Icon name="send" /></button
     >
   </form>
   <p id="send-error" class="error" role="alert">{session.composer.error}</p>
@@ -165,36 +168,38 @@
     position: relative;
     z-index: 2;
     flex: none;
-    padding: 9px 24px;
+    padding: 10px var(--gutter);
     background: #20211c;
     border-top: 1px solid var(--line);
   }
   #composer {
     display: flex;
     align-items: center;
-    gap: 10px;
-    min-height: 51px;
-    max-width: 1100px;
+    gap: 8px;
+    min-height: 54px;
+    max-width: var(--content-width);
     margin-inline: auto;
     padding: 5px 6px;
-    border: 1px solid #586347;
+    border: 1px solid var(--control-line);
     border-radius: 3px;
     background: #292e23;
   }
   #composer:focus-within {
     border-color: var(--accent);
+    box-shadow: 0 0 0 1px var(--accent);
   }
   #send-as {
     flex: none;
-    max-width: 130px;
-    min-height: 37px;
-    padding: 8px;
+    max-width: min(28%, 140px);
+    min-height: 44px;
+    padding: 8px 6px;
     border: 0;
     border-right: 1px solid #4b583b;
     border-radius: 0;
     color: var(--accent);
     background: transparent;
-    font-size: 12px;
+    font-size: 16px;
+    text-overflow: ellipsis;
   }
   #send-as option {
     background: var(--panel);
@@ -204,7 +209,8 @@
     flex: 1;
     width: 100%;
     min-width: 0;
-    padding: 6px 0;
+    min-height: 44px;
+    padding: 8px 0;
     border: 0;
     background: transparent;
     color: var(--text);
@@ -221,8 +227,8 @@
     display: grid;
     place-items: center;
     flex: none;
-    width: 39px;
-    height: 39px;
+    width: 44px;
+    height: 44px;
     padding: 8px;
     border: 0;
     border-radius: 2px;
@@ -243,12 +249,16 @@
     font: 11px/1.4 var(--mono);
     white-space: nowrap;
   }
+  #send-error {
+    max-width: var(--content-width);
+    margin-inline: auto;
+  }
   .mention-menu {
     position: absolute;
     z-index: 5;
     bottom: calc(100% + 4px);
-    left: 24px;
-    right: 24px;
+    left: var(--gutter);
+    right: var(--gutter);
     max-width: 520px;
     overflow: hidden;
     border: 1px solid #798954;
@@ -261,7 +271,7 @@
     padding: 8px 12px;
     color: #bdcda4;
     border-bottom: 1px solid #4b583b;
-    font: 10px/1.5 var(--mono);
+    font-size: 12px;
   }
   #mention-suggestions {
     position: relative;
@@ -287,31 +297,20 @@
     background: var(--accent);
     color: var(--ink);
   }
-  @media (max-width: 1000px) and (min-width: 701px) {
-    .composer-wrap {
-      padding-inline: 18px;
-    }
-  }
   @media (max-width: 700px) {
     .composer-wrap {
       padding: 6px 8px;
     }
     #composer {
-      gap: 8px;
-      min-height: 51px;
-      padding: 5px;
+      gap: 6px;
+      padding: 4px;
     }
     #send-as {
-      max-width: 100px;
-      padding: 8px 6px;
-      font-size: 16px;
-    }
-    .send-button {
-      width: 38px;
-      height: 38px;
+      max-width: 27%;
+      padding-inline: 4px;
     }
     .message-limit {
-      font-size: 9px;
+      font-size: 11px;
     }
     .mention-menu {
       left: 9px;

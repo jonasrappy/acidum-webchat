@@ -83,7 +83,7 @@ export class ChatSession {
   heading = $derived(this.logOnly ? 'Hændelseslog' : this.active || 'Alle samtaler');
   subtitle = $derived(
     this.logOnly
-      ? 'Markeringer og hændelser fra dine acidum-brugere.'
+      ? 'Seneste 100 hændelser'
       : this.currentAccount?.room
         ? `${this.currentAccount.room.name}${this.currentAccount.room.id != null ? ' · Rum ' + this.currentAccount.room.id : ''}`
         : '',
@@ -94,8 +94,8 @@ export class ChatSession {
       : 'acidum · webchat',
   );
   emptyText = $derived(
-    this.query
-      ? 'Ingen beskeder matcher din søgning i den indlæste historik.'
+    this.query || this.person || this.mode === 'private'
+      ? 'Ingen beskeder matcher de valgte filtre i den indlæste historik.'
       : this.logOnly
         ? 'Ingen markerede hændelser endnu.'
         : !this.accounts.length

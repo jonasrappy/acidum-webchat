@@ -3,7 +3,7 @@
   import Icon from './Icon.svelte';
   let { session } = $props();
   let searchInput;
-  let filtered = $derived(Boolean(session.person) || session.mode === 'private');
+  let filtered = $derived(Boolean(session.person || session.query) || session.mode === 'private');
 
   async function toggleSearch() {
     session.searchOpen = !session.searchOpen;
@@ -11,6 +11,12 @@
       await tick();
       searchInput?.focus({ preventScroll: true });
     }
+  }
+
+  function closeSearch(event) {
+    if (event.key !== 'Escape') return;
+    session.searchOpen = false;
+    document.getElementById('search-toggle')?.focus({ preventScroll: true });
   }
 </script>
 
@@ -29,33 +35,54 @@
         ? 'Søg og filtrér beskeder · Kun hvisken'
         : 'Søg og filtrér beskeder'}
       aria-expanded={session.searchOpen}
+      aria-controls="search-bar"
+      title="Søg og filtrér beskeder"
       onclick={toggleSearch}><Icon name="search" /></button
     >
     <button
       id="rooms-button"
       class="icon-button room-top-button"
       aria-label="Rum og brugere"
+      aria-haspopup="dialog"
+      title="Rum og brugere"
       onclick={() => session.openDialog('rooms')}><Icon name="people" /></button
     >
     <button
       id="settings-button"
       class="icon-button"
       aria-label="Indstillinger"
+      aria-haspopup="dialog"
+      title="Indstillinger"
       onclick={() => session.openDialog('settings')}><Icon name="settings" /></button
     >
   </div>
 </header>
+<div class="connection-notice" id="connection-notice" hidden={session.online || session.demo}>
+  <span role="status">{session.status}</span>
+  <button type="button" onclick={() => session.reconnect()}>Prøv igen</button>
+</div>
 <div class="toolbar" id="search-bar">
   <label class="search"
-    ><span aria-hidden="true">⌕</span><input
+    ><Icon name="search" /><input
       id="search"
       type="search"
       bind:this={searchInput}
       bind:value={session.searchText}
       oninput={() => session.searchChanged()}
+      onkeydown={closeSearch}
       placeholder="Søg i beskeder…"
       aria-label="Søg i indlæst historik"
-    /><kbd>/</kbd></label
+    /><button
+      id="clear-search"
+      class="clear-search"
+      type="button"
+      hidden={!session.searchText}
+      aria-label="Nulstil søgning"
+      onclick={() => {
+        session.clearSearch();
+        searchInput?.focus({ preventScroll: true });
+      }}>×</button
+    ><kbd hidden={Boolean(session.searchText)}>/</kbd></label
   >
   <button
     id="private-toggle"
@@ -65,20 +92,59 @@
     aria-pressed={session.mode === 'private'}
     onclick={() => session.togglePrivate()}>Kun hvisken</button
   >
-  <button
-    id="clear-search"
-    class="text-button"
-    hidden={!session.query}
-    onclick={() => session.clearSearch()}>Nulstil</button
-  >
 </div>
-<div id="view-filters" class="view-filters" hidden={!session.person}>
-  <button id="person-filter" hidden={!session.person} onclick={() => session.clearPerson()}
-    >{session.person} ×</button
+<div
+  id="view-filters"
+  class="view-filters"
+  role="group"
+  aria-label="Aktive filtre"
+  hidden={!session.person && (session.searchOpen || (!session.query && session.mode !== 'private'))}
+>
+  <button
+    id="person-filter"
+    hidden={!session.person}
+    aria-label={`Fjern filter for ${session.person}`}
+    onclick={() => session.clearPerson()}>{session.person} ×</button
+  >
+  <button
+    hidden={session.searchOpen || session.mode !== 'private'}
+    aria-label="Vis alle beskeder igen"
+    onclick={() => session.togglePrivate()}>Kun hvisken ×</button
+  >
+  <button
+    hidden={session.searchOpen || !session.query}
+    aria-label="Fjern søgefilter"
+    onclick={() => session.clearSearch()}>“{session.query}” ×</button
   >
 </div>
 
 <style>
+  .connection-notice {
+    display: flex;
+    flex: none;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 0 max(var(--gutter), calc((100% - var(--content-width)) / 2));
+    color: #f4d3a6;
+    background: #3a3023;
+    border-bottom: 1px solid #7d694d;
+    font-size: 13px;
+  }
+  .connection-notice > span {
+    overflow-wrap: anywhere;
+  }
+  .connection-notice button {
+    flex: none;
+    min-height: 44px;
+    padding: 8px 0 8px 12px;
+    background: transparent;
+    border: 0;
+    color: inherit;
+    font-weight: 650;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
   .chat-header {
     display: flex;
     flex: none;
@@ -86,7 +152,7 @@
     justify-content: space-between;
     gap: 12px;
     min-height: 74px;
-    padding: 12px 24px;
+    padding: 12px max(var(--gutter), calc((100% - var(--content-width)) / 2));
     border-bottom: 1px solid var(--line);
   }
   .chat-header > div:first-child {
@@ -105,7 +171,7 @@
   }
   #view-subtitle {
     color: var(--muted);
-    font: 11px/1.5 var(--mono);
+    font-size: 13px;
     margin: 5px 0 0;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -143,7 +209,7 @@
     flex: none;
     align-items: center;
     gap: 8px;
-    padding: 9px 24px;
+    padding: 10px max(var(--gutter), calc((100% - var(--content-width)) / 2));
     border-bottom: 1px solid var(--line);
   }
   :global(.search-open) .toolbar {
@@ -152,31 +218,33 @@
   .search {
     display: flex;
     align-items: center;
-    gap: 9px;
+    gap: 8px;
     flex: 1;
     min-width: 0;
     max-width: 460px;
-    padding: 8px 10px;
+    min-height: 44px;
+    padding: 0 10px;
     background: #292d24;
-    border: 1px solid #464e3c;
+    border: 1px solid var(--control-line);
     border-radius: 3px;
   }
   .search:focus-within {
     border-color: var(--accent);
   }
-  .search > span {
+  .search :global(svg) {
     color: var(--muted);
-    font-size: 24px;
-    line-height: 20px;
+    width: 18px;
+    height: 18px;
   }
   .search input {
     width: 100%;
     min-width: 0;
-    padding: 1px 0;
+    min-height: 42px;
+    padding: 8px 0;
     background: none;
     border: 0;
     color: var(--text);
-    font-size: 15px;
+    font-size: 16px;
   }
   .search input:focus {
     outline: 0;
@@ -190,13 +258,13 @@
   }
   .private-toggle {
     flex: none;
-    min-height: 38px;
-    padding: 7px 9px;
-    border: 1px solid #464e3c;
+    min-height: 44px;
+    padding: 8px 12px;
+    border: 1px solid var(--control-line);
     border-radius: 3px;
     background: transparent;
     color: #c0c6b6;
-    font-size: 12px;
+    font-size: 13px;
     white-space: nowrap;
   }
   .private-toggle.active {
@@ -204,47 +272,53 @@
     border-color: var(--accent);
     color: var(--accent);
   }
-  #clear-search {
+  .clear-search {
     flex: none;
-    font-size: 11px;
+    width: 32px;
+    height: 40px;
+    padding: 0;
+    background: transparent;
+    border: 0;
+    color: var(--muted);
+    font-size: 24px;
   }
   .view-filters {
     display: flex;
     flex: none;
     gap: 6px;
-    padding: 8px 24px;
-    overflow-x: auto;
-    scrollbar-width: none;
+    flex-wrap: wrap;
+    padding: 8px max(var(--gutter), calc((100% - var(--content-width)) / 2));
+    border-bottom: 1px solid var(--line);
   }
   .view-filters button {
     flex: none;
-    min-height: 34px;
+    min-height: 36px;
+    max-width: 100%;
     padding: 6px 10px;
     background: #373326;
     border: 1px solid #766642;
     border-radius: 2px;
     color: #ebd5a2;
-    font-size: 12px;
-  }
-  @media (max-width: 1000px) and (min-width: 701px) {
-    .chat-header,
-    .toolbar,
-    .view-filters {
-      padding-inline: 18px;
-    }
+    font-size: 13px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
   @media (max-width: 700px) {
+    .connection-notice {
+      padding-inline: 16px;
+    }
     .chat-header {
-      min-height: 54px;
-      padding: 7px 14px;
+      min-height: 56px;
+      padding: 6px 12px 6px 16px;
       gap: 8px;
     }
     .chat-header h1 {
-      font-size: 21px;
-      letter-spacing: -0.7px;
+      font-size: 20px;
+      letter-spacing: -0.5px;
     }
     #view-subtitle {
-      font-size: 10px;
+      font-size: 12px;
       margin-top: 3px;
     }
     .header-actions {
@@ -253,10 +327,6 @@
     .header-actions .room-top-button,
     .header-actions #settings-button {
       display: none;
-    }
-    .header-actions #search-toggle {
-      width: 40px;
-      height: 40px;
     }
     .demo-label {
       display: none;
@@ -267,7 +337,7 @@
     }
     .search {
       max-width: none;
-      padding: 8px;
+      padding-inline: 8px;
     }
     .search input {
       font-size: 16px;
@@ -276,8 +346,8 @@
       display: none;
     }
     .private-toggle {
-      padding: 7px 8px;
-      font-size: 11px;
+      padding-inline: 9px;
+      font-size: 12px;
     }
     .view-filters {
       padding: 6px 12px;
@@ -286,9 +356,6 @@
       min-height: 54px;
     }
     :global(.keyboard-open) #view-subtitle {
-      display: none;
-    }
-    :global(.compact-viewport) .view-filters {
       display: none;
     }
     :global(.compact-viewport) .chat-header {
