@@ -6,8 +6,8 @@ import {mentionQuery,mentionSuggestions,completeMention} from './mentions.js?v=1
 import {timelineGroups} from './timeline.js?v=12';
 import {scopeFor, archiveId, saveMessages, loadBefore, clearScope} from './archive.js?v=8';
 const $ = id => document.getElementById(id);
-let textSize=19;
-try{const saved=Number(localStorage.getItem('acidum-text-size'));if(Number.isFinite(saved)&&saved>=16&&saved<=26)textSize=Math.round(saved);}catch{}
+let textSize=16;
+try{const saved=Number(localStorage.getItem('acidum-text-size'));if(Number.isFinite(saved)&&saved>=10&&saved<=30)textSize=Math.round(saved);}catch{}
 function applyTextSize(value){
   document.documentElement.style.setProperty('--message-font',value+'px');$('text-size').value=value;$('text-size-value').value=value+' px';
 }
