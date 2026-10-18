@@ -18,21 +18,33 @@
     >
     <span class="saved-marker" hidden={!row.saved}>★</span>
   </div>
-  <div class="message-content" class:movement={row.movement}>
-    {#if row.movement}<span
-        class="movement-icon"
-        class:enter={row.entering}
-        class:leave={!row.entering}
-        aria-hidden="true">{row.entering ? '→' : '←'}</span
-      >{/if}
-    <p class="message-text">
-      {#each row.parts as part}{#if part.href}<a
-            href={part.href}
-            target="_blank"
-            rel="noopener noreferrer">{part.text}</a
-          >{:else}{part.text}{/if}{/each}
-    </p>
-  </div>
+  {#if row.message.type === 'part' && row.message.destination}
+    <button
+      class="message-content movement followable"
+      type="button"
+      aria-label={row.message.text + ' · Beskedhandlinger'}
+      onclick={() => onopen(row.message)}
+      ><span class="movement-icon leave" aria-hidden="true">←</span><span class="message-text"
+        >{row.message.text}</span
+      ></button
+    >
+  {:else}
+    <div class="message-content" class:movement={row.movement}>
+      {#if row.movement}<span
+          class="movement-icon"
+          class:enter={row.entering}
+          class:leave={!row.entering}
+          aria-hidden="true">{row.entering ? '→' : '←'}</span
+        >{/if}
+      <p class="message-text">
+        {#each row.parts as part}{#if part.href}<a
+              href={part.href}
+              target="_blank"
+              rel="noopener noreferrer">{part.text}</a
+            >{:else}{part.text}{/if}{/each}
+      </p>
+    </div>
+  {/if}
 </article>
 
 <style>
@@ -79,6 +91,17 @@
     display: flex;
     align-items: flex-start;
     gap: 6px;
+  }
+  .followable {
+    border: 0;
+    padding: 0;
+    background: transparent;
+    color: inherit;
+    text-align: left;
+  }
+  .followable:hover .message-text {
+    text-decoration: underline;
+    text-underline-offset: 3px;
   }
   .movement .message-text {
     flex: 1;

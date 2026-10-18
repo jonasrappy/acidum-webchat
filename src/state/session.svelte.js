@@ -18,6 +18,7 @@ import {
 import { trackViewport } from '../actions/viewport.js';
 import { TimelineWindow } from './timeline.svelte.js';
 import { LocalHistory } from './history.svelte.js';
+import { EventLog } from '../lib/event-log.js';
 
 class Account {
   room = $state.raw(null);
@@ -69,10 +70,16 @@ export class ChatSession {
   selectedPerson = $state.raw(null);
   alert = $state.raw(null);
   history = new LocalHistory();
+  eventLog = new EventLog();
   timeline = new TimelineWindow();
 
   totalUnread = $derived(this.accounts.reduce((sum, account) => sum + account.unread, 0));
   currentAccount = $derived(this.accounts.find((account) => account.name === this.active));
+  followAccount = $derived(
+    this.accounts.some((account) => account.name === this.composer.account)
+      ? this.composer.account
+      : '',
+  );
   heading = $derived(this.logOnly ? 'Hændelseslog' : this.active || 'Alle samtaler');
   subtitle = $derived(
     this.logOnly
@@ -223,12 +230,17 @@ export class ChatSession {
     this.loginError = '';
     this.history.resetView();
     this.localData = null;
+    this.eventLog = new EventLog();
     this.history.scope = '';
     loginScope(token)
       .then((scope) => {
         if (generation !== this.loginGeneration) return;
         this.history.scope = scope;
         this.localData = new LocalData(localStorageOrFallback(), scope);
+        const pending = this.eventLog.rows.flatMap((row) => row.sources || [row]);
+        this.eventLog = new EventLog(localStorageOrFallback(), scope);
+        this.eventLog.capture([...pending, ...this.store.messages('')]);
+        this.eventLog.flush();
         if (this.composer.text) this.composer.save();
         else this.composer.text = this.localData.draft(this.composer.account);
         if (this.history.enabled) this.queueCurrentHistory();
@@ -258,6 +270,7 @@ export class ChatSession {
     if (forget) writeToken(null);
     this.resumeAvailable = Boolean(readToken());
     this.localData = null;
+    this.eventLog = new EventLog();
     this.composer.reset();
     this.store = new ChatStore();
     this.accounts = [];
@@ -323,6 +336,8 @@ export class ChatSession {
   }
 
   ingest(payload, { historical = false } = {}) {
+    let logChanged = false;
+    const received = [];
     for (const event of (Array.isArray(payload) ? payload : [payload]).slice(0, 10000)) {
       if (Array.isArray(event?.tabs)) {
         this.updateTabs(event.tabs);
@@ -332,6 +347,8 @@ export class ChatSession {
       const roleRevision = this.store.roleRevision;
       const message = this.store.add(event);
       if (!message) continue;
+      received.push(message);
+      if (this.eventLog.relevant(message)) logChanged = true;
       if (this.store.roleRevision !== roleRevision) this.viewDirty = true;
       if (!this.demo) this.history.queue(message);
       if (!historical && message.serverNotify) this.notifications.receive(message);
@@ -348,6 +365,11 @@ export class ChatSession {
       if (message.type === 'room' || this.dialogs.rooms) this.navDirty = true;
       if (message.account === this.composer.account) this.rosterRevision++;
       if (visible && !this.nearBottom) this.notice = true;
+    }
+    if (logChanged) {
+      const changed = this.eventLog.capture([...this.store.messages(''), ...received]);
+      this.eventLog.flush();
+      if (changed && this.logOnly) this.viewDirty = true;
     }
     if (!document.hidden && !this.incomingTimer) {
       this.incomingTimer = setTimeout(
@@ -383,6 +405,14 @@ export class ChatSession {
   }
 
   combinedMessages() {
+    if (this.logOnly)
+      return this.eventLog.rows.filter(
+        (message) =>
+          (!this.active || (message.accounts || [message.account]).includes(this.active)) &&
+          (this.showEvents || !message.system) &&
+          this.matchesQuery(message) &&
+          this.accept(message),
+      );
     const current = this.active
       ? this.store.tabs.get(this.active)?.messages || []
       : [...this.store.tabs.values()].flatMap((tab) => tab.messages);
@@ -444,8 +474,9 @@ export class ChatSession {
         ),
     );
     this.hasOlder =
-      messages.length > this.pageSize ||
-      Boolean(this.history.enabled && this.history.scope && this.history.hasMore && !this.demo);
+      !this.logOnly &&
+      (messages.length > this.pageSize ||
+        Boolean(this.history.enabled && this.history.scope && this.history.hasMore && !this.demo));
     if (this.nearBottom) this.notice = false;
     const revision = ++this.scrollRevision;
     tick().then(() => {
@@ -488,6 +519,7 @@ export class ChatSession {
   }
 
   async loadOlder() {
+    if (this.logOnly) return;
     if (this.loadingOlder || this.history.loading || this.demo) return;
     const messages = this.combinedMessages();
     if (messages.length > this.pageSize) {
@@ -658,6 +690,18 @@ export class ChatSession {
   openMessage(message) {
     this.messageTools.select(message);
     this.openDialog('message');
+  }
+
+  followMessage() {
+    const destination = this.messageTools.selected?.destination;
+    const account = this.followAccount;
+    if (!destination || !Number.isSafeInteger(destination.id) || destination.id < 0 || !account)
+      return;
+    if (!this.online || !this.connection.send({ name: account, say: '/goto ' + destination.id })) {
+      this.messageTools.status = 'Forbindelsen er afbrudt. Prøv igen, når du er forbundet.';
+      return;
+    }
+    this.closeDialog('message');
   }
 
   exportChat() {

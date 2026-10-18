@@ -11,6 +11,14 @@
 >
   <p id="message-preview" class="message-preview">{session.messageTools.selected?.text || ''}</p>
   <div class="sheet-actions">
+    {#if session.messageTools.selected?.destination}
+      <button
+        id="follow-message"
+        class="soft-button"
+        disabled={!session.followAccount}
+        onclick={() => session.followMessage()}>Følg efter som {session.followAccount}</button
+      >
+    {/if}
     <button id="copy-message" class="soft-button" onclick={() => session.messageTools.copy()}
       >Kopiér tekst</button
     ><button id="save-message" class="soft-button" onclick={() => session.messageTools.toggle()}
@@ -21,6 +29,9 @@
 </Sheet>
 
 <style>
+  #follow-message {
+    overflow-wrap: anywhere;
+  }
   .message-preview {
     padding: 12px;
     border-left: 2px solid #a0b873;

@@ -21,6 +21,9 @@ export function mergeRoomCopies(messages) {
     const match = bucket.reduce((best, item) => {
       if (
         item.accounts.has(message.account) ||
+        (item.destination &&
+          message.destination &&
+          item.destination.id !== message.destination.id) ||
         (item.roomKey && message.roomKey && item.roomKey !== message.roomKey) ||
         (item.time !== message.time && !(item.roomKey && message.roomKey))
       )
@@ -33,6 +36,7 @@ export function mergeRoomCopies(messages) {
       bucket.push({
         time: message.time,
         roomKey: message.roomKey,
+        destination: message.destination,
         accounts: new Set([message.account]),
         sources: [message],
         index: result.length,
@@ -52,8 +56,10 @@ export function mergeRoomCopies(messages) {
       serverMarked: match.sources.some((m) => m.serverMarked ?? m.log),
       serverNotify: match.sources.some((m) => m.serverNotify),
       superuser: match.sources.some((m) => m.superuser),
+      destination: match.destination || message.destination,
     };
     match.roomKey ??= message.roomKey;
+    match.destination ??= message.destination;
   }
   return result;
 }

@@ -88,7 +88,11 @@
         Gem op til 10.000 beskeder lokalt i din browser. Scroll op i samtalen for at hente ældre
         gemte beskeder.
       </p>
-      <p>Slår du lagring fra, bevares allerede gemte beskeder, indtil du sletter dem.</p></Help
+      <p>Slår du lagring fra, bevares allerede gemte beskeder, indtil du sletter dem.</p>
+      <p>
+        Hændelsesloggen gemmer altid de seneste 100 hændelser lokalt, uden tidsudløb. Den påvirkes
+        ikke af “Gem historik” eller “Slet gemt historik”.
+      </p></Help
     >
     <label class="setting-row" for="save-history"
       ><span><strong>Gem historik</strong></span><input

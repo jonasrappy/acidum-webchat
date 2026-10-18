@@ -19,6 +19,8 @@ export class MessageTools {
       message.sources?.find((source) => this.getData()?.isSaved(source)) ||
       message.sources?.[0] ||
       message;
+    if (!this.selected.destination && message.destination)
+      this.selected = { ...this.selected, destination: message.destination };
     this.saved = this.isSaved(this.selected);
     this.status = '';
   }

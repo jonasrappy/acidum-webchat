@@ -3,6 +3,14 @@ const userKey = (name) =>
   String(name || '')
     .normalize('NFKC')
     .toLocaleLowerCase('da');
+
+function roomDestination(room) {
+  if (!['number', 'string'].includes(typeof room?.id) || !/^\d+$/.test(String(room.id)))
+    return undefined;
+  const id = Number(room.id);
+  if (!Number.isSafeInteger(id) || id < 0) return undefined;
+  return { id, name: String(room.name || 'Rum ' + id) };
+}
 export function parseToken(input) {
   const value = String(input || '').trim();
   if (!value) throw new Error('Indsæt dit acidum-webchat-link.');
@@ -193,6 +201,7 @@ export class ChatStore {
       serverNotify: Boolean(event.notify),
       attention: needsAttention(event),
       superuser: this.isSuperuser(event.me.name, description.name),
+      destination: event.type === 'part' ? roomDestination(event.room) : undefined,
       ...description,
     };
     tab.keys.add(key);

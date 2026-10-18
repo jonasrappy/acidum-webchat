@@ -96,6 +96,22 @@ test('historical room identity survives later room changes and departures use th
   assert.equal(newer.roomKey, 'id:7');
   assert.equal(mergeRoomCopies([newer, other]).length, 2);
 });
+test('departure copies preserve their destination and conflicting destination ids stay separate', () => {
+  const part = (account, destination) =>
+    event('part', {
+      account,
+      key: account,
+      roomKey: 'id:12',
+      text: 'er gået til Et rum',
+      destination,
+    });
+  const destination = { id: 53, name: 'Et rum' };
+  assert.equal(mergeRoomCopies([part('Nova'), part('Milo', destination)])[0].destination.id, 53);
+  assert.equal(
+    mergeRoomCopies([part('Nova', destination), part('Milo', { id: 54, name: 'Et rum' })]).length,
+    2,
+  );
+});
 test('another author, account, day, private channel or room event starts a new group', () => {
   for (const middle of [
     event('text', { name: 'Alma' }),

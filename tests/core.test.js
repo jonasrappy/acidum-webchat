@@ -241,3 +241,21 @@ test('role metadata is bounded and discarded with its account', () => {
   store.setTabs(['Test']);
   assert.equal(store.tab('Test').userRoles.size, 0);
 });
+
+test('departures preserve the destination id separately from the source room', () => {
+  const store = new ChatStore();
+  store.setTabs(['Test']);
+  store.add({ ...event(1), type: 'room', room: { id: 12, name: 'Torvet' } });
+  const departure = store.add({ ...event(2), type: 'part', room: { id: '53', name: 'X-perten' } });
+  assert.equal(departure.roomKey, 'id:12');
+  assert.deepEqual(departure.destination, { id: 53, name: 'X-perten' });
+  for (const [index, id] of [null, undefined, -1, '53 /bad', 1.5].entries())
+    assert.equal(
+      store.add({ ...event(10 + index), type: 'part', room: { id, name: 'Ukendt' } }).destination,
+      undefined,
+    );
+  assert.equal(
+    store.add({ ...event(20), room: { id: 53, name: 'X-perten' } }).destination,
+    undefined,
+  );
+});
