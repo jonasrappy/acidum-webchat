@@ -42,14 +42,14 @@ function example(type, extra = {}) {
   return { me: { name: 'Nova' }, user: { name: 'Alma' }, time: 1700000000000, type, ...extra };
 }
 
-test('English event descriptions preserve existing message identities and original room names', () => {
-  for (const [type, extra, legacyText, expected] of cases) {
+test('Danish chat events preserve existing message identities and restore saved English events', () => {
+  for (const [type, extra, expected, englishText] of cases) {
     const store = new ChatStore();
     store.setTabs(['Nova']);
     const message = store.add(example(type, extra));
     assert.equal(message.text, expected);
-    assert.equal(JSON.parse(message.key)[3], legacyText);
-    assert.equal(restoreMessage({ ...message, text: legacyText }).text, expected);
+    assert.equal(JSON.parse(message.key)[3], expected);
+    assert.equal(restoreMessage({ ...message, text: englishText }).text, expected);
     assert.equal(store.add(example(type, extra)), null);
   }
 });
@@ -58,7 +58,7 @@ test('restored event logs and bookmarks stay compatible with replays and exports
   const store = new ChatStore();
   store.setTabs(['Nova']);
   const current = store.add(example('join', { log: true }));
-  const legacy = { ...current, text: 'er kommet ind' };
+  const legacy = { ...current, text: 'joined the room' };
   const values = new Map([
     ['acidum-events-one', JSON.stringify([legacy])],
     ['acidum-local-one', JSON.stringify({ saved: [legacy], drafts: [['Nova', 'Min kladde']] })],
@@ -69,19 +69,19 @@ test('restored event logs and bookmarks stay compatible with replays and exports
   };
   const log = new EventLog(disk, 'one');
   const saved = new LocalData(disk, 'one');
-  assert.equal(log.rows[0].text, 'joined the room');
+  assert.equal(log.rows[0].text, 'er kommet ind');
   log.capture([current]);
   assert.equal(log.rows.length, 1);
   assert.equal(saved.isSaved(current), true);
-  assert.equal([...saved.saved.values()][0].text, 'joined the room');
+  assert.equal([...saved.saved.values()][0].text, 'er kommet ind');
   assert.equal(saved.draft('Nova'), 'Min kladde');
-  assert.ok(exportText(log.rows).includes('Alma: joined the room'));
+  assert.ok(exportText(log.rows).includes('Alma: er kommet ind'));
   saved.toggleSaved(current);
   assert.equal(saved.saved.size, 0);
 });
 
 test('received message text is never translated, including text that looks like a system event', () => {
-  for (const text of ['er kommet ind', 'Panic deaktiveret', 'Hej Søren!']) {
+  for (const text of ['joined the room', 'Panic deactivated', 'Hej Søren!']) {
     const original = { type: 'text', text };
     assert.equal(restoreMessage(original), original);
     const store = new ChatStore();

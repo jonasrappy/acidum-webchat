@@ -97,9 +97,9 @@ const assert = require('node:assert/strict');
     assert.equal(movementColors[0], movementColors[2]);
     assert.notEqual(movementColors[0], movementColors[1]);
     assert.deepEqual(await group.locator('.message-text').allTextContents(), [
-      'joined the room',
-      'left the chat',
-      'joined the room',
+      'er kommet ind',
+      'har forladt chatten',
+      'er kommet ind',
       'hello again',
     ]);
     assert.equal(
@@ -123,7 +123,7 @@ const assert = require('node:assert/strict');
       '16px',
     );
     await group.locator('.message-time').nth(1).click();
-    assert.equal(await page.locator('#message-preview').textContent(), 'left the chat');
+    assert.equal(await page.locator('#message-preview').textContent(), 'har forladt chatten');
     await page.locator('#save-message').click();
     await page.locator('#message-dialog .close-sheet').click();
     for (const data of [

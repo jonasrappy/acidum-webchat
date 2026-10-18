@@ -1,52 +1,31 @@
-// Keep existing message identities compatible with locally saved history and bookmarks.
-export function identityText(event, text) {
-  switch (event.type) {
-    case 'priv':
-      return `${event.from?.name === event.me?.name ? `til ${event.to?.name || '?'}` : 'hvisker'}: ${event.text || ''}`;
-    case 'join':
-      return 'er kommet ind';
-    case 'part':
-      return `er gået til ${event.room?.name || event.room?.id || 'et andet rum'}`;
-    case 'quit':
-      return 'har forladt chatten';
-    case 'room':
-      return `Velkommen til ${event.room?.name || 'rummet'}${event.room?.id != null ? ` · ${event.room.id}` : ''}`;
-    case 'log':
-      return event.users?.length
-        ? `Panic aktiveret af ${event.users.map((user) => user.name).join(', ')}`
-        : 'Panic deaktiveret';
-    default:
-      return text;
-  }
-}
-
+// Restore the original chat wording without changing saved identities or user-written content.
 export function restoreMessage(message) {
   let text = message.text;
   switch (message.type) {
     case 'priv':
-      text = text.replace(/^hvisker:/, 'whispers:').replace(/^til /, 'to ');
+      text = text.replace(/^whispers:/, 'hvisker:').replace(/^to /, 'til ');
       break;
     case 'join':
-      text = 'joined the room';
+      text = 'er kommet ind';
       break;
     case 'part':
       text =
-        text === 'er gået til et andet rum'
-          ? 'moved to another room'
-          : text.replace(/^er gået til /, 'moved to ');
+        text === 'moved to another room'
+          ? 'er gået til et andet rum'
+          : text.replace(/^moved to /, 'er gået til ');
       break;
     case 'quit':
-      text = 'left the chat';
+      text = 'har forladt chatten';
       break;
     case 'room':
       text = text
-        .replace(/^Velkommen til rummet(?= · |$)/, 'Welcome to the room')
-        .replace(/^Velkommen til /, 'Welcome to ');
+        .replace(/^Welcome to the room(?= · |$)/, 'Velkommen til rummet')
+        .replace(/^Welcome to /, 'Velkommen til ');
       break;
     case 'log':
       text = text
-        .replace(/^Panic aktiveret af /, 'Panic activated by ')
-        .replace(/^Panic deaktiveret$/, 'Panic deactivated');
+        .replace(/^Panic activated by /, 'Panic aktiveret af ')
+        .replace(/^Panic deactivated$/, 'Panic deaktiveret');
       break;
   }
   return text === message.text ? message : { ...message, text };

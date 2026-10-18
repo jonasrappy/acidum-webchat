@@ -65,7 +65,7 @@ const assert = require('node:assert/strict');
     assert.equal(await page.locator('#message').inputValue(), 'Min usendte kladde');
     await page
       .locator('.message')
-      .filter({ hasText: 'moved to Unknown room' })
+      .filter({ hasText: 'er gået til Unknown room' })
       .locator('.message-time')
       .click();
     assert.equal(await page.locator('#follow-message').count(), 0);

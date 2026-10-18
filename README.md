@@ -37,9 +37,9 @@ The token link has the technical format `https://acium.app/chat?token=…`. It i
 
 ## Language
 
-The interface, help, notifications, demo, and documentation are in English. Dates use English formatting and a 24-hour clock. Account names, room names, and received message content remain unchanged.
+The interface, help, notifications, demo conversations, and documentation are in English. Chat events and whisper prefixes keep their familiar Danish wording, including joins, departures, room changes, and panic events. Dates use English formatting and a 24-hour clock. Account names, room names, and received message content remain unchanged.
 
-System text from older locally saved messages is displayed in English while existing message identities are preserved, so history, saved messages, and replay detection remain compatible.
+Previously saved English chat events are restored to Danish while existing message identities are preserved, so history, saved messages, and replay detection remain compatible.
 
 ## Data and privacy
 

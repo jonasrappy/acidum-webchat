@@ -66,11 +66,18 @@ const assert = require('node:assert/strict');
         roomKey: 'id:12',
         ...extra,
       });
-      const join = legacy('join', 'er kommet ind', 1700000000000, true);
+      const join = {
+        ...legacy('join', 'er kommet ind', 1700000000000, true),
+        text: 'joined the room',
+      };
       const part = legacy('part', 'er gået til X-perten', 1700000001000, true, {
         destination: { id: 53, name: 'X-perten' },
+        text: 'moved to X-perten',
       });
-      const quit = legacy('quit', 'har forladt chatten', 1699999999000);
+      const quit = {
+        ...legacy('quit', 'har forladt chatten', 1699999999000),
+        text: 'left the chat',
+      };
       localStorage.setItem('acidum-events-' + scope, JSON.stringify([join, part]));
       localStorage.setItem(
         'acidum-local-' + scope,
@@ -113,12 +120,12 @@ const assert = require('node:assert/strict');
     );
     await page.locator('#bottom-log').click();
     assert.deepEqual(await page.locator('.message-text').allTextContents(), [
-      'joined the room',
-      'moved to X-perten (53)',
+      'er kommet ind',
+      'er gået til X-perten (53)',
     ]);
     assert.ok((await page.locator('.day-divider').textContent()).includes('November'));
     await page.locator('.message-time').first().click();
-    assert.equal(await page.locator('#message-preview').textContent(), 'joined the room');
+    assert.equal(await page.locator('#message-preview').textContent(), 'er kommet ind');
     assert.equal(await page.locator('#save-message').textContent(), 'Remove from saved');
     await page.locator('#message-dialog .close-sheet').click();
     socket.send(
@@ -134,7 +141,7 @@ const assert = require('node:assert/strict');
     assert.equal(await page.locator('.message').count(), 2);
     await page.locator('#bottom-chat').click();
     await page.locator('#older').click();
-    await page.locator('.message-text').filter({ hasText: 'left the chat' }).waitFor();
+    await page.locator('.message-text').filter({ hasText: 'har forladt chatten' }).waitFor();
     await page.locator('#mobile-accounts button').nth(1).click();
     assert.equal(await page.locator('#send-as').count(), 0);
     assert.equal(await page.locator('#message').inputValue(), 'Min kladde');
@@ -154,7 +161,7 @@ const assert = require('node:assert/strict');
     assert.equal(await page.locator('#message').inputValue(), 'Nova draft');
     assert.deepEqual(errors, []);
     console.log(
-      'English UI, unchanged user content, compatible restored logs/bookmarks/archive, and account-aware composer pass',
+      'English UI, Danish chat events, unchanged user content, compatible saved data, and account-aware composer pass',
     );
   } finally {
     await browser.close();

@@ -1,5 +1,3 @@
-import { identityText } from './message-text.js';
-
 export const MAX_MESSAGES = 700;
 const userKey = (name) =>
   String(name || '')
@@ -35,23 +33,23 @@ export function describe(event) {
     case 'priv':
       return {
         name: event.from?.name || '',
-        text: `${event.from?.name === event.me?.name ? `to ${event.to?.name || '?'}` : 'whispers'}: ${event.text || ''}`,
+        text: `${event.from?.name === event.me?.name ? `til ${event.to?.name || '?'}` : 'hvisker'}: ${event.text || ''}`,
         private: true,
       };
     case 'join':
-      return { name: user, text: 'joined the room', system: true };
+      return { name: user, text: 'er kommet ind', system: true };
     case 'part':
       return {
         name: user,
-        text: `moved to ${event.room?.name || event.room?.id || 'another room'}`,
+        text: `er gået til ${event.room?.name || event.room?.id || 'et andet rum'}`,
         system: true,
       };
     case 'quit':
-      return { name: user, text: 'left the chat', system: true };
+      return { name: user, text: 'har forladt chatten', system: true };
     case 'room':
       return {
         name: '',
-        text: `Welcome to ${event.room?.name || 'the room'}${event.room?.id != null ? ` · ${event.room.id}` : ''}`,
+        text: `Velkommen til ${event.room?.name || 'rummet'}${event.room?.id != null ? ` · ${event.room.id}` : ''}`,
         system: true,
       };
     case 'log':
@@ -59,8 +57,8 @@ export function describe(event) {
         ? {
             name: '',
             text: event.users?.length
-              ? `Panic activated by ${event.users.map((u) => u.name).join(', ')}`
-              : 'Panic deactivated',
+              ? `Panic aktiveret af ${event.users.map((u) => u.name).join(', ')}`
+              : 'Panic deaktiveret',
             system: true,
           }
         : null;
@@ -163,7 +161,7 @@ export class ChatStore {
       time,
       event.type,
       description.name,
-      identityText(event, description.text),
+      description.text,
       Boolean(event.log),
       Boolean(event.notify),
     ]);

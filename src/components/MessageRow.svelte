@@ -24,8 +24,9 @@
       type="button"
       aria-label={`${row.message.text} (${row.message.destination.id}) · Message actions`}
       onclick={() => onopen(row.message)}
-      ><span class="movement-icon leave" aria-hidden="true">←</span><span class="message-text"
-        >{row.message.text} ({row.message.destination.id})</span
+      ><span class="movement-icon leave" aria-hidden="true">←</span><span
+        class="message-text"
+        lang="da">{row.message.text} ({row.message.destination.id})</span
       ></button
     >
   {:else}
@@ -36,7 +37,7 @@
           class:leave={!row.entering}
           aria-hidden="true">{row.entering ? '→' : '←'}</span
         >{/if}
-      <p class="message-text">
+      <p class="message-text" lang={row.message.system ? 'da' : undefined}>
         {#each row.parts as part}{#if part.href}<a
               href={part.href}
               target="_blank"

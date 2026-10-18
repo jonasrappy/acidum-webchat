@@ -9,7 +9,13 @@
   open={session.dialogs.message}
   onclose={() => session.closeDialog('message')}
 >
-  <p id="message-preview" class="message-preview">{session.messageTools.selected?.text || ''}</p>
+  <p
+    id="message-preview"
+    class="message-preview"
+    lang={session.messageTools.selected?.system ? 'da' : undefined}
+  >
+    {session.messageTools.selected?.text || ''}
+  </p>
   <div class="sheet-actions">
     {#if session.messageTools.selected?.destination}
       <button
