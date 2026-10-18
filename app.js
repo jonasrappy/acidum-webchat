@@ -117,7 +117,8 @@ function renderFilters(){
   const signature=mode+'\0'+person;if(signature===filterSignature)return;filterSignature=signature;
   $('private-toggle').classList.toggle('active',mode==='private');$('private-toggle').setAttribute('aria-pressed',String(mode==='private'));
   $('view-filters').hidden=!person;$('person-filter').hidden=!person;$('person-filter').textContent=person+' ×';
-  $('search-toggle').classList.toggle('has-filter',Boolean(person));
+  $('search-toggle').classList.toggle('has-filter',Boolean(person)||mode==='private');
+  $('search-toggle').setAttribute('aria-label',mode==='private'?'Søg og filtrér beskeder · Kun hvisken':'Søg og filtrér beskeder');
   $('show-saved').textContent=mode==='saved'?'Vis alle beskeder':'Gemte beskeder';
   $('show-saved').setAttribute('aria-pressed',String(mode==='saved'));
 }
