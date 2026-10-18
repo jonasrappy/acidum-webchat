@@ -1,9 +1,9 @@
-import {ChatStore, parseToken, retryDelay, messageAttention, messageLinks, matchesMode} from './core.js?v=11';
+import {ChatStore, parseToken, retryDelay, messageAttention, messageLinks, matchesMode} from './core.js?v=16';
 import {AlertManager} from './notifications.js?v=11';
-import {LocalData, exportText} from './local-data.js?v=11';
+import {LocalData, exportText} from './local-data.js?v=16';
 import {viewportGeometry} from './viewport.js?v=10';
 import {mentionQuery,mentionSuggestions,completeMention} from './mentions.js?v=11';
-import {timelineGroups} from './timeline.js?v=12';
+import {timelineGroups,mergeRoomCopies} from './timeline.js?v=16';
 import {scopeFor, archiveId, saveMessages, loadBefore, clearScope} from './archive.js?v=8';
 const $ = id => document.getElementById(id);
 let textSize=16;
@@ -100,12 +100,14 @@ function viewAccept(message){
 }
 function canClearAttention(){return ['all','mentions'].includes(mode)&&!person&&!query&&!document.querySelector('dialog[open]');}
 function combinedMessages() {
-  const current=store.messages(active,false,query,showSystems), seen=new Set(current.map(m=>m.account+'\0'+m.key));
+  const current=store.messages(active,false,'',showSystems), seen=new Set(current.map(m=>m.account+'\0'+m.key));
   const archived=mode==='saved'?[...(localData?.saved.values()||[])]:archiveRows;
   const search=query.toLocaleLowerCase('da');
-  return [...archived.filter(m=>!seen.has(m.account+'\0'+m.key)),...current]
-    .filter(m=>(!active||m.account===active)&&(showSystems||!m.system)&&(!search||`${m.account} ${m.name} ${m.text}`.toLocaleLowerCase('da').includes(search))&&viewAccept(m))
+  const messages=[...archived.filter(m=>!seen.has(m.account+'\0'+m.key)),...current]
+    .filter(m=>(!active||m.account===active)&&(showSystems||!m.system))
     .sort((a,b)=>a.time-b.time||a.account.localeCompare(b.account)||a.key.localeCompare(b.key));
+  const view=!active&&mode!=='saved'?mergeRoomCopies(messages):messages;
+  return view.filter(m=>(!search||`${(m.accounts||[m.account]).join(' ')} ${m.name} ${m.text}`.toLocaleLowerCase('da').includes(search))&&viewAccept(m));
 }
 function saveDraft(){clearTimeout(draftTimer);if(localData&&draftAccount)localData.setDraft(draftAccount,$('message').value);}
 function refreshLimit(){const length=$('message').value.length;$('message-limit').hidden=length<80;$('message-limit').textContent=length+'/100';}
@@ -120,7 +122,8 @@ function renderFilters(){
   $('show-saved').setAttribute('aria-pressed',String(mode==='saved'));
 }
 function openPerson(name,account){selectedPerson={name,account};$('person-title').textContent=name;$('person-account').textContent=account;$('person-dialog').showModal();}
-function openMessage(message){selectedMessage=message;$('message-preview').textContent=message.text;$('message-action-status').textContent='';$('save-message').textContent=localData?.isSaved(message)?'Fjern fra gemte':'Gem besked';$('message-dialog').showModal();}
+function isMessageSaved(message){return Boolean((message.sources||[message]).some(m=>localData?.isSaved(m)));}
+function openMessage(message){selectedMessage=message.sources?.find(m=>localData?.isSaved(m))||message.sources?.[0]||message;$('message-preview').textContent=message.text;$('message-action-status').textContent='';$('save-message').textContent=localData?.isSaved(selectedMessage)?'Fjern fra gemte':'Gem besked';$('message-dialog').showModal();}
 function appendTextLinks(parent,text){
   let offset=0;
   for(const link of messageLinks(text)){const at=text.indexOf(link,offset);if(at<offset)continue;parent.append(document.createTextNode(text.slice(offset,at)));const a=element('a','',link);a.href=link;a.target='_blank';a.rel='noopener noreferrer';parent.append(a);offset=at+link.length;}
@@ -227,11 +230,12 @@ function createMessageGroup(group){
   const {name:sender,account:accountName}=group;
   const node=element('section','message-group'),head=element('header','message-group-head'),author=element('div','message-group-author');
   if(group.name){
-    const name=element('button','message-name',sender);name.type='button';name.onclick=()=>openPerson(sender,accountName);author.append(name);
+    const name=element('button','message-name',sender);name.type='button';name.onclick=()=>openPerson(sender,node._routeAccounts?.includes($('send-as').value)?$('send-as').value:node._routeAccounts?.find(account=>store.tabs.has(account))||accountName);author.append(name);
     if(group.kind==='private')author.append(element('span','private-label','Hvisken'));
-    node._account=element('span','message-account',group.account);author.append(node._account);head.append(author);node.append(head);
     node.setAttribute('aria-label',group.name+' · '+group.account+(group.kind==='private'?' · Hvisken':''));
   }
+  author.hidden=!group.name;node._accounts=element('div','message-accounts');node._accounts.setAttribute('aria-label','Dine brugere');
+  head.append(author,node._accounts);node.append(head);node._head=head;node._context='';
   node._lines=element('div','message-group-lines');node.append(node._lines);return node;
 }
 function renderTimeline(groups){
@@ -250,8 +254,14 @@ function renderTimeline(groups){
   for(const [key,row]of renderedRows)if(!keys.has(key)){row.remove();renderedRows.delete(key);}
   for(const [index,group]of groups.entries()){
     const node=group.node;node.classList.toggle('alternate',Boolean((index%2)^stripeOffset));
+    node._routeAccounts=group.accounts;
     node.classList.toggle('has-attention',group.messages.some(messageAttention));
-    if(node._account&&node._account.hidden!==Boolean(active))node._account.hidden=Boolean(active);
+    if(node._context!==group.context){node._context=group.context;
+      const label=element('span','account-tag-label',group.accounts.length>1?'Dine brugere':'Din bruger');
+      node._accounts.replaceChildren(label,...group.accounts.map(account=>{const tag=element('span','message-account',account);tag.title='Din bruger: '+account;return tag;}));
+    }
+    if(node._accounts.hidden!==Boolean(active))node._accounts.hidden=Boolean(active);
+    const hideHead=!group.name&&Boolean(active);if(node._head.hidden!==hideHead)node._head.hidden=hideHead;
     let cursor=node._lines.firstChild;
     for(const message of group.messages){
       const key=rowKey(message);let row=renderedRows.get(key);
@@ -268,7 +278,7 @@ function createMessageRow(message){
   const row=element('article',`message${message.system?' system':''}${message.private?' private':''}`);row.dataset.id=message.id;
   const meta=element('div','message-meta');
   const stamp=timeFormat.format(message.time),action=element('button','message-time');action.type='button';action.setAttribute('aria-label',stamp+' · Beskedhandlinger');
-  const time=element('time','',stamp);time.dateTime=new Date(message.time).toISOString();action.append(time);action.onclick=()=>openMessage(message);
+  const time=element('time','',stamp);time.dateTime=new Date(message.time).toISOString();action.append(time);action.onclick=()=>openMessage(row._message);
   const star=element('span','saved-marker','★');meta.append(action,star);row._star=star;
   const content=element('div','message-content');
   if(['join','part','quit'].includes(message.type)){
@@ -277,8 +287,9 @@ function createMessageRow(message){
   const text=element('p','message-text');appendTextLinks(text,message.text);content.append(text);row.append(meta,content);return row;
 }
 function patchMessageRow(row,message){
+  row._message=message;
   row.classList.toggle('attention',messageAttention(message));
-  const saved=Boolean(localData?.isSaved(message));if(row._star.hidden===saved)row._star.hidden=!saved;
+  const saved=isMessageSaved(message);if(row._star.hidden===saved)row._star.hidden=!saved;
 }
 let loadingOlder = false;
 function updateTabs(names) {
