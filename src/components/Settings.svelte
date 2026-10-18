@@ -6,22 +6,21 @@
 
 <Sheet
   id="settings-dialog"
-  title="Indstillinger"
+  title="Settings"
   open={session.dialogs.settings}
   onclose={() => session.closeDialog('settings')}
 >
   <section class="settings-group">
-    <h3>Visning</h3>
-    <Help label="Om visning"
+    <h3>Appearance</h3>
+    <Help label="About appearance"
       ><p>
-        Tekststørrelsen huskes på denne enhed. Ind- og udgange viser rumskift og andre hændelser i
-        samtalen.
+        Text size is saved on this device. Joins and departures show room movements and other events
+        in the conversation.
       </p>
-      <p class="font-preview">Eksempel på en besked.</p></Help
+      <p class="font-preview">An example message.</p></Help
     >
     <label class="text-size-label" for="text-size"
-      >Tekststørrelse <output id="text-size-value" for="text-size">{session.textSize} px</output
-      ></label
+      >Text size <output id="text-size-value" for="text-size">{session.textSize} px</output></label
     >
     <input
       id="text-size"
@@ -33,7 +32,7 @@
       oninput={(event) => session.setTextSize(event.currentTarget.value)}
     />
     <label class="setting-row" for="show-events"
-      ><span><strong>Vis ind- og udgange</strong></span><input
+      ><span><strong>Show joins and departures</strong></span><input
         id="show-events"
         type="checkbox"
         checked={session.showEvents}
@@ -42,25 +41,25 @@
     >
   </section>
   <section class="settings-group">
-    <h3>Beskedalarmer</h3>
-    <Help label="Om beskedalarmer"
-      ><p>Triggerord styres i programmet. Webchatten følger de medsendte markeringer.</p>
+    <h3>Message alerts</h3>
+    <Help label="About message alerts"
+      ><p>Trigger words are managed in the desktop app. The webchat follows its message markers.</p>
       <p>
-        Notifikationer og lyd kræver en aktiv chatforbindelse. På iPhone: føj acidum til
-        hjemmeskærmen og åbn derfra for at aktivere systemnotifikationer.
+        Notifications and sound require an active chat connection. On iPhone, add acidum to your
+        Home Screen and open it from there to enable system notifications.
       </p></Help
     >
     <button
       id="enable-notifications"
       class="soft-button"
       onclick={() => session.notifications.toggle()}
-      >{session.notifications.enabled ? 'Slå notifikationer fra' : 'Aktivér notifikationer'}</button
+      >{session.notifications.enabled ? 'Disable notifications' : 'Enable notifications'}</button
     >
     <p id="notification-status" class="setting-note" role="status">
       {session.notifications.status}
     </p>
     <label class="setting-row" for="notification-sound"
-      ><span><strong>Lyd ved beskedalarm</strong></span><input
+      ><span><strong>Sound for message alerts</strong></span><input
         id="notification-sound"
         type="checkbox"
         checked={session.notifications.sound}
@@ -69,33 +68,33 @@
     >
   </section>
   <section class="settings-group">
-    <h3>Samtale</h3>
-    <Help label="Om samtalen"
-      ><p>Eksport gemmer den indlæste og filtrerede samtale som en tekstfil på din enhed.</p>
+    <h3>Chat</h3>
+    <Help label="About this chat"
+      ><p>Export saves the loaded and filtered conversation as a text file on your device.</p>
       <p>
-        Tryk på et navn for at omtale personen eller se personens beskeder. Tryk på et tidspunkt for
-        at kopiere eller gemme en besked. Kladder huskes separat for hver bruger på denne enhed.
+        Tap a name to mention someone or see their messages. Tap a timestamp to copy or save a
+        message. Drafts are saved separately for each account on this device.
       </p></Help
     >
     <button id="export-chat" class="soft-button" onclick={() => session.exportChat()}
-      >Eksportér indlæste beskeder</button
+      >Export loaded messages</button
     >
   </section>
   <section class="settings-group">
-    <h3>Historik</h3>
-    <Help label="Om historik"
+    <h3>History</h3>
+    <Help label="About history"
       ><p>
-        Gem op til 10.000 beskeder lokalt i din browser. Scroll op i samtalen for at hente ældre
-        gemte beskeder.
+        Save up to 10,000 messages locally in your browser. Scroll up in the conversation to load
+        older saved messages.
       </p>
-      <p>Slår du lagring fra, bevares allerede gemte beskeder, indtil du sletter dem.</p>
+      <p>Turning storage off keeps existing saved messages until you delete them.</p>
       <p>
-        Hændelsesloggen gemmer altid de seneste 100 hændelser lokalt, uden tidsudløb. Den påvirkes
-        ikke af “Gem historik” eller “Slet gemt historik”.
+        The event log always keeps the latest 100 events locally, with no expiry. Saving or clearing
+        chat history does not affect it.
       </p></Help
     >
     <label class="setting-row" for="save-history"
-      ><span><strong>Gem historik</strong></span><input
+      ><span><strong>Save history</strong></span><input
         id="save-history"
         type="checkbox"
         checked={session.history.enabled}
@@ -106,30 +105,30 @@
       id="clear-history"
       class="soft-button danger"
       hidden={!session.history.enabled}
-      onclick={() => session.clearHistory()}>Slet gemt historik</button
+      onclick={() => session.clearHistory()}>Clear saved history</button
     >
   </section>
   <section class="settings-group settings-connection-group">
-    <h3>Forbindelse</h3>
-    <Help label="Om forbindelse og login"
+    <h3>Connection</h3>
+    <Help label="About connection and login"
       ><p>
-        Programmet på din computer skal fortsat køre med webchat slået til. Ved netværksfejl prøver
-        chatten automatisk at forbinde igen.
+        The desktop app must keep running with webchat enabled. The chat reconnects automatically
+        after network errors.
       </p>
       <p>
-        “Afbryd og fjern login” fjerner dit gemte webchat-link fra denne browser. Gemt historik
-        bevares.
+        Disconnecting and removing your login clears the saved webchat link from this browser. Saved
+        history is kept.
       </p></Help
     >
     <div class="settings-connection">
       <span id="settings-status">{session.status}</span><button
         id="settings-reconnect"
         class="soft-button"
-        onclick={() => session.reconnect()}>Forbind igen</button
+        onclick={() => session.reconnect()}>Reconnect</button
       >
     </div>
     <button id="mobile-exit" class="soft-button danger" onclick={() => session.disconnect()}
-      >Afbryd og fjern login</button
+      >Disconnect and remove login</button
     >
   </section>
 </Sheet>

@@ -36,7 +36,7 @@ const assert = require('node:assert/strict');
           type: 'text',
           me: { name: 'Punktum' },
           user: { name: 'Guest' },
-          text: 'Hej alle',
+          text: 'Hello everyone',
           time: ++time,
           ...overrides,
         }),
@@ -46,7 +46,7 @@ const assert = require('node:assert/strict');
     await send({});
     await send({ text: 'normal besked' });
     assert.equal(await page.locator('#mobile-accounts .badge').count(), 0);
-    await send({ text: 'Hej @PUNKTUM!' });
+    await send({ text: 'Hello @PUNKTUM!' });
     assert.equal(await page.locator('#mobile-accounts .badge').textContent(), '1');
     await send({ notify: true });
     assert.equal(await page.locator('#mobile-accounts .badge').textContent(), '2');
@@ -57,7 +57,7 @@ const assert = require('node:assert/strict');
     await page.waitForTimeout(150);
     assert.equal(await page.locator('#mobile-accounts .badge').count(), 0);
     await page.locator('#bottom-settings').click();
-    await send({ text: 'Punktum, er du her?' });
+    await send({ text: 'Punktum, are you here?' });
     assert.equal(await page.locator('#mobile-accounts .badge').textContent(), '1');
     await page.locator('#settings-dialog .close-sheet').click();
     await page.waitForTimeout(150);

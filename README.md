@@ -1,60 +1,69 @@
 # acidum-webchat
 
-**[Åbn acidum](https://jonasrappy.github.io/acidum-webchat/)**
+**[Open acidum](https://jonasrappy.github.io/acidum-webchat/)**
 
-En let webchat med mobilnavigation og flere brugere. Bygget med Svelte 5 og Vite, uden tracking eller egen backend.
+A lightweight webchat with mobile navigation and multiple accounts. Built with Svelte 5 and Vite, with no tracking or separate backend.
 
-## Forbind
+## Connect
 
-1. Start acidum på computeren og aktivér webchat.
-2. Log ind hos [acidum](https://acium.app/) og åbn webchatten.
-3. Kopiér hele webchat-linket fra adresselinjen og indsæt det i acidum.
+1. Start acidum on your computer and enable webchat.
+2. Sign in to [acidum](https://acium.app/) and open the webchat.
+3. Copy the full webchat link from the address bar and paste it into this webchat.
 
-Token-linkets tekniske format er `https://acium.app/chat?token=…`. Linket huskes på enheden, så chatten åbner automatisk næste gang. Midlertidige netværksfejl sletter det ikke. Ved gentagne serverlukninger uden data vises muligheden for at prøve det gemte link igen. “Afbryd og fjern login” fjerner det fra browseren. Programmet på computeren skal fortsat køre.
+The token link has the technical format `https://acium.app/chat?token=…`. It is saved on your device so the chat opens automatically next time. Temporary network errors do not remove it. If the server repeatedly closes the connection without sending data, you can retry the saved link. **Disconnect and remove login** clears it from the browser. The desktop app must keep running.
 
-## Funktioner
+## Features
 
-- Samlet samtale eller én bruger ad gangen, med kompakt mobilnavigation. Navne vises uden gentagne felter med initialer i navigation, deltagerlister og beskedblokke.
-- Filteret “Kun hvisken” ligger sammen med søgningen. Det åbnes via lup-ikonet, som markeres, når et filter er aktivt. Søg i indlæst tekst eller filtrér på en bestemt afsender.
-- Mere/Indstillinger viser indstillinger og handlinger med forklaringer bag spørgsmålstegn. Forbindelsesstatus, genforbindelse og afbrydelse er samlet nederst.
-- Beskedtekst på 16 px som standard. Under Mere/Indstillinger → Visning kan størrelsen justeres fra 10 til 30 px med forhåndsvisning under spørgsmålstegnet; valget huskes på enheden.
-- I Alle samles kopier af samme rumbesked fra flere af dine brugere til én besked med tags for de berørte brugere. Rumkonteksten gemmes ved modtagelsen. Sammenligningen bruger afsender, type, tekst og tidspunkt; kendte fælles rum tillader op til ét sekunds forskel mellem kopierne. Gentagelser fra samme brugerfane, forskellige kendte rum og private beskeder sammenlægges ikke.
-- Sammenhængende indgange, udgange og tekst fra samme person samles i én blok med afsenderen øverst til venstre og tidsstempler i en fast kolonne til højre. I det samlede overblik vises dine egne brugere som separate tags på boksens øverste højre hjørne. Hver linje beholder sit tidspunkt og sine beskedhandlinger. Grøn højrepil viser indgang; rød venstrepil viser udgang eller at personen har forladt chatten. Baggrunden skifter mellem blokkene. En anden person, brugerfane, dato eller et rumskift starter en ny blok; hvisken holdes separat fra almindelige rumbeskeder.
-- Triggerord styres i programmet. Webchatten følger de medsendte `log`-/`notify`-markeringer og markerer også brugernavnet uden forskel på store og små bogstaver. Tællere reagerer på disse markeringer og navneomtaler; almindelig rumtrafik tæller ikke. Programmarkeringer respekteres også på egne beskeder.
-- Nye `notify`-markeringer kan give et banner, en valgfri lyd og systemnotifikationer efter dit samtykke. Historik og gamle gentagelser udløser ikke beskedalarmer.
-- Hændelsesloggen gemmer altid de seneste 100 hændelser lokalt pr. login, uden tidsudløb og uafhængigt af den valgfrie chathistorik. Samlede rumkopier tæller som én hændelse. Gamle gentagelser erstatter ikke nyere hændelser, og gendannelse udløser ingen beskedalarmer.
-- Superbrugere vises med orange navn, kant og varm baggrund på beskedblokken, også ved hvisken og samlede rumkopier. Identifikationen bruger medsendte `superuser`-felter og navnene i panic-hændelser. Mangler begge oplysninger, vises personen almindeligt; beskedtekst bruges ikke til at gætte rollen.
-- Deltagerliste fra rumskiftets `users`-data, opdateret med ind- og udgange. Når et rumsnapshot ikke er modtaget, bruges observeret aktivitet. Efter forbindelsesbrud markeres listen igen som observeret, indtil et nyt snapshot modtages.
-- Tryk på en “er gået til …”-besked eller dens tidspunkt og vælg “Følg efter”, når hændelsen indeholder et rum-id. Handlingen sender `/goto <id>` som den valgte bruger i skrivefeltet; navnet vises på knappen. Kladder bevares, og serveren afgør, om brugeren kan komme ind i rummet.
-- Tryk på et navn for at omtale personen eller se personens beskeder. Det sender ikke automatisk en besked. Skriv `@` og begyndelsen af navnet for valgfri autocomplete med deltagerne i den valgte brugers rum. Valg af et forslag indsætter kun brugernavnet og fjerner `@`. Enter vælger kun et forslag, hvis du selv har markeret det med piletasterne.
-- Separate lokale kladder for hver bruger. Der gemmes ingen lokal triggerkonfiguration i webchatten.
-- Tryk på et tidspunkt for at kopiere eller gemme en besked. Op til 200 gemte beskeder bevares separat fra den rullende historik.
-- Eksportér den aktuelt indlæste og filtrerede samtale som en tekstfil. Filen oprettes direkte i browseren.
-- Skriv som den valgte bruger med grænse på 100 tegn og tæller nær grænsen.
-- Lazy load ved scroll op, med bevaret læseposition. Valgfrit lokalt arkiv med op til 10.000 beskeder pr. login.
-- Automatisk genforbindelse med stigende ventetid og tilfældig variation.
+- View all conversations together or select one account. Mobile account tabs fit their names and keep the selected account visible when switching accounts or resizing the screen.
+- Search loaded messages, filter by sender, or show whispers only. Active filters remain visible when search is closed and can be removed directly.
+- Compact navigation, readable controls, keyboard shortcuts, and dialogs with fixed headers and close buttons. Help is available behind question-mark buttons. Connection settings are at the bottom of **More / Settings**; connection failures also appear in the chat.
+- Message text defaults to 16 px. Adjust it from 10 to 30 px under **Appearance**, with a preview in the help panel. The size is saved on your device.
+- In **All**, copies of the same public room message received by multiple accounts appear once, with tags for each receiving account. Room context is recorded when messages arrive. Matching considers sender, type, text, and timestamp; copies from the same known room may differ by up to one second. Repeated messages from one account, different known rooms, and private messages stay separate.
+- Consecutive joins, departures, and messages from the same person share one block, with the sender on the left and timestamps in a fixed column on the right. Each line keeps its own timestamp and actions. A green right arrow marks a join; a red left arrow marks a departure. Backgrounds alternate between blocks. A different sender, account, date, or room event starts a new block. Whispers stay separate from public messages.
+- Trigger words are managed in the desktop app. The webchat respects its `log` and `notify` markers and also matches your account name without case sensitivity. Unread counts reflect these markers and name mentions, rather than ordinary room traffic. Server markers also apply to your own messages.
+- Recent `notify` messages can produce an in-app banner, optional sound, and system notifications after permission is granted. Historical messages and old replays do not trigger alerts.
+- The event log always retains the latest 100 events locally per login, without expiry and independently of optional chat history. Merged room copies count as one event. Old replays do not replace newer events, and restoring the log does not trigger alerts.
+- Superusers have an orange name and border with a warm message background, including whispers and merged room copies. Identification uses received `superuser` fields and names in panic events. Without that information, the sender appears normally; message text is not used to guess roles.
+- Room participant lists use `users` data received on room entry and update as people join and leave. Without a room snapshot, the list shows observed activity. After disconnection, it returns to observed status until another snapshot arrives.
+- Tap a departure message or its timestamp and choose **Follow as…** when the event includes a room ID. Known destination IDs appear in parentheses. Following sends `/goto <id>` as the account selected in the composer, whose name appears on the button. Drafts are preserved, and the server decides whether the account can enter the destination.
+- Tap a name to mention someone or view their messages. This does not send a message automatically. Type `@` and part of a name for optional suggestions from the selected account's room. Choosing a suggestion inserts the name without `@`. Enter selects a suggestion only after you highlight it with the arrow keys.
+- Drafts are saved locally for each account. Trigger settings are not stored in the webchat.
+- Tap a timestamp to copy or save a message. Up to 200 saved messages are retained separately from rolling history.
+- Export the loaded and filtered conversation as a text file, created directly in the browser.
+- Send messages as the selected account, with a 100-character limit and a counter near the limit.
+- Selecting an account hides the sender selector and expands the message field. Return to **All** to choose a sender again.
+- Scroll up to load older messages while preserving your reading position. The optional local archive retains up to 10,000 messages per login.
+- Automatic reconnection uses increasing delays with random variation.
 
-## Data og privatliv
+## Language
 
-Alt, acidum selv gemmer, ligger i browseren: login-link, kladder, gemte beskeder, de seneste 100 loghændelser, tekststørrelse, indstillinger for beskedalarmer og eventuelt historik. Data tilknyttes det aktuelle login via en SHA-256-identifikator, så kladder, loghændelser og gemte beskeder fra forskellige login ikke blandes. Selve tokenet gemmes separat i browserens `localStorage`; tidligere sessionslagring overføres automatisk. Hvis browseren blokerer vedvarende lagring, forsøges sessionslagring i stedet.
+The interface, help, notifications, demo, and documentation are in English. Dates use English formatting and a 24-hour clock. Account names, room names, and received message content remain unchanged.
 
-For at chatten virker, sendes token og beskeder direkte til chatserveren over en krypteret WebSocket. GitHub Pages leverer kun sidens statiske filer. Ingen chatdata eller adgangskoder skal ligge i repoet. Del ikke dit token-link med andre.
+System text from older locally saved messages is displayed in English while existing message identities are preserved, so history, saved messages, and replay detection remain compatible.
 
-“Gem historik” er som standard slået fra. “Slet gemt historik” sletter det rullende arkiv for det aktuelle login; hændelsesloggen, manuelt gemte beskeder og kladder bevares. “Afbryd og fjern login” fjerner tokenet, men bevarer lokale data. Browserens sletning af webstedsdata fjerner alle lokale data.
+## Data and privacy
 
-## Forbrug og begrænsninger
+Everything acidum saves is stored in your browser: the login link, drafts, saved messages, the latest 100 log events, text size, notification preferences, and optional history. Local data is scoped to the current login using a SHA-256 identifier, keeping drafts, events, and saved messages from different logins separate. The token itself is stored separately in browser `localStorage`; older session storage is migrated automatically. If persistent storage is blocked, session storage is attempted instead.
 
-Hukommelsen beholder op til 700 indgående beskeder pr. bruger. Den aktive visning tegner først de seneste 250; flere tilføjes, når du selv læser længere tilbage. Live-opdateringer samles med mindst 80 ms mellem tegninger. Keyed Svelte-komponenter genbruger uændrede beskedrækker og afsenderblokke. Beskeddata bruger rå reaktiv tilstand uden dybe proxies. Rumoversigt og indstillinger hentes først, når de bruges; arkivkoden hentes først, når lokal historik bruges. Tastatur- og viewportændringer ændrer kun layout og læseposition. Aktivitet i andre samtaler tegner ikke den aktuelle beskedliste igen. Skjulte faner tegnes først, når de bliver synlige. Mens du læser ældre beskeder, tegnes samtalen ikke igen for hver ny besked.
+To connect, the token and messages are sent directly to the chat server over an encrypted WebSocket. GitHub Pages only serves static site files. Chat data and passwords do not belong in the repository. Do not share your token link.
 
-Serverprotokollens `lastLine` henter nyere beskeder. Der er ikke fundet en forespørgsel efter vilkårligt gammel serverhistorik. Lazy load bruger derfor allerede leverede beskeder og det arkiv, du har valgt at gemme lokalt. Søgning og eksport omfatter indlæste beskeder; scroll op for at hente flere fra arkivet.
+**Save history** is off by default. **Clear saved history** deletes the rolling archive for the current login; the event log, manually saved messages, and drafts remain. **Disconnect and remove login** removes the token but keeps local data. Clearing the browser's site data removes all local data.
 
-Deltagerlisten er fra det seneste modtagne rumskift og de efterfølgende hændelser. Ved manglende data kan den være ufuldstændig. “Følg efter” kræver et gyldigt destinations-id i rumskiftehændelsen; id'et gættes ikke ud fra rumnavnet. En hvisken, som modtages, kan læses og filtreres.
+## Performance and limitations
 
-Systemnotifikationer aktiveres under Mere/Indstillinger. På iPhone skal acidum tilføjes til hjemmeskærmen og åbnes derfra, før notifikationer kan aktiveres. Beskedalarmer kræver, at siden stadig kan modtage data på sin chatforbindelse. Der er ingen push-backend til at vække en lukket eller suspenderet app. Den lille service worker viser kun notifikationer fra den aktive side og åbner den relevante bruger; den cacher ikke chats eller login-link.
+Memory retains up to 700 incoming messages per account. The active view initially renders the latest 250, adding older messages as you scroll back. Live updates are batched with at least 80 ms between renders. Keyed Svelte components reuse unchanged message rows and sender groups. Message data uses raw reactive state without deep proxies. Room lists and settings load on demand; archive code loads only when local history is used. Keyboard and viewport changes update layout and reading position. Activity in other conversations does not redraw the current message list. Hidden tabs defer rendering until visible. While you read older messages, incoming traffic does not redraw the conversation for every message.
 
-Integrationen bygger på observeret protokol og kan kræve tilpasning ved ændringer på serveren. Der er ikke målt en bestemt CPU-besparelse.
+The server protocol's `lastLine` request retrieves newer messages. No request for arbitrary older server history has been identified. Lazy loading therefore uses messages already received and the archive you choose to save locally. Search and export cover loaded messages; scroll up to load more from the archive.
 
-## Udvikling og test
+Participant lists reflect the latest room snapshot and subsequent events. Missing data may leave them incomplete. Following someone requires a valid destination ID in the departure event; it is not guessed from the room name. Received whispers can be read and filtered.
+
+Enable system notifications in **More / Settings**. On iPhone, add acidum to your Home Screen and open it from there before enabling notifications. Alerts require the page to keep receiving data through its chat connection. There is no push backend to wake a closed or suspended app. The small service worker only displays notifications from the active page and opens the relevant account; it does not cache chats or login links.
+
+The integration uses an observed protocol and may need adjustments when the server changes. No specific CPU savings have been measured.
+
+## Development and testing
+
+Requires Node.js 22.12 or later.
 
 ```sh
 npm ci
@@ -63,18 +72,22 @@ npm test
 npm run dev
 ```
 
-Åbn http://127.0.0.1:8765. Uden gemt login findes eksempeldata på http://127.0.0.1:8765/#demo. Kildekoden ligger i `src/`, komponenternes CSS ligger ved komponenterne, og fælles tema/layout ligger i `src/style.css`. `public/` indeholder ikon, manifest og service worker. `npm run build` skriver den aktuelle produktion til `dist/` og fjerner tidligere byggefiler. `npm run preview` viser det færdige build lokalt.
+Open http://127.0.0.1:8765. With no saved login, demo data is available at http://127.0.0.1:8765/#demo. Source code is in `src/`, component styles live alongside their components, and shared theme and layout rules are in `src/style.css`. The `public/` directory contains the icon, manifest, and service worker. `npm run build` writes the current production build to `dist/` and removes previous build output. `npm run preview` serves the built site locally.
 
-Node-tests kontrollerer historikgrænser, dubletter, brugeradskillelse, omtaler, programmarkeringer, beskedalarmer, gruppering, deltagerlister og lokal lagring. `npm run test:browser` kører `tests/*.browser.cjs` mod en startet preview-server med `playwright-core` og Chromium. Sæt `BROWSER_EXECUTABLE` til browserens sti. `ACIDUM_TEST_URL` kan ændre den lokale testadresse. Browsertest bruger syntetiske data. Tastaturtesten simulerer ændringer i viewporthøjde og forskydning, kontrollerer at skrivefelt og samtale forbliver synlige, og måler at uændrede beskedrækker bevares. Et fysisk iPhone-tastatur er ikke tilgængeligt i testmiljøet.
+Node tests cover history limits, deduplication, account isolation, mentions, server markers, alerts, grouping, participant lists, local storage, and compatibility with previously saved messages.
 
-## Udgivelse
+With a preview server running, `npm run test:browser` runs `tests/*.browser.cjs` using `playwright-core` and Chromium. Set `BROWSER_EXECUTABLE` to the browser executable path. `ACIDUM_TEST_URL` overrides the test URL. Browser tests use synthetic data. They cover mobile layouts, touch targets, filters, dialog focus and scrolling, large text, connection feedback, storage, and chat behavior. The keyboard test simulates viewport height and offset changes, checks that the composer and conversation remain visible, and verifies that unchanged message rows are reused. A physical iPhone keyboard is not available in the test environment.
 
-Pages bruger roden af grenen `gh-pages`:
+## Publishing
+
+GitHub Pages serves the root of the `gh-pages` branch. Commit the updated source and build output before pushing:
 
 ```sh
 npm run check
 npm test
 npm run build
+git add -A
+git commit -m "Update acidum"
 git push origin main
 git subtree push --prefix dist origin gh-pages
 ```

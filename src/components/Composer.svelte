@@ -30,7 +30,7 @@
     if (!names[index]) return;
     const completion = completeMention(session.composer.text, query, names[index]);
     if (!completion) {
-      session.composer.error = 'Der er ikke plads til navnet inden for 100 tegn.';
+      session.composer.error = 'This name would exceed the 100-character limit.';
       return;
     }
     session.composer.text = completion.text;
@@ -89,9 +89,9 @@
 <footer class="composer-wrap">
   <div id="mention-menu" class="mention-menu" hidden={!expanded}>
     <p id="mention-caption">
-      {expanded ? (session.rosterComplete() ? 'I rummet' : 'Observerede brugere') : ''}
+      {expanded ? (session.rosterComplete() ? 'In this room' : 'Observed people') : ''}
     </p>
-    <div id="mention-suggestions" role="listbox" aria-label="Foreslåede brugere">
+    <div id="mention-suggestions" role="listbox" aria-label="Suggested people">
       {#each names as name, index (name)}<button
           id={'mention-option-' + index}
           class="mention-option"
@@ -105,21 +105,23 @@
     </div>
   </div>
   <form id="composer" onsubmit={send}>
-    <select
-      id="send-as"
-      value={session.composer.account}
-      onchange={(event) => {
-        session.setSendAs(event.currentTarget.value);
-        selected = -1;
-        dismissed = '';
-      }}
-      aria-label="Send som"
-      title="Send som"
-      ><option value="">Vælg bruger</option
-      >{#each session.accounts as account (account.name)}<option value={account.name}
-          >{account.name}</option
-        >{/each}</select
-    >
+    {#if !session.active}
+      <select
+        id="send-as"
+        value={session.composer.account}
+        onchange={(event) => {
+          session.setSendAs(event.currentTarget.value);
+          selected = -1;
+          dismissed = '';
+        }}
+        aria-label="Send as"
+        title="Send as"
+        ><option value="">Choose account</option
+        >{#each session.accounts as account (account.name)}<option value={account.name}
+            >{account.name}</option
+          >{/each}</select
+      >
+    {/if}
     <input
       id="message"
       bind:this={input}
@@ -133,8 +135,8 @@
       onclick={changed}
       onkeydown={keydown}
       onkeyup={moved}
-      placeholder="Skriv en besked…"
-      aria-label="Besked"
+      placeholder="Write a message…"
+      aria-label="Message"
       aria-describedby={session.composer.error ? 'send-error' : undefined}
       role="combobox"
       aria-autocomplete="list"
@@ -155,7 +157,7 @@
       id="send"
       class="send-button"
       type="submit"
-      aria-label="Send besked"
+      aria-label="Send message"
       disabled={!session.composer.account || !session.online || !session.composer.text.trim()}
       ><Icon name="send" /></button
     >

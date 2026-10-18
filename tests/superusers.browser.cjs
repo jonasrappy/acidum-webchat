@@ -27,7 +27,7 @@ const assert = require('node:assert/strict');
         1,
         'room',
         {
-          room: { id: 12, name: 'Torvet' },
+          room: { id: 12, name: 'Town Square' },
           users,
         },
         account,
@@ -38,7 +38,7 @@ const assert = require('node:assert/strict');
         'text',
         {
           user: { name: 'QuietMod' },
-          text: 'Besked fra en stille superbruger',
+          text: 'Message from a quiet superuser',
         },
         account,
       );
@@ -54,13 +54,17 @@ const assert = require('node:assert/strict');
               ? [
                   room('Nova', [{ name: 'QuietMod', superuser: 1 }]),
                   quiet('Nova'),
-                  event(3, 'text', { user: { name: 'PanicMod' }, text: 'Besked før panic' }),
+                  event(3, 'text', { user: { name: 'PanicMod' }, text: 'Message before panic' }),
                   event(4, 'text', {
                     user: { name: 'Alma' },
                     text: 'Ordet superbruger giver ingen markering',
                   }),
                   event(5, 'join', { user: { name: 'DirectMod', superuser: true } }),
-                  event(6, 'text', { user: { name: 'DirectMod' }, text: 'Hej Nova', notify: true }),
+                  event(6, 'text', {
+                    user: { name: 'DirectMod' },
+                    text: 'Hello Nova',
+                    notify: true,
+                  }),
                   event(7, 'priv', {
                     from: { name: 'WhisperMod', superuser: true },
                     to: { name: 'Nova' },
@@ -88,10 +92,10 @@ const assert = require('node:assert/strict');
     assert.equal(await group('QuietMod').locator('.message').count(), 1);
     assert.equal(await group('DirectMod').locator('.message').count(), 2);
     assert.equal(await group('DirectMod').locator('.attention').count(), 1);
-    assert.equal(await group('WhisperMod').locator('.private-label').textContent(), 'Hvisken');
+    assert.equal(await group('WhisperMod').locator('.private-label').textContent(), 'Whisper');
     assert.equal(
       await group('QuietMod').locator('.message-name').getAttribute('title'),
-      'Superbruger',
+      'Superuser',
     );
     const style = await group('DirectMod').evaluate((node) => ({
       name: getComputedStyle(node.querySelector('.message-name')).color,

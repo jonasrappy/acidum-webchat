@@ -41,7 +41,7 @@ class Account {
       this.revision = tab.presenceRevision;
       this.people = [...tab.presence.values()]
         .filter((person) => person.present)
-        .sort((a, b) => a.name.localeCompare(b.name, 'da'));
+        .sort((a, b) => a.name.localeCompare(b.name, 'en'));
     }
   }
 }
@@ -51,7 +51,7 @@ export class ChatSession {
   demo = $state(false);
   loginError = $state('');
   resumeAvailable = $state(Boolean(readToken()));
-  status = $state('Forbinder…');
+  status = $state('Connecting…');
   online = $state(false);
   accounts = $state.raw([]);
   active = $state('');
@@ -80,12 +80,12 @@ export class ChatSession {
       ? this.composer.account
       : '',
   );
-  heading = $derived(this.logOnly ? 'Hændelseslog' : this.active || 'Alle samtaler');
+  heading = $derived(this.logOnly ? 'Event log' : this.active || 'All chats');
   subtitle = $derived(
     this.logOnly
-      ? 'Seneste 100 hændelser'
+      ? 'Latest 100 events'
       : this.currentAccount?.room
-        ? `${this.currentAccount.room.name}${this.currentAccount.room.id != null ? ' · Rum ' + this.currentAccount.room.id : ''}`
+        ? `${this.currentAccount.room.name}${this.currentAccount.room.id != null ? ' · Room ' + this.currentAccount.room.id : ''}`
         : '',
   );
   title = $derived(
@@ -95,12 +95,12 @@ export class ChatSession {
   );
   emptyText = $derived(
     this.query || this.person || this.mode === 'private'
-      ? 'Ingen beskeder matcher de valgte filtre i den indlæste historik.'
+      ? 'No messages match the selected filters in the loaded history.'
       : this.logOnly
-        ? 'Ingen markerede hændelser endnu.'
+        ? 'No marked events yet.'
         : !this.accounts.length
-          ? 'Venter på brugerfaner fra acidum. Kontrollér, at programmet kører med webchat slået til.'
-          : 'Dine beskeder vises, så snart acidum sender dem.',
+          ? 'Waiting for accounts from acidum. Check that the desktop app is running with webchat enabled.'
+          : 'Messages appear as soon as acidum sends them.',
   );
   dialogOpen = $derived(Object.values(this.dialogs).some(Boolean));
 
@@ -149,8 +149,7 @@ export class ChatSession {
       },
       onRefused: () => {
         this.disconnect(false);
-        this.loginError =
-          'Ingen adgang til den gemte chat lige nu. Prøv igen eller indsæt et nyt link.';
+        this.loginError = 'The saved chat is unavailable right now. Try again or paste a new link.';
       },
     });
   }
@@ -248,7 +247,7 @@ export class ChatSession {
       })
       .catch(() => {
         if (generation === this.loginGeneration)
-          this.history.status = 'Lokal lagring er ikke tilgængelig. Chatten fortsætter.';
+          this.history.status = 'Local storage is unavailable. The chat will continue.';
       });
     this.connection.start(token);
     this.schedule();
@@ -395,11 +394,11 @@ export class ChatSession {
     );
   }
 
-  matchesQuery(message, query = this.query.toLocaleLowerCase('da')) {
+  matchesQuery(message, query = this.query.toLocaleLowerCase('en')) {
     return (
       !query ||
       `${(message.accounts || [message.account]).join(' ')} ${message.name} ${message.text}`
-        .toLocaleLowerCase('da')
+        .toLocaleLowerCase('en')
         .includes(query)
     );
   }
@@ -429,7 +428,7 @@ export class ChatSession {
         (a, b) =>
           a.time - b.time || a.account.localeCompare(b.account) || a.key.localeCompare(b.key),
       );
-    const query = this.query.toLocaleLowerCase('da');
+    const query = this.query.toLocaleLowerCase('en');
     return (this.active ? messages : mergeRoomCopies(messages)).filter(
       (message) => this.matchesQuery(message, query) && this.accept(message),
     );
@@ -577,7 +576,7 @@ export class ChatSession {
     const text = this.composer.text;
     if (!text.trim() || !this.store.names.includes(this.composer.account)) return;
     if (text.length > 100) {
-      this.composer.error = 'Beskeden må højst være 100 tegn.';
+      this.composer.error = 'Messages can contain up to 100 characters.';
       return;
     }
     this.composer.error = '';
@@ -590,7 +589,7 @@ export class ChatSession {
         time: Date.now(),
       });
     else if (!this.online || !this.connection.send({ name: this.composer.account, say: text })) {
-      this.composer.error = 'Forbindelsen er afbrudt. Din besked er stadig i feltet.';
+      this.composer.error = 'Disconnected. Your message is still in the text field.';
       return;
     }
     this.composer.text = '';
@@ -698,7 +697,7 @@ export class ChatSession {
     if (!destination || !Number.isSafeInteger(destination.id) || destination.id < 0 || !account)
       return;
     if (!this.online || !this.connection.send({ name: account, say: '/goto ' + destination.id })) {
-      this.messageTools.status = 'Forbindelsen er afbrudt. Prøv igen, når du er forbundet.';
+      this.messageTools.status = 'Disconnected. Try again once the connection is restored.';
       return;
     }
     this.closeDialog('message');
@@ -758,7 +757,7 @@ export class ChatSession {
 
   enterDemo() {
     this.demo = this.open = this.online = true;
-    this.status = 'Eksempeltilstand';
+    this.status = 'Demo mode';
     this.localData = new LocalData({ getItem: () => null, setItem: () => {} }, 'demo');
     this.updateTabs(['Nova', 'Milo']);
     this.ingest(demoEvents(), { historical: true });

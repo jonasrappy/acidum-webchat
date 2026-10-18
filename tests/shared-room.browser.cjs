@@ -30,10 +30,12 @@ const assert = require('node:assert/strict');
       ['Iris', 7],
     ])
       fixtures[account] = [
-        event(account, 0, 'room', { room: { id: room, name: room === 12 ? 'Torvet' : 'Cafe' } }),
+        event(account, 0, 'room', {
+          room: { id: room, name: room === 12 ? 'Town Square' : 'Cafe' },
+        }),
       ];
     fixtures.Nova.push(
-      event('Nova', 100, 'text', { text: 'Fælles besked' }),
+      event('Nova', 100, 'text', { text: 'Shared message' }),
       event('Nova', 200, 'text', { text: 'Echo' }),
       event('Nova', 250, 'text', { text: 'Echo' }),
       event('Nova', 300, 'priv', {
@@ -43,7 +45,7 @@ const assert = require('node:assert/strict');
       }),
     );
     fixtures.Milo.push(
-      event('Milo', 109, 'text', { text: 'Fælles besked', log: true }),
+      event('Milo', 109, 'text', { text: 'Shared message', log: true }),
       event('Milo', 210, 'text', { text: 'Echo' }),
       event('Milo', 260, 'text', { text: 'Echo' }),
       event('Milo', 300, 'priv', {
@@ -52,7 +54,7 @@ const assert = require('node:assert/strict');
         text: 'Privat besked',
       }),
     );
-    fixtures.Iris.push(event('Iris', 100, 'text', { text: 'Fælles besked' }));
+    fixtures.Iris.push(event('Iris', 100, 'text', { text: 'Shared message' }));
     await page.routeWebSocket('wss://ws0.acium.app/**', (ws) => {
       socket = ws;
       ws.send(JSON.stringify({ tabs: ['Nova', 'Milo', 'Iris'] }));
@@ -67,7 +69,7 @@ const assert = require('node:assert/strict');
     await page.waitForFunction(() => document.querySelectorAll('.message').length === 8);
     const shared = await page
       .locator('.message-text')
-      .filter({ hasText: 'Fælles besked' })
+      .filter({ hasText: 'Shared message' })
       .evaluateAll((nodes) =>
         nodes.map((node) => ({
           accounts: [...node.closest('.message-group').querySelectorAll('.message-account')].map(
@@ -84,7 +86,7 @@ const assert = require('node:assert/strict');
     await page
       .locator('.message-group')
       .filter({ has: page.locator('.message-account', { hasText: 'Nova' }) })
-      .filter({ hasText: 'Fælles besked' })
+      .filter({ hasText: 'Shared message' })
       .locator('.message-name')
       .click();
     assert.equal(await page.locator('#person-account').textContent(), 'Milo');
@@ -93,7 +95,7 @@ const assert = require('node:assert/strict');
     await page.locator('#mobile-accounts button').nth(1).click();
     await page.waitForFunction(() => document.querySelectorAll('.message').length === 5);
     assert.equal(
-      await page.locator('.message-text').filter({ hasText: 'Fælles besked' }).count(),
+      await page.locator('.message-text').filter({ hasText: 'Shared message' }).count(),
       1,
     );
     await page.locator('#mobile-accounts button').nth(2).click();
@@ -105,53 +107,62 @@ const assert = require('node:assert/strict');
     assert.deepEqual(await page.locator('.message-account').allTextContents(), ['Milo', 'Nova']);
     await page.locator('#bottom-chat').click();
     await page.waitForFunction(() => document.querySelectorAll('.message').length === 8);
-    socket.send(JSON.stringify(event('Nova', 400, 'text', { text: 'Live fælles' })));
+    socket.send(JSON.stringify(event('Nova', 400, 'text', { text: 'Live shared' })));
     await page.waitForFunction(() =>
       [...document.querySelectorAll('.message-text')].some(
-        (node) => node.textContent === 'Live fælles',
+        (node) => node.textContent === 'Live shared',
       ),
     );
     await page.evaluate(
       () =>
         (window.initialLiveRow = [...document.querySelectorAll('.message-text')]
-          .find((node) => node.textContent === 'Live fælles')
+          .find((node) => node.textContent === 'Live shared')
           .closest('.message')),
     );
-    socket.send(JSON.stringify(event('Milo', 410, 'text', { text: 'Live fælles' })));
+    socket.send(JSON.stringify(event('Milo', 410, 'text', { text: 'Live shared' })));
     await page.waitForFunction(() => {
       const node = [...document.querySelectorAll('.message-text')].find(
-        (node) => node.textContent === 'Live fælles',
+        (node) => node.textContent === 'Live shared',
       );
       return node?.closest('.message-group').querySelectorAll('.message-account').length === 2;
     });
-    assert.equal(await page.locator('.message-text').filter({ hasText: 'Live fælles' }).count(), 1);
+    assert.equal(await page.locator('.message-text').filter({ hasText: 'Live shared' }).count(), 1);
     assert.equal(await page.evaluate(() => window.initialLiveRow.isConnected), true);
-    socket.send(JSON.stringify(event('Iris', 500, 'room', { room: { id: 12, name: 'Torvet' } })));
+    socket.send(
+      JSON.stringify(event('Iris', 500, 'room', { room: { id: 12, name: 'Town Square' } })),
+    );
     for (const [index, account] of ['Nova', 'Milo', 'Iris'].entries())
       socket.send(
-        JSON.stringify(event(account, 600 + index * 10, 'text', { text: 'Alle tre ser denne' })),
+        JSON.stringify(
+          event(account, 600 + index * 10, 'text', { text: 'All three accounts receive this' }),
+        ),
       );
     await page.waitForFunction(() => {
       const node = [...document.querySelectorAll('.message-text')].find(
-        (node) => node.textContent === 'Alle tre ser denne',
+        (node) => node.textContent === 'All three accounts receive this',
       );
       return node?.closest('.message-group').querySelectorAll('.message-account').length === 3;
     });
     assert.equal(
-      await page.locator('.message-text').filter({ hasText: 'Alle tre ser denne' }).count(),
+      await page
+        .locator('.message-text')
+        .filter({ hasText: 'All three accounts receive this' })
+        .count(),
       1,
     );
     assert.equal(
-      await page.locator('.message-text').filter({ hasText: 'Fælles besked' }).count(),
+      await page.locator('.message-text').filter({ hasText: 'Shared message' }).count(),
       2,
     );
-    const sharedRow = page.locator('.message').filter({ hasText: 'Alle tre ser denne' });
+    const sharedRow = page
+      .locator('.message')
+      .filter({ hasText: 'All three accounts receive this' });
     await sharedRow.locator('.message-time').click();
     await page.locator('#save-message').click();
     await page.locator('#message-dialog .close-sheet').click();
     assert.equal(await sharedRow.locator('.saved-marker').isVisible(), true);
     await sharedRow.locator('.message-time').click();
-    assert.equal(await page.locator('#save-message').textContent(), 'Fjern fra gemte');
+    assert.equal(await page.locator('#save-message').textContent(), 'Remove from saved');
     await page.locator('#save-message').click();
     await page.locator('#message-dialog .close-sheet').click();
     assert.equal(await sharedRow.locator('.saved-marker').isVisible(), false);

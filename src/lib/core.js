@@ -1,28 +1,30 @@
+import { identityText } from './message-text.js';
+
 export const MAX_MESSAGES = 700;
 const userKey = (name) =>
   String(name || '')
     .normalize('NFKC')
-    .toLocaleLowerCase('da');
+    .toLocaleLowerCase('en');
 
 function roomDestination(room) {
   if (!['number', 'string'].includes(typeof room?.id) || !/^\d+$/.test(String(room.id)))
     return undefined;
   const id = Number(room.id);
   if (!Number.isSafeInteger(id) || id < 0) return undefined;
-  return { id, name: String(room.name || 'Rum ' + id) };
+  return { id, name: String(room.name || 'Room ' + id) };
 }
 export function parseToken(input) {
   const value = String(input || '').trim();
-  if (!value) throw new Error('Indsæt dit acidum-webchat-link.');
+  if (!value) throw new Error('Paste your acidum webchat link.');
   let token;
   if (/^https?:/i.test(value)) {
     const url = new URL(value);
     if (url.protocol !== 'https:' || url.hostname !== 'acium.app' || url.pathname !== '/chat')
-      throw new Error('Linket skal være https://acium.app/chat?token=…');
+      throw new Error('The link must be https://acium.app/chat?token=…');
     token = url.searchParams.get('token');
   } else token = value;
   if (!token || !/^[A-Za-z0-9._~-]{8,2048}$/.test(token))
-    throw new Error('Linket mangler et gyldigt chat-token.');
+    throw new Error('The link is missing a valid chat token.');
   return token;
 }
 export function describe(event) {
@@ -33,23 +35,23 @@ export function describe(event) {
     case 'priv':
       return {
         name: event.from?.name || '',
-        text: `${event.from?.name === event.me?.name ? `til ${event.to?.name || '?'}` : 'hvisker'}: ${event.text || ''}`,
+        text: `${event.from?.name === event.me?.name ? `to ${event.to?.name || '?'}` : 'whispers'}: ${event.text || ''}`,
         private: true,
       };
     case 'join':
-      return { name: user, text: 'er kommet ind', system: true };
+      return { name: user, text: 'joined the room', system: true };
     case 'part':
       return {
         name: user,
-        text: `er gået til ${event.room?.name || event.room?.id || 'et andet rum'}`,
+        text: `moved to ${event.room?.name || event.room?.id || 'another room'}`,
         system: true,
       };
     case 'quit':
-      return { name: user, text: 'har forladt chatten', system: true };
+      return { name: user, text: 'left the chat', system: true };
     case 'room':
       return {
         name: '',
-        text: `Velkommen til ${event.room?.name || 'rummet'}${event.room?.id != null ? ` · ${event.room.id}` : ''}`,
+        text: `Welcome to ${event.room?.name || 'the room'}${event.room?.id != null ? ` · ${event.room.id}` : ''}`,
         system: true,
       };
     case 'log':
@@ -57,8 +59,8 @@ export function describe(event) {
         ? {
             name: '',
             text: event.users?.length
-              ? `Panic aktiveret af ${event.users.map((u) => u.name).join(', ')}`
-              : 'Panic deaktiveret',
+              ? `Panic activated by ${event.users.map((u) => u.name).join(', ')}`
+              : 'Panic deactivated',
             system: true,
           }
         : null;
@@ -77,7 +79,7 @@ export function needsAttention(event) {
   const normalize = (value) =>
     String(value || '')
       .normalize('NFKC')
-      .toLocaleLowerCase('da');
+      .toLocaleLowerCase('en');
   if (event.notify || event.log) return true;
   if (normalize(sender) === normalize(account)) return false;
   return [account].some((term) => {
@@ -161,7 +163,7 @@ export class ChatStore {
       time,
       event.type,
       description.name,
-      description.text,
+      identityText(event, description.text),
       Boolean(event.log),
       Boolean(event.notify),
     ]);
@@ -186,7 +188,7 @@ export class ChatStore {
     const roomKey =
       room?.id != null
         ? 'id:' + String(room.id)
-        : room?.name && room.name !== 'Ukendt rum'
+        : room?.name && room.name !== 'Unknown room'
           ? 'name:' + room.name
           : undefined;
     const message = {
@@ -208,7 +210,7 @@ export class ChatStore {
     tab.messages.push(message);
     tab.lastLine = Math.max(tab.lastLine, time);
     if (event.type === 'room' && time >= tab.roomSince) {
-      tab.room = { name: String(event.room?.name || 'Ukendt rum'), id: event.room?.id };
+      tab.room = { name: String(event.room?.name || 'Unknown room'), id: event.room?.id };
       tab.roomSince = time;
       tab.presence.clear();
       tab.presenceRevision++;
@@ -247,12 +249,12 @@ export class ChatStore {
       : [...this.tabs.values()]
           .flatMap((t) => t.messages)
           .sort((a, b) => a.time - b.time || a.id - b.id);
-    const search = query.toLocaleLowerCase('da');
+    const search = query.toLocaleLowerCase('en');
     return messages.filter(
       (m) =>
         (!logOnly || m.log) &&
         (systems || !m.system) &&
-        (!search || `${m.account} ${m.name} ${m.text}`.toLocaleLowerCase('da').includes(search)),
+        (!search || `${m.account} ${m.name} ${m.text}`.toLocaleLowerCase('en').includes(search)),
     );
   }
 }

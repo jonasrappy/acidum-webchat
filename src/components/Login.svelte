@@ -14,16 +14,15 @@
   <div class="login-card">
     <Brand heading />
     <p id="link-guide" class="login-guide">
-      <a href="https://acium.app/" target="_blank" rel="noopener noreferrer">Log ind hos acidum ↗</a
-      >
-      og åbn webchatten. Kopiér hele linket fra adresselinjen og indsæt det her.
+      <a href="https://acium.app/" target="_blank" rel="noopener noreferrer">Sign in to acidum ↗</a>
+      and open the webchat. Copy the full link from the address bar and paste it here.
     </p>
     <form id="connect-form" onsubmit={connect}>
       <input
         id="chat-link"
         type="password"
         bind:value={link}
-        aria-label="Dit acidum-webchat-link"
+        aria-label="Your acidum webchat link"
         aria-describedby="link-guide"
         placeholder="https://acium.app/chat?token=…"
         autocomplete="off"
@@ -31,14 +30,14 @@
         required
       />
       <p id="login-error" class="error" role="alert">{session.loginError}</p>
-      <button class="primary" type="submit">Åbn chat <span aria-hidden="true">→</span></button>
+      <button class="primary" type="submit">Open chat <span aria-hidden="true">→</span></button>
     </form>
     <button
       id="resume-saved"
       class="text-button"
       type="button"
       hidden={!session.resumeAvailable}
-      onclick={() => session.resume()}>Prøv det gemte link igen</button
+      onclick={() => session.resume()}>Retry saved link</button
     >
   </div>
 </section>

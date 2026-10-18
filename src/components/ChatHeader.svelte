@@ -25,41 +25,41 @@
     <h1 id="view-title">{session.heading}</h1>
     <p id="view-subtitle" hidden={!session.subtitle}>{session.subtitle}</p>
   </div>
-  <span id="demo-label" class="demo-label" hidden={!session.demo}>Eksempeldata</span>
+  <span id="demo-label" class="demo-label" hidden={!session.demo}>Demo data</span>
   <div class="header-actions">
     <button
       id="search-toggle"
       class="icon-button"
       class:has-filter={filtered}
       aria-label={session.mode === 'private'
-        ? 'Søg og filtrér beskeder · Kun hvisken'
-        : 'Søg og filtrér beskeder'}
+        ? 'Search and filter messages · Whispers only'
+        : 'Search and filter messages'}
       aria-expanded={session.searchOpen}
       aria-controls="search-bar"
-      title="Søg og filtrér beskeder"
+      title="Search and filter messages"
       onclick={toggleSearch}><Icon name="search" /></button
     >
     <button
       id="rooms-button"
       class="icon-button room-top-button"
-      aria-label="Rum og brugere"
+      aria-label="Rooms and people"
       aria-haspopup="dialog"
-      title="Rum og brugere"
+      title="Rooms and people"
       onclick={() => session.openDialog('rooms')}><Icon name="people" /></button
     >
     <button
       id="settings-button"
       class="icon-button"
-      aria-label="Indstillinger"
+      aria-label="Settings"
       aria-haspopup="dialog"
-      title="Indstillinger"
+      title="Settings"
       onclick={() => session.openDialog('settings')}><Icon name="settings" /></button
     >
   </div>
 </header>
 <div class="connection-notice" id="connection-notice" hidden={session.online || session.demo}>
   <span role="status">{session.status}</span>
-  <button type="button" onclick={() => session.reconnect()}>Prøv igen</button>
+  <button type="button" onclick={() => session.reconnect()}>Try again</button>
 </div>
 <div class="toolbar" id="search-bar">
   <label class="search"
@@ -70,14 +70,14 @@
       bind:value={session.searchText}
       oninput={() => session.searchChanged()}
       onkeydown={closeSearch}
-      placeholder="Søg i beskeder…"
-      aria-label="Søg i indlæst historik"
+      placeholder="Search messages…"
+      aria-label="Search loaded history"
     /><button
       id="clear-search"
       class="clear-search"
       type="button"
       hidden={!session.searchText}
-      aria-label="Nulstil søgning"
+      aria-label="Clear search"
       onclick={() => {
         session.clearSearch();
         searchInput?.focus({ preventScroll: true });
@@ -88,32 +88,32 @@
     id="private-toggle"
     class="private-toggle"
     class:active={session.mode === 'private'}
-    aria-label="Vis kun hviskebeskeder"
+    aria-label="Show whispers only"
     aria-pressed={session.mode === 'private'}
-    onclick={() => session.togglePrivate()}>Kun hvisken</button
+    onclick={() => session.togglePrivate()}>Whispers only</button
   >
 </div>
 <div
   id="view-filters"
   class="view-filters"
   role="group"
-  aria-label="Aktive filtre"
+  aria-label="Active filters"
   hidden={!session.person && (session.searchOpen || (!session.query && session.mode !== 'private'))}
 >
   <button
     id="person-filter"
     hidden={!session.person}
-    aria-label={`Fjern filter for ${session.person}`}
+    aria-label={`Remove filter for ${session.person}`}
     onclick={() => session.clearPerson()}>{session.person} ×</button
   >
   <button
     hidden={session.searchOpen || session.mode !== 'private'}
-    aria-label="Vis alle beskeder igen"
-    onclick={() => session.togglePrivate()}>Kun hvisken ×</button
+    aria-label="Show all messages again"
+    onclick={() => session.togglePrivate()}>Whispers only ×</button
   >
   <button
     hidden={session.searchOpen || !session.query}
-    aria-label="Fjern søgefilter"
+    aria-label="Remove search filter"
     onclick={() => session.clearSearch()}>“{session.query}” ×</button
   >
 </div>

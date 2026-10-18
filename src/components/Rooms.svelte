@@ -19,16 +19,16 @@
 
 <Sheet
   id="rooms-dialog"
-  title="Rum & brugere"
+  title="Rooms & people"
   open={session.dialogs.rooms}
   onclose={() => session.closeDialog('rooms')}
 >
   {#snippet tools()}
-    <Help label="Om rum og deltagere" inline>
-      <p>Deltagerlisten hentes ved rumskift og opdateres med ind- og udgange.</p>
+    <Help label="About rooms and participants" inline>
+      <p>The participant list loads when you enter a room and updates as people join and leave.</p>
       <p>
-        “Observeret” betyder, at en fuld deltagerliste endnu ikke er modtaget. Ved afbrudt
-        forbindelse kan listen være forældet.
+        “Observed” means a full participant list has not arrived yet. The list may be out of date
+        while disconnected.
       </p>
     </Help>
   {/snippet}
@@ -40,13 +40,13 @@
             <strong>{account.name}</strong><span
               >{account.room
                 ? account.room.name + (account.room.id != null ? ' · ' + account.room.id : '')
-                : 'Rumnavn afventes'}</span
+                : 'Waiting for room name'}</span
             >
           </div>
           <button
             class="soft-button"
-            aria-label={`Åbn chat som ${account.name}`}
-            onclick={() => openChat(account.name)}>Åbn chat</button
+            aria-label={`Open chat as ${account.name}`}
+            onclick={() => openChat(account.name)}>Open chat</button
           >
         </div>
         <details
@@ -58,10 +58,10 @@
           <summary
             ><span
               >{account.complete
-                ? 'Deltagere'
+                ? 'Participants'
                 : account.room
-                  ? 'Observeret i rummet'
-                  : 'Observeret i samtalen'}</span
+                  ? 'Observed in this room'
+                  : 'Observed in this chat'}</span
             ><span class="people-count">{account.people.length}</span></summary
           >
           {#if account.people.length}
@@ -74,20 +74,20 @@
                     ><span class="person-copy"
                       ><strong>{person.name}</strong><small
                         >{person.name === account.name
-                          ? 'Din bruger'
+                          ? 'Your account'
                           : person.source === 'snapshot'
                             ? ''
-                            : 'Senest set ' + formatTime(person.time)}</small
+                            : 'Last seen ' + formatTime(person.time)}</small
                       ></span
                     ></button
                   >
                 </li>
               {/each}
             </ul>
-          {:else}<p class="setting-note">Ingen deltagere observeret endnu.</p>{/if}
+          {:else}<p class="setting-note">No participants observed yet.</p>{/if}
         </details>
       </section>
-    {:else}<p class="setting-note">Dine brugere vises, når acidum sender sine faner.</p>{/each}
+    {:else}<p class="setting-note">Your accounts appear when acidum sends its tabs.</p>{/each}
   </div>
 </Sheet>
 

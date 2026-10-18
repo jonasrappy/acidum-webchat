@@ -113,7 +113,7 @@ export class AlertManager {
     return true;
   }
   async show(message) {
-    const title = `${message.account} · ${message.name || 'Beskedalarm'}`;
+    const title = `${message.account} · ${message.name || 'Message alert'}`;
     const options = {
       body: message.text,
       tag: 'acidum-' + message.account,

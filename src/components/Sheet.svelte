@@ -63,7 +63,7 @@
     </div>
     <div class="sheet-tools">
       {#if tools}{@render tools()}{/if}
-      <button class="icon-button close-sheet" aria-label="Luk" onclick={() => dialog.close()}
+      <button class="icon-button close-sheet" aria-label="Close" onclick={() => dialog.close()}
         >×</button
       >
     </div>

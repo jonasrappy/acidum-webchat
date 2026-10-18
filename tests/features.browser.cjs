@@ -25,20 +25,20 @@ const assert = require('node:assert/strict');
     const fixture = {
       Nova: [
         event('Nova', 'room', {
-          room: { id: 12, name: 'Torvet' },
+          room: { id: 12, name: 'Town Square' },
           users: [{ name: 'Quiet' }, { name: 'Alma' }],
         }),
-        event('Nova', 'text', { user: { name: 'Alma' }, text: 'Hej Nova!' }),
+        event('Nova', 'text', { user: { name: 'Alma' }, text: 'Hello Nova!' }),
         event('Nova', 'text', { user: { name: 'Alma' }, text: 'Se https://example.com.' }),
         event('Nova', 'priv', {
           from: { name: 'Guest' },
           to: { name: 'Nova' },
-          text: 'En privat besked',
+          text: 'A private message',
         }),
       ],
       Milo: [
         event('Milo', 'room', { room: { id: 7, name: 'Cafe' }, users: [{ name: 'Elliot' }] }),
-        event('Milo', 'text', { user: { name: 'Elliot' }, text: 'Hej alle' }),
+        event('Milo', 'text', { user: { name: 'Elliot' }, text: 'Hello everyone' }),
       ],
     };
     await page.routeWebSocket('wss://ws0.acium.app/**', (ws) => {
@@ -57,7 +57,7 @@ const assert = require('node:assert/strict');
     await page.locator('#bottom-rooms').click();
     await page.waitForFunction(() =>
       [...document.querySelectorAll('#room-cards summary')].every((e) =>
-        e.textContent.startsWith('Deltagere'),
+        e.textContent.startsWith('Participants'),
       ),
     );
     await page.locator('.person-button').filter({ hasText: 'Quiet' }).click();
@@ -72,7 +72,7 @@ const assert = require('node:assert/strict');
     console.log('Snapshot includes quiet users; participant mention and separate drafts pass');
     socket.send(
       JSON.stringify(
-        event('Nova', 'text', { user: { name: 'Alma' }, text: 'Er der kaffe?', notify: true }),
+        event('Nova', 'text', { user: { name: 'Alma' }, text: 'Any coffee?', notify: true }),
       ),
     );
     await page.waitForTimeout(180);
@@ -88,12 +88,12 @@ const assert = require('node:assert/strict');
     await page.waitForTimeout(50);
     assert.equal(await page.locator('.message').count(), 1);
     assert.equal(await page.locator('#private-toggle').getAttribute('aria-pressed'), 'true');
-    assert.ok((await page.locator('.message-text').textContent()).includes('En privat besked'));
+    assert.ok((await page.locator('.message-text').textContent()).includes('A private message'));
     assert.ok((await page.locator('#search-toggle').getAttribute('class')).includes('has-filter'));
     await page.locator('#search-toggle').click();
     assert.equal(await page.locator('#private-toggle').isVisible(), false);
     assert.ok(
-      (await page.locator('#search-toggle').getAttribute('aria-label')).includes('Kun hvisken'),
+      (await page.locator('#search-toggle').getAttribute('aria-label')).includes('Whispers only'),
     );
     await page.locator('#search-toggle').click();
     await page.locator('#private-toggle').click();

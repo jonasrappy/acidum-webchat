@@ -1,7 +1,7 @@
 import { messageLinks } from './core.js';
 
-const clock = new Intl.DateTimeFormat('da-DK', { hour: '2-digit', minute: '2-digit' });
-const calendar = new Intl.DateTimeFormat('da-DK', {
+const clock = new Intl.DateTimeFormat('en-GB', { hour: '2-digit', minute: '2-digit' });
+const calendar = new Intl.DateTimeFormat('en-GB', {
   day: 'numeric',
   month: 'long',
   year: 'numeric',

@@ -30,7 +30,9 @@ export class MessageTools {
     if (!this.selected || !data) return;
     const persisted = data.toggleSaved(this.selected);
     this.saved = this.isSaved(this.selected);
-    this.status = persisted ? 'Opdateret på denne enhed.' : 'Browseren kunne ikke gemme permanent.';
+    this.status = persisted
+      ? 'Updated on this device.'
+      : 'The browser could not save this permanently.';
     this.onChange();
   }
 
@@ -38,9 +40,9 @@ export class MessageTools {
     if (!this.selected) return;
     try {
       await navigator.clipboard.writeText(this.selected.text);
-      this.status = 'Kopieret.';
+      this.status = 'Copied.';
     } catch {
-      this.status = 'Kopiering blev blokeret af browseren. Markér og kopiér teksten i stedet.';
+      this.status = 'The browser blocked copying. Select and copy the text instead.';
     }
   }
 

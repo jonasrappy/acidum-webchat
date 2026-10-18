@@ -33,7 +33,7 @@ const assert = require('node:assert/strict');
     const fixtures = {
       Nova: [
         event('Nova', 'room', {
-          room: { id: 12, name: 'Torvet' },
+          room: { id: 12, name: 'Town Square' },
           users: [{ name: 'Damm' }, { name: 'Daniel' }, { name: 'David' }],
         }),
         ...Array.from({ length: 250 }, (_, i) =>
@@ -130,7 +130,7 @@ const assert = require('node:assert/strict');
     await page.locator('#message').press('Enter');
     await page.waitForTimeout(20);
     assert.equal(sent.at(-1).say, '@d');
-    await page.locator('#message').fill('hej @d bare almindelig tekst');
+    await page.locator('#message').fill('hello @d just ordinary text');
     assert.equal(await page.locator('#mention-menu').isVisible(), false);
     await page.locator('#message').fill('mail@example.com');
     assert.equal(await page.locator('#mention-menu').isVisible(), false);

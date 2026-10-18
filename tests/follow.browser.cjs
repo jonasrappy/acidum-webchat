@@ -29,7 +29,7 @@ const assert = require('node:assert/strict');
                 type: 'room',
                 me: { name: data.name },
                 time: 1700000000000,
-                room: { id: 12, name: 'Torvet' },
+                room: { id: 12, name: 'Town Square' },
               },
               {
                 type: 'part',
@@ -44,7 +44,7 @@ const assert = require('node:assert/strict');
                 me: { name: data.name },
                 user: { name: 'Elliot' },
                 time: 1700000000002,
-                room: { name: 'Ukendt rum' },
+                room: { name: 'Unknown room' },
               },
             ]),
           );
@@ -57,7 +57,7 @@ const assert = require('node:assert/strict');
     await page.locator('#send-as').selectOption('Milo');
     await page.locator('#message').fill('Min usendte kladde');
     await page.locator('.followable').click();
-    assert.equal(await page.locator('#follow-message').textContent(), 'Følg efter som Milo');
+    assert.equal(await page.locator('#follow-message').textContent(), 'Follow as Milo');
     assert.deepEqual(sent, []);
     await page.locator('#follow-message').click();
     await page.waitForFunction(() => !document.querySelector('#message-dialog').open);
@@ -65,7 +65,7 @@ const assert = require('node:assert/strict');
     assert.equal(await page.locator('#message').inputValue(), 'Min usendte kladde');
     await page
       .locator('.message')
-      .filter({ hasText: 'er gået til Ukendt rum' })
+      .filter({ hasText: 'moved to Unknown room' })
       .locator('.message-time')
       .click();
     assert.equal(await page.locator('#follow-message').count(), 0);
@@ -76,13 +76,10 @@ const assert = require('node:assert/strict');
     await page.locator('.followable').waitFor();
     assert.deepEqual(await page.locator('.message-account').allTextContents(), ['Milo', 'Nova']);
     await page.locator('.followable').click();
-    assert.equal(await page.locator('#follow-message').textContent(), 'Følg efter som Nova');
+    assert.equal(await page.locator('#follow-message').textContent(), 'Follow as Nova');
     await page.evaluate(() => window.dispatchEvent(new Event('offline')));
     await page.locator('#follow-message').click();
-    await page
-      .locator('#message-action-status')
-      .filter({ hasText: 'Forbindelsen er afbrudt' })
-      .waitFor();
+    await page.locator('#message-action-status').filter({ hasText: 'Disconnected.' }).waitFor();
     assert.equal(sent.length, 1);
     await page.screenshot({ path: '/tmp/acidum-follow-mobile.png' });
     assert.deepEqual(errors, []);

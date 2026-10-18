@@ -1,4 +1,4 @@
-const normalize = (value) => String(value).normalize('NFKC').toLocaleLowerCase('da');
+const normalize = (value) => String(value).normalize('NFKC').toLocaleLowerCase('en');
 export function mentionQuery(text, cursor = text.length) {
   const before = text.slice(0, cursor),
     match = before.match(/(?:^|[\s([{])@([^\s@]*)$/u);
@@ -9,7 +9,7 @@ export function mentionSuggestions(users, query, limit = 6) {
   const prefix = normalize(query.prefix);
   return [...new Set(users.filter((name) => typeof name === 'string'))]
     .filter((name) => normalize(name).startsWith(prefix))
-    .sort((a, b) => a.localeCompare(b, 'da'))
+    .sort((a, b) => a.localeCompare(b, 'en'))
     .slice(0, limit);
 }
 export function completeMention(text, query, name, limit = 100) {

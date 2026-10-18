@@ -1,3 +1,5 @@
+import { restoreMessage } from './message-text.js';
+
 // Only browser-local user choices. The scope is a one-way hash; no token is stored here.
 export class LocalData {
   constructor(storage, scope) {
@@ -18,7 +20,7 @@ export class LocalData {
           typeof message.text === 'string' &&
           Number.isFinite(message.time)
         )
-          this.saved.set(this.id(message), message);
+          this.saved.set(this.id(message), restoreMessage(message));
     } catch {}
   }
   id(message) {

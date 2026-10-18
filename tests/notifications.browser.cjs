@@ -36,7 +36,7 @@ const assert = require('node:assert/strict');
       me: { name: 'Nova' },
       type: 'text',
       user: { name: 'Alma' },
-      text: 'En markeret besked',
+      text: 'A marked message',
       time: ++time,
       ...extra,
     });
@@ -64,14 +64,19 @@ const assert = require('node:assert/strict');
     assert.equal(await page.locator('#trigger-words').count(), 0);
     await page.locator('#enable-notifications').click();
     await page.waitForFunction(() =>
-      document.querySelector('#enable-notifications').textContent.includes('fra'),
+      document.querySelector('#enable-notifications').textContent.includes('Disable'),
     );
     assert.equal(await page.evaluate(() => permissionRequests), 1);
     await page.locator('#settings-dialog .close-sheet').click();
-    socket.send(JSON.stringify(event({ notify: true, text: 'Et triggerord fra programmet' })));
+    socket.send(
+      JSON.stringify(event({ notify: true, text: 'A trigger word from the desktop app' })),
+    );
     await page.locator('#alert-banner').waitFor();
     await page.waitForFunction(() => systemAlerts.length === 1);
-    assert.equal(await page.locator('#alert-body').textContent(), 'Et triggerord fra programmet');
+    assert.equal(
+      await page.locator('#alert-body').textContent(),
+      'A trigger word from the desktop app',
+    );
     assert.equal(await page.locator('#mobile-accounts .badge').textContent(), '1');
     assert.equal(await page.evaluate(() => systemAlerts[0].options.data.account), 'Nova');
     await page.locator('#alert-banner').click();
@@ -81,7 +86,7 @@ const assert = require('node:assert/strict');
     socket.send(JSON.stringify(event({ log: true, text: 'Kun markering' })));
     await page.waitForTimeout(120);
     assert.equal(await page.locator('#alert-banner').isVisible(), false);
-    socket.send(JSON.stringify(event({ text: 'Hej NOVA!' })));
+    socket.send(JSON.stringify(event({ text: 'Hello NOVA!' })));
     await page.waitForTimeout(120);
     assert.equal(await page.locator('#alert-banner').isVisible(), false);
     socket.send(

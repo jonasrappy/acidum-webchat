@@ -28,14 +28,14 @@
 <svelte:head><title>{session.title}</title></svelte:head>
 <Login {session} />
 <div id="workspace" class="workspace" class:search-open={session.searchOpen} hidden={!session.open}>
-  <nav class="skip-navigation" aria-label="Genveje">
+  <nav class="skip-navigation" aria-label="Shortcuts">
     <a
       class="skip-link"
       href="#timeline"
       onclick={(event) => {
         event.preventDefault();
         document.getElementById('timeline')?.focus({ preventScroll: true });
-      }}>Gå til beskeder</a
+      }}>Skip to messages</a
     >
   </nav>
   <Sidebar {session} />
@@ -49,18 +49,18 @@
 </div>
 {#if sheets}
   {#await sheets}
-    <p class="utility-loading" role="status">Åbner…</p>
+    <p class="utility-loading" role="status">Opening…</p>
   {:then module}
     <module.default {session} />
   {:catch}
     <div class="utility-loading" role="alert">
-      <p>Kunne ikke åbne visningen.</p>
-      <button class="soft-button" onclick={() => location.reload()}>Genindlæs siden</button><button
+      <p>Could not open this view.</p>
+      <button class="soft-button" onclick={() => location.reload()}>Reload page</button><button
         class="soft-button"
         onclick={() => {
           sheets = null;
           session.closeDialogs();
-        }}>Luk</button
+        }}>Close</button
       >
     </div>
   {/await}

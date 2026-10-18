@@ -12,7 +12,7 @@
 >
   <strong id="alert-title"
     >{session.alert
-      ? session.alert.account + ' · ' + (session.alert.name || 'Beskedalarm')
+      ? session.alert.account + ' · ' + (session.alert.name || 'Message alert')
       : ''}</strong
   >
   <span id="alert-body">{session.alert?.text || ''}</span>

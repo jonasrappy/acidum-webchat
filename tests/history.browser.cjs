@@ -91,7 +91,7 @@ const assert = require('node:assert/strict');
     await page.locator('#settings-button').click();
     await page.locator('#clear-history').click();
     await page.waitForFunction(() =>
-      document.querySelector('#history-status').textContent.includes('slettet'),
+      document.querySelector('#history-status').textContent.includes('cleared'),
     );
     assert.equal(
       await page.evaluate(async () => (await archiveStats('test_history_token_123')).count),

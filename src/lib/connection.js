@@ -28,22 +28,22 @@ export class ChatConnection {
     if (!this.token || this.stopped) return;
     this.closeSocket();
     if (!navigator.onLine) {
-      this.onStatus('Ingen internetforbindelse', false);
+      this.onStatus('No internet connection', false);
       return;
     }
     const generation = this.generation;
-    this.onStatus(this.attempt ? 'Forbinder igen…' : 'Forbinder…', false);
+    this.onStatus(this.attempt ? 'Reconnecting…' : 'Connecting…', false);
     let socket;
     try {
       socket = new WebSocket(`wss://ws0.acium.app/chat/ws?token=${encodeURIComponent(this.token)}`);
       this.socket = socket;
     } catch {
-      this.onStatus('Kunne ikke starte forbindelsen', false);
+      this.onStatus('Could not start the connection', false);
       return;
     }
     let received = false;
     socket.onopen = () => {
-      if (generation === this.generation) this.onStatus('Forbundet', true);
+      if (generation === this.generation) this.onStatus('Connected', true);
     };
     socket.onmessage = (event) => {
       if (
@@ -74,11 +74,11 @@ export class ChatConnection {
         return;
       }
       if (!navigator.onLine) {
-        this.onStatus('Ingen internetforbindelse', false);
+        this.onStatus('No internet connection', false);
         return;
       }
       const delay = retryDelay(this.attempt++);
-      this.onStatus(`Afbrudt · prøver igen om ${Math.ceil(delay / 1000)} s`, false);
+      this.onStatus(`Disconnected · retrying in ${Math.ceil(delay / 1000)} s`, false);
       this.timer = setTimeout(() => this.connect(), delay);
     };
   }
@@ -100,7 +100,7 @@ export class ChatConnection {
 
   offline() {
     clearTimeout(this.timer);
-    this.onStatus('Ingen internetforbindelse', false);
+    this.onStatus('No internet connection', false);
   }
 
   closeSocket() {

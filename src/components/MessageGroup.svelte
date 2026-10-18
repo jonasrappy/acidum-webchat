@@ -12,10 +12,10 @@
   class:superuser={group.superuser}
   aria-label={group.name
     ? group.name +
-      (group.superuser ? ' · Superbruger' : '') +
+      (group.superuser ? ' · Superuser' : '') +
       ' · ' +
       group.accounts.join(', ') +
-      (group.kind === 'private' ? ' · Hvisken' : '')
+      (group.kind === 'private' ? ' · Whisper' : '')
     : undefined}
 >
   <header class="message-group-head" hidden={!group.name && Boolean(session.active)}>
@@ -24,17 +24,17 @@
         <button
           class="message-name"
           type="button"
-          title={group.superuser ? 'Superbruger' : undefined}
-          aria-label={group.superuser ? group.name + ' · Superbruger' : undefined}
+          title={group.superuser ? 'Superuser' : undefined}
+          aria-label={group.superuser ? group.name + ' · Superuser' : undefined}
           onclick={() => session.openPerson(group.name, group.accounts)}>{group.name}</button
         >
-        {#if group.kind === 'private'}<span class="private-label">Hvisken</span>{/if}
+        {#if group.kind === 'private'}<span class="private-label">Whisper</span>{/if}
       {/if}
     </div>
     <div
       class="message-accounts"
       role="group"
-      aria-label="Dine brugere"
+      aria-label="Your accounts"
       hidden={Boolean(session.active)}
     >
       {#each group.accounts as name (name)}<span class="message-account" title={name}>{name}</span

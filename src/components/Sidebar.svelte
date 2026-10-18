@@ -8,7 +8,7 @@
 
 <aside class="sidebar">
   <Brand />
-  <p class="nav-label">Overblik</p>
+  <p class="nav-label">Overview</p>
   <button
     id="all-button"
     class="nav-item"
@@ -16,7 +16,7 @@
     aria-pressed={!session.active && !session.logOnly}
     onclick={() => session.choose('')}
   >
-    <Icon name="chat" /> Alle samtaler
+    <Icon name="chat" /> All chats
     <span id="total-unread" class="badge" hidden={!session.totalUnread}
       >{badgeText(session.totalUnread)}</span
     >
@@ -26,12 +26,12 @@
     class="nav-item"
     class:active={session.logOnly}
     aria-pressed={session.logOnly}
-    onclick={() => session.choose('', true)}><Icon name="log" /> Hændelseslog</button
+    onclick={() => session.choose('', true)}><Icon name="log" /> Event log</button
   >
   <div class="nav-label account-label">
-    Dine brugere <span id="account-count">{session.accounts.length}</span>
+    Your accounts <span id="account-count">{session.accounts.length}</span>
   </div>
-  <nav id="accounts" aria-label="Brugere">
+  <nav id="accounts" aria-label="Accounts">
     {#each session.accounts as account (account.name)}
       <AccountButton
         {account}
@@ -47,11 +47,10 @@
         role="status">{session.status}</span
       >
     </div>
-    <button id="reconnect" class="text-button" onclick={() => session.reconnect()}
-      >Forbind igen</button
+    <button id="reconnect" class="text-button" onclick={() => session.reconnect()}>Reconnect</button
     >
     <button id="disconnect" class="text-button muted" onclick={() => session.disconnect()}
-      >Afbryd</button
+      >Disconnect</button
     >
   </div>
 </aside>

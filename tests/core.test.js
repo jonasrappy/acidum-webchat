@@ -108,7 +108,7 @@ test('presence follows each account independently, clears at room changes, ignor
   assert.equal(s.tab('Test').presence.has('Remote'), false);
   s.add({ ...event(1), type: 'join', user: { name: 'Alma' } });
   assert.equal(s.tab('Test').presence.get('Alma').present, false);
-  s.add({ ...event(6), type: 'room', room: { id: 8, name: 'Torvet' } });
+  s.add({ ...event(6), type: 'room', room: { id: 8, name: 'Town Square' } });
   assert.deepEqual([...s.tab('Test').presence.keys()], ['Test']);
   s.add({ ...event(4), type: 'join', user: { name: 'Old room guest' } });
   assert.equal(s.tab('Test').presence.has('Old room guest'), false);
@@ -122,10 +122,10 @@ test('attention badges only match names or server trigger flags, never ordinary 
     type: 'text',
     me: { name: 'Punktum' },
     user: { name: 'Guest' },
-    text: 'Hej alle sammen',
+    text: 'Hello everyone',
   };
   assert.equal(needsAttention(base), false);
-  for (const text of ['Hej Punktum!', '@PUNKTUM: er du der?', 'punktum'])
+  for (const text of ['Hello Punktum!', '@PUNKTUM: are you there?', 'punktum'])
     assert.equal(needsAttention({ ...base, text }), true);
   for (const text of ['punktummer', 'antipunktum', 'Punktum123'])
     assert.equal(needsAttention({ ...base, text }), false);
@@ -137,8 +137,8 @@ test('attention badges only match names or server trigger flags, never ordinary 
     true,
   );
   assert.equal(needsAttention({ ...base, user: { name: 'Punktum' }, text: 'Punktum' }), false);
-  assert.equal(needsAttention({ ...base, me: { name: 'A+B' }, text: 'Hej A+B!' }), true);
-  assert.equal(needsAttention({ ...base, me: { name: 'Søren' }, text: 'Hej SØREN!' }), true);
+  assert.equal(needsAttention({ ...base, me: { name: 'A+B' }, text: 'Hello A+B!' }), true);
+  assert.equal(needsAttention({ ...base, me: { name: 'Søren' }, text: 'Hello SØREN!' }), true);
   assert.equal(
     needsAttention({ ...base, type: 'priv', from: { name: 'Punktum' }, notify: true }),
     true,
@@ -146,7 +146,7 @@ test('attention badges only match names or server trigger flags, never ordinary 
   const store = new ChatStore();
   store.setTabs(['Punktum']);
   assert.equal(store.add({ ...base, time: 1 }).attention, false);
-  assert.equal(store.add({ ...base, time: 2, text: 'Hej Punktum' }).attention, true);
+  assert.equal(store.add({ ...base, time: 2, text: 'Hello Punktum' }).attention, true);
 });
 test('room snapshot includes quiet users and stays separate from later movements', () => {
   const s = new ChatStore();
@@ -154,7 +154,7 @@ test('room snapshot includes quiet users and stays separate from later movements
   s.add({
     ...event(1),
     type: 'room',
-    room: { id: 12, name: 'Torvet' },
+    room: { id: 12, name: 'Town Square' },
     users: [{ name: 'Quiet' }, { name: 'Guest' }],
   });
   assert.equal(s.tab('Test').rosterComplete, true);
@@ -169,9 +169,9 @@ test('room snapshot includes quiet users and stays separate from later movements
 test('desktop markers stay account-specific and distinguish log highlighting from notifications', () => {
   const s = new ChatStore();
   s.setTabs(['Test', 'Other']);
-  const notify = s.add({ ...event(1), text: 'Er der kaffe?', notify: true });
-  const plain = s.add({ ...event(2, 'Other'), text: 'Er der kaffe?' });
-  const log = s.add({ ...event(3), text: 'En markeret besked', log: true });
+  const notify = s.add({ ...event(1), text: 'Any coffee?', notify: true });
+  const plain = s.add({ ...event(2, 'Other'), text: 'Any coffee?' });
+  const log = s.add({ ...event(3), text: 'A marked message', log: true });
   const self = s.add({ ...event(4), user: { name: 'Test' }, notify: true });
   for (const message of [notify, log, self]) {
     assert.equal(message.attention, true);
@@ -245,7 +245,7 @@ test('role metadata is bounded and discarded with its account', () => {
 test('departures preserve the destination id separately from the source room', () => {
   const store = new ChatStore();
   store.setTabs(['Test']);
-  store.add({ ...event(1), type: 'room', room: { id: 12, name: 'Torvet' } });
+  store.add({ ...event(1), type: 'room', room: { id: 12, name: 'Town Square' } });
   const departure = store.add({ ...event(2), type: 'part', room: { id: '53', name: 'X-perten' } });
   assert.equal(departure.roomKey, 'id:12');
   assert.deepEqual(departure.destination, { id: 53, name: 'X-perten' });

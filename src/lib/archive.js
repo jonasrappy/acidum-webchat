@@ -1,3 +1,5 @@
+import { restoreMessage } from './message-text.js';
+
 // Optional on-device archive. Never stores the connection token.
 let database;
 function open() {
@@ -12,7 +14,7 @@ function open() {
       request.onsuccess = () => resolve(request.result);
       request.onerror = () => {
         database = null;
-        reject(new Error('Browseren tillader ikke lokal historik.'));
+        reject(new Error('The browser does not allow local history.'));
       };
     });
   return database;
@@ -29,7 +31,7 @@ export async function saveMessages(scope, messages) {
     for (const message of messages)
       store.put({ ...message, scope, archiveId: archiveId(scope, message) });
     tx.oncomplete = resolve;
-    tx.onerror = () => reject(new Error('Historikken kunne ikke gemmes.'));
+    tx.onerror = () => reject(new Error('History could not be saved.'));
   });
   // A hard cap bounds disk use, including sessions with many accounts.
   await new Promise((resolve, reject) => {
@@ -51,7 +53,7 @@ export async function saveMessages(scope, messages) {
       };
     };
     tx.oncomplete = resolve;
-    tx.onerror = () => reject(new Error('Historikken kunne ikke begrænses.'));
+    tx.onerror = () => reject(new Error('The history storage limit could not be applied.'));
   });
 }
 export async function loadBefore(
@@ -72,7 +74,7 @@ export async function loadBefore(
     const result = [];
     let cursorToken = before,
       hasMore = false;
-    const search = query.toLocaleLowerCase('da');
+    const search = query.toLocaleLowerCase('en');
     request.onsuccess = () => {
       const cursor = request.result;
       if (!cursor) return;
@@ -80,7 +82,7 @@ export async function loadBefore(
         hasMore = true;
         return;
       }
-      const message = cursor.value;
+      const message = restoreMessage(cursor.value);
       cursorToken = { time: message.time, archiveId: message.archiveId };
       if (
         accept(message) &&
@@ -88,14 +90,14 @@ export async function loadBefore(
         (systems || !message.system) &&
         (!search ||
           `${message.account} ${message.name} ${message.text}`
-            .toLocaleLowerCase('da')
+            .toLocaleLowerCase('en')
             .includes(search))
       )
         result.push(message);
       cursor.continue();
     };
     tx.oncomplete = () => resolve({ messages: result.reverse(), before: cursorToken, hasMore });
-    tx.onerror = () => reject(new Error('Historikken kunne ikke læses.'));
+    tx.onerror = () => reject(new Error('History could not be read.'));
   });
 }
 export async function clearScope(scope) {
@@ -114,6 +116,6 @@ export async function clearScope(scope) {
       }
     };
     tx.oncomplete = resolve;
-    tx.onerror = () => reject(new Error('Historikken kunne ikke slettes.'));
+    tx.onerror = () => reject(new Error('History could not be cleared.'));
   });
 }

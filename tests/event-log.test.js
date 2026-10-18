@@ -11,7 +11,7 @@ const message = (index, account = 'Nova', marked = true) => ({
   key: account + index,
   name: 'Alma',
   time: 1700000000000 + index * 2000,
-  text: 'Hændelse ' + index,
+  text: 'Event ' + index,
   type: 'text',
   roomKey: 'id:12',
   log: marked,
@@ -26,12 +26,12 @@ test('the latest 100 events survive reopening and old replays never replace newe
   assert.equal(JSON.parse(disk.getItem(log.key)).length, 100);
   const reopened = new EventLog(disk, 'one');
   assert.equal(reopened.rows.length, 100);
-  assert.equal(reopened.rows[0].text, 'Hændelse 20');
-  assert.equal(reopened.rows.at(-1).text, 'Hændelse 119');
+  assert.equal(reopened.rows[0].text, 'Event 20');
+  assert.equal(reopened.rows.at(-1).text, 'Event 119');
   assert.equal(reopened.capture([message(0), message(119)]), false);
   reopened.capture([message(120)]);
   reopened.flush();
-  assert.equal(reopened.rows[0].text, 'Hændelse 21');
+  assert.equal(reopened.rows[0].text, 'Event 21');
   assert.equal(new EventLog(disk, 'two').rows.length, 0);
 });
 
@@ -65,8 +65,8 @@ test('name mentions and panic qualify while ordinary traffic does not; failed st
   );
   log.capture([
     message(1, 'Nova', false),
-    { ...message(2, 'Nova', false), text: 'Hej NOVA!' },
-    { ...message(3), type: 'log', name: '', text: 'Panic aktiveret' },
+    { ...message(2, 'Nova', false), text: 'Hello NOVA!' },
+    { ...message(3), type: 'log', name: '', text: 'Panic activated' },
   ]);
   assert.doesNotThrow(() => log.flush());
   assert.equal(log.rows.length, 2);

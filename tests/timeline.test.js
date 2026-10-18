@@ -2,14 +2,19 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { timelineGroups, mergeRoomCopies } from '../src/lib/timeline.js';
 import { messageAttention, ChatStore } from '../src/lib/core.js';
-const event = (type, extra = {}) => ({ type, account: 'Nova', name: 'hej', time: 1, ...extra });
+const event = (type, extra = {}) => ({ type, account: 'Nova', name: 'Guest', time: 1, ...extra });
 const dayFor = (time) => (time < 100 ? 'today' : 'tomorrow');
 test('consecutive movements and text share one author group in their original order', () => {
-  const messages = [event('join'), event('quit'), event('join'), event('text', { text: 'heysa' })];
+  const messages = [
+    event('join'),
+    event('quit'),
+    event('join'),
+    event('text', { text: 'hello again' }),
+  ];
   const groups = timelineGroups(messages, dayFor);
   assert.equal(groups.length, 1);
   assert.deepEqual(groups[0].messages, messages);
-  assert.equal(groups[0].name, 'hej');
+  assert.equal(groups[0].name, 'Guest');
 });
 test('copies in the same room become one line with every receiving account and its attention flags', () => {
   const source = (account, time, extra = {}) =>
@@ -19,7 +24,7 @@ test('copies in the same room become one line with every receiving account and i
         account,
         time,
         roomKey: 'id:12',
-        text: 'Hej Milo',
+        text: 'Hello Milo',
         serverMarked: false,
         ...extra,
       }),
@@ -77,13 +82,18 @@ test('historical room identity survives later room changes and departures use th
   const store = new ChatStore();
   store.setTabs(['Nova', 'Milo']);
   for (const account of store.names)
-    store.add({ type: 'room', time: 1, me: { name: account }, room: { id: 12, name: 'Torvet' } });
+    store.add({
+      type: 'room',
+      time: 1,
+      me: { name: account },
+      room: { id: 12, name: 'Town Square' },
+    });
   const event = (account, time, type = 'text', extra = {}) => ({
     me: { name: account },
     user: { name: 'Guest' },
     time,
     type,
-    text: 'hej',
+    text: 'Guest',
     ...extra,
   });
   const old = store.add(event('Nova', 100));
@@ -102,13 +112,13 @@ test('departure copies preserve their destination and conflicting destination id
       account,
       key: account,
       roomKey: 'id:12',
-      text: 'er gået til Et rum',
+      text: 'moved to A room',
       destination,
     });
-  const destination = { id: 53, name: 'Et rum' };
+  const destination = { id: 53, name: 'A room' };
   assert.equal(mergeRoomCopies([part('Nova'), part('Milo', destination)])[0].destination.id, 53);
   assert.equal(
-    mergeRoomCopies([part('Nova', destination), part('Milo', { id: 54, name: 'Et rum' })]).length,
+    mergeRoomCopies([part('Nova', destination), part('Milo', { id: 54, name: 'A room' })]).length,
     2,
   );
 });

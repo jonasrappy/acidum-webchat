@@ -37,7 +37,7 @@ const assert = require('node:assert/strict');
         if (request.lastLine == null) return;
         historyRequests.push(request);
         if (request.lastLine === 0)
-          ws.send(JSON.stringify([event(1700000000000, 'Første besked')]));
+          ws.send(JSON.stringify([event(1700000000000, 'First message')]));
       });
     });
     await page.goto(process.env.ACIDUM_TEST_URL || 'http://127.0.0.1:8765/');
@@ -56,7 +56,7 @@ const assert = require('node:assert/strict');
       window.testVisible = false;
       document.dispatchEvent(new Event('visibilitychange'));
     });
-    socket.send(JSON.stringify(event(1700000000001, 'Besked mens fanen er skjult')));
+    socket.send(JSON.stringify(event(1700000000001, 'Message while the tab is hidden')));
     await page.waitForTimeout(150);
     assert.equal(await page.locator('.message').count(), 1);
     await page.evaluate(() => {
@@ -69,7 +69,7 @@ const assert = require('node:assert/strict');
     assert.equal(requests.filter((url) => /\/UtilitySheets-.*\.js/.test(url)).length, 1);
     await page.locator('#settings-reconnect').click();
     await page.waitForFunction(
-      () => document.querySelector('#settings-status').textContent === 'Forbundet',
+      () => document.querySelector('#settings-status').textContent === 'Connected',
     );
     assert.equal(connections, 2);
     assert.equal(historyRequests.at(-1).lastLine, 1700000000001);

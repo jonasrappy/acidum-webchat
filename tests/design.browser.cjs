@@ -36,7 +36,7 @@ const assert = require('node:assert/strict');
               type: 'text',
               time: ++time,
               user: { name: 'Deltager' + index },
-              text: 'Besked ' + index,
+              text: 'Message ' + index,
             })),
           ]),
         );
@@ -96,22 +96,22 @@ const assert = require('node:assert/strict');
     assert.ok(widths[3] > widths[1]);
     await page.locator('#search-toggle').click();
     await page.locator('#search').fill('ingen resultater');
-    await page.locator('#empty h2').filter({ hasText: 'Ingen beskeder fundet' }).waitFor();
+    await page.locator('#empty h2').filter({ hasText: 'No messages found' }).waitFor();
     await page.locator('#search').press('Escape');
     assert.equal(
       await page.locator('#search-toggle').evaluate((node) => node === document.activeElement),
       true,
     );
-    await page.getByRole('button', { name: 'Fjern søgefilter', exact: true }).click();
+    await page.getByRole('button', { name: 'Remove search filter', exact: true }).click();
     await page.locator('.message-name').first().waitFor();
     await page.locator('#search-toggle').click();
     await page.locator('#private-toggle').click();
     await page.locator('#search').press('Escape');
-    await page.getByRole('button', { name: 'Vis alle beskeder igen', exact: true }).click();
+    await page.getByRole('button', { name: 'Show all messages again', exact: true }).click();
     await page.locator('.message-name').first().waitFor();
     assert.equal(await page.locator('#view-filters').isVisible(), false);
     assert.equal(await page.locator('#send').isDisabled(), true);
-    await page.locator('#message').fill('Hej');
+    await page.locator('#message').fill('Hello');
     assert.equal(await page.locator('#send').isDisabled(), false);
 
     await page.locator('#bottom-settings').click();
@@ -149,7 +149,7 @@ const assert = require('node:assert/strict');
     await page.setViewportSize({ width: 320, height: 568 });
     await page
       .locator('#message')
-      .fill('En lang besked der stadig skal være plads til at sende. '.repeat(2).slice(0, 100));
+      .fill('A long message that should still leave enough room to send. '.repeat(2).slice(0, 100));
     const controls = await page.locator('#composer').evaluate((form) => {
       const bounds = form.getBoundingClientRect();
       return [...form.children]
@@ -184,7 +184,7 @@ const assert = require('node:assert/strict');
     });
     await page.locator('#connection-notice').waitFor();
     assert.equal(await page.locator('#send').isDisabled(), true);
-    assert.ok((await page.locator('#message').inputValue()).startsWith('En lang besked'));
+    assert.ok((await page.locator('#message').inputValue()).startsWith('A long message'));
     assert.deepEqual(errors, []);
     console.log(
       'Touch targets, responsive long names, removable filters, modal scroll/focus, large text and offline feedback pass',

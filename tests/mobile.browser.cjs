@@ -59,12 +59,15 @@ const assert = require('node:assert/strict');
   await page.screenshot({ path: '/tmp/acidum-mobile-safe-area.png' });
   await page.evaluate(() => document.documentElement.style.removeProperty('--mobile-safe-bottom'));
   await page.screenshot({ path: '/tmp/acidum-qa-mobile-chat.png' });
+  const combinedInputWidth = (await page.locator('#message').boundingBox()).width;
   await page.locator('#mobile-accounts button').nth(2).click();
   await page.waitForTimeout(40);
   assert.equal(await page.locator('#view-title').textContent(), 'Milo');
-  assert.equal(await page.locator('#send-as').inputValue(), 'Milo');
+  assert.equal(await page.locator('#send-as').count(), 0);
+  assert.ok((await page.locator('#message').boundingBox()).width > combinedInputWidth);
   await page.locator('#mobile-accounts [role=tab]').last().press('Home');
-  assert.equal(await page.locator('#view-title').textContent(), 'Alle samtaler');
+  assert.equal(await page.locator('#view-title').textContent(), 'All chats');
+  assert.equal(await page.locator('#send-as').inputValue(), 'Milo');
   await page.locator('#mobile-accounts [role=tab]').first().press('ArrowRight');
   assert.equal(await page.locator('#view-title').textContent(), 'Nova');
   await page.locator('#mobile-accounts [role=tab]').nth(1).press('End');
@@ -76,19 +79,19 @@ const assert = require('node:assert/strict');
   await page.screenshot({ path: '/tmp/acidum-qa-mobile-rooms.png' });
   await page.locator('#rooms-dialog .close-sheet').click();
   await page.locator('#bottom-settings').click();
-  const help = page.locator('summary[aria-label="Om historik"]');
+  const help = page.locator('summary[aria-label="About history"]');
   assert.equal(await page.locator('#show-saved').count(), 0);
   assert.equal(await page.locator('#mobile-connection').count(), 0);
   assert.equal(
     await page
-      .getByText('Gem op til 10.000 beskeder lokalt i din browser.', { exact: false })
+      .getByText('Save up to 10,000 messages locally in your browser.', { exact: false })
       .isVisible(),
     false,
   );
   await help.click();
   assert.equal(
     await page
-      .getByText('Gem op til 10.000 beskeder lokalt i din browser.', { exact: false })
+      .getByText('Save up to 10,000 messages locally in your browser.', { exact: false })
       .isVisible(),
     true,
   );
@@ -96,7 +99,7 @@ const assert = require('node:assert/strict');
   await help.press('Enter');
   assert.equal(
     await page
-      .getByText('Gem op til 10.000 beskeder lokalt i din browser.', { exact: false })
+      .getByText('Save up to 10,000 messages locally in your browser.', { exact: false })
       .isVisible(),
     false,
   );
@@ -107,7 +110,7 @@ const assert = require('node:assert/strict');
   await page.setViewportSize({ width: 320, height: 568 });
   await page.locator('#search-toggle').click();
   assert.equal(await page.locator('#private-toggle').isVisible(), true);
-  await page.locator('#search').fill('kaffe');
+  await page.locator('#search').fill('coffee');
   await page.waitForTimeout(200);
   assert.equal(await page.locator('.message').count(), 1);
   assert.ok((await page.locator('#search-bar').boundingBox()).height < 80);
@@ -118,7 +121,7 @@ const assert = require('node:assert/strict');
   await page.setViewportSize({ width: 390, height: 844 });
   await page.locator('#bottom-log').click();
   await page.waitForTimeout(40);
-  assert.equal(await page.locator('#view-title').textContent(), 'Hændelseslog');
+  assert.equal(await page.locator('#view-title').textContent(), 'Event log');
   await page.locator('#bottom-chat').click();
   await page.waitForTimeout(40);
   assert.equal(await page.locator('#view-title').textContent(), 'Milo');

@@ -12,7 +12,7 @@ const message = (i = 1) => ({
   time: 1700000000000 + i,
   name: 'Guest',
   type: 'text',
-  text: 'Hej Test',
+  text: 'Hello Test',
 });
 test('drafts and saved messages survive reopening, stay scoped and obey limits', () => {
   const disk = storage(),
@@ -51,11 +51,11 @@ test('message filters and link extraction handle private, mention and URL data',
   assert.equal(matchesMode({ ...message(), text: 'plain' }, 'mentions'), false);
   assert.equal(matchesMode({ ...message(), type: 'priv' }, 'private'), true);
   assert.equal(matchesMode(message(), 'private'), false);
-  assert.deepEqual(messageLinks('Se https://example.com/test. og http://example.org/?x=2!'), [
+  assert.deepEqual(messageLinks('See https://example.com/test. and http://example.org/?x=2!'), [
     'https://example.com/test',
     'http://example.org/?x=2',
   ]);
   assert.equal(matchesMode({ ...message(), text: 'https://example.com' }, 'links'), true);
   assert.equal(matchesMode({ ...message(), text: 'javascript:alert(1)' }, 'links'), false);
-  assert.ok(exportText([message()]).includes('[Test] Guest: Hej Test'));
+  assert.ok(exportText([message()]).includes('[Test] Guest: Hello Test'));
 });

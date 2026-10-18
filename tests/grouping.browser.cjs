@@ -19,13 +19,13 @@ const assert = require('node:assert/strict');
     const event = (type, extra = {}) => ({
       me: { name: 'Nova' },
       type,
-      user: { name: 'hej' },
+      user: { name: 'Guest' },
       time: (time += 60000),
       ...extra,
     });
     const fixtures = {
       Nova: [
-        event('room', { room: { id: 12, name: 'Torvet' }, users: [{ name: 'hej' }] }),
+        event('room', { room: { id: 12, name: 'Town Square' }, users: [{ name: 'Guest' }] }),
         event('join'),
         event('quit'),
         event('join'),
@@ -69,9 +69,9 @@ const assert = require('node:assert/strict');
       window.firstAuthorGroup = document.querySelector('.message-name').closest('.message-group');
       window.firstAuthorHeader = window.firstAuthorGroup.querySelector('.message-group-head');
     });
-    socket.send(JSON.stringify(event('text', { text: 'heysa' })));
+    socket.send(JSON.stringify(event('text', { text: 'hello again' })));
     await page.waitForFunction(() => document.querySelectorAll('.message').length === 5);
-    const group = page.locator('.message-group').filter({ hasText: 'heysa' });
+    const group = page.locator('.message-group').filter({ hasText: 'hello again' });
     assert.equal(await group.count(), 1);
     const alignment = await group.evaluate((el) => ({
       name: el.querySelector('.message-name').getBoundingClientRect().left,
@@ -97,10 +97,10 @@ const assert = require('node:assert/strict');
     assert.equal(movementColors[0], movementColors[2]);
     assert.notEqual(movementColors[0], movementColors[1]);
     assert.deepEqual(await group.locator('.message-text').allTextContents(), [
-      'er kommet ind',
-      'har forladt chatten',
-      'er kommet ind',
-      'heysa',
+      'joined the room',
+      'left the chat',
+      'joined the room',
+      'hello again',
     ]);
     assert.equal(
       new Set(await group.locator('time').evaluateAll((nodes) => nodes.map((n) => n.dateTime)))
@@ -123,13 +123,13 @@ const assert = require('node:assert/strict');
       '16px',
     );
     await group.locator('.message-time').nth(1).click();
-    assert.equal(await page.locator('#message-preview').textContent(), 'har forladt chatten');
+    assert.equal(await page.locator('#message-preview').textContent(), 'left the chat');
     await page.locator('#save-message').click();
     await page.locator('#message-dialog .close-sheet').click();
     for (const data of [
-      event('text', { user: { name: 'Alma' }, text: 'Hej med dig' }),
-      event('text', { text: 'Jeg er tilbage igen' }),
-      event('priv', { from: { name: 'hej' }, to: { name: 'Nova' }, text: 'En privat besked' }),
+      event('text', { user: { name: 'Alma' }, text: 'Hello there' }),
+      event('text', { text: 'I am back again' }),
+      event('priv', { from: { name: 'Guest' }, to: { name: 'Nova' }, text: 'A private message' }),
     ])
       socket.send(JSON.stringify(data));
     await page.waitForFunction(() => document.querySelectorAll('.message-group').length === 5);
@@ -139,7 +139,7 @@ const assert = require('node:assert/strict');
         .evaluateAll((nodes) => nodes.map((n) => n.querySelectorAll('.message').length)),
       [1, 4, 1, 1, 1],
     );
-    assert.equal(await page.locator('.private-label').textContent(), 'Hvisken');
+    assert.equal(await page.locator('.private-label').textContent(), 'Whisper');
     const colors = await page
       .locator('.message-group')
       .evaluateAll((nodes) => nodes.map((n) => getComputedStyle(n).backgroundColor));
@@ -196,7 +196,7 @@ const assert = require('node:assert/strict');
       assert.equal(
         await page
           .locator('.message-text')
-          .filter({ hasText: 'heysa' })
+          .filter({ hasText: 'hello again' })
           .evaluate((el) => getComputedStyle(el).fontSize),
         '30px',
       );
@@ -212,23 +212,21 @@ const assert = require('node:assert/strict');
         .locator('time')
         .evaluateAll((nodes) => nodes.map((n) => n.getBoundingClientRect().right));
       assert.ok(Math.max(...timeEdges) - Math.min(...timeEdges) < 1);
-      const clipped = await page
-        .locator('.message-group')
-        .evaluateAll((groups) =>
-          groups.flatMap((group) =>
-            [...group.querySelectorAll('time')]
-              .filter(
-                (time) => time.getBoundingClientRect().left < group.getBoundingClientRect().left,
-              )
-              .map((time) => ({
-                time: time.textContent,
-                left: time.getBoundingClientRect().left,
-                group: group.getBoundingClientRect().left,
-                gutter: getComputedStyle(group.querySelector('.message')).gridTemplateColumns,
-                meta: getComputedStyle(time.closest('.message-meta')).fontSize,
-              })),
-          ),
-        );
+      const clipped = await page.locator('.message-group').evaluateAll((groups) =>
+        groups.flatMap((group) =>
+          [...group.querySelectorAll('time')]
+            .filter(
+              (time) => time.getBoundingClientRect().left < group.getBoundingClientRect().left,
+            )
+            .map((time) => ({
+              time: time.textContent,
+              left: time.getBoundingClientRect().left,
+              group: group.getBoundingClientRect().left,
+              gutter: getComputedStyle(group.querySelector('.message')).gridTemplateColumns,
+              meta: getComputedStyle(time.closest('.message-meta')).fontSize,
+            })),
+        ),
+      );
       assert.deepEqual(clipped, [], String(width));
     }
     await page.reload();

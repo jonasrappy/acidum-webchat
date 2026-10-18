@@ -20,7 +20,7 @@
       class="older"
       hidden={!session.hasOlder}
       disabled={session.history.loading}
-      onclick={() => session.loadOlder()}>Vis ældre beskeder</button
+      onclick={() => session.loadOlder()}>Load older messages</button
     >
     <p id="history-status" class="history-status" role="status">{session.history.status}</p>
     <div id="messages">
@@ -30,10 +30,10 @@
       <span aria-hidden="true">◌</span>
       <h2>
         {session.query || session.person || session.mode === 'private'
-          ? 'Ingen beskeder fundet'
+          ? 'No messages found'
           : session.logOnly
-            ? 'Ingen hændelser endnu'
-            : 'Her starter samtalen'}
+            ? 'No events yet'
+            : 'The conversation starts here'}
       </h2>
       <p id="empty-text">{session.emptyText}</p>
     </div>
@@ -45,7 +45,7 @@
     onclick={() => {
       session.nearBottom = true;
       session.refresh();
-    }}>Nye beskeder ↓</button
+    }}>New messages ↓</button
   >
 </div>
 

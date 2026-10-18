@@ -11,7 +11,7 @@
     class="mobile-accounts"
     role="tablist"
     use:keyboardTabs
-    aria-label="Vælg bruger"
+    aria-label="Choose account"
   >
     <button
       class="nav-item"
@@ -21,7 +21,7 @@
       tabindex={!session.active || session.logOnly ? 0 : -1}
       class:active={!session.active && !session.logOnly}
       use:revealTab={!session.active && !session.logOnly}
-      onclick={() => session.choose('')}>Alle</button
+      onclick={() => session.choose('')}>All</button
     >
     {#each session.accounts as account (account.name)}
       <AccountButton
@@ -33,16 +33,14 @@
     {/each}
   </div>
 {:else}
-  <nav class="bottom-nav" aria-label="Hovednavigation">
+  <nav class="bottom-nav" aria-label="Main navigation">
     <button
       id="bottom-chat"
       class:selected={!session.logOnly && !session.dialogOpen}
       aria-pressed={!session.logOnly}
-      aria-label={session.totalUnread
-        ? `Samtaler · ${session.totalUnread} beskedalarmer`
-        : 'Samtaler'}
+      aria-label={session.totalUnread ? `Chats · ${session.totalUnread} message alerts` : 'Chats'}
       onclick={() => session.chooseLastChat()}
-      ><Icon name="chat" /><span>Samtaler</span><span
+      ><Icon name="chat" /><span>Chats</span><span
         id="bottom-unread"
         class="nav-dot"
         aria-hidden="true"
@@ -60,7 +58,7 @@
       class:selected={session.dialogs.rooms}
       aria-pressed={session.dialogs.rooms}
       aria-haspopup="dialog"
-      onclick={() => session.openDialog('rooms')}><Icon name="room" /><span>Rum</span></button
+      onclick={() => session.openDialog('rooms')}><Icon name="room" /><span>Rooms</span></button
     >
     <button
       id="bottom-settings"
@@ -68,7 +66,7 @@
       aria-pressed={session.dialogs.settings}
       aria-haspopup="dialog"
       onclick={() => session.openDialog('settings')}
-      ><Icon name="settings" /><span>Mere</span></button
+      ><Icon name="settings" /><span>More</span></button
     >
   </nav>
 {/if}

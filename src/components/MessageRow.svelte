@@ -13,7 +13,7 @@
     <button
       class="message-time"
       type="button"
-      aria-label={row.time + ' · Beskedhandlinger'}
+      aria-label={row.time + ' · Message actions'}
       onclick={() => onopen(row.message)}><time datetime={row.datetime}>{row.time}</time></button
     >
     <span class="saved-marker" hidden={!row.saved}>★</span>
@@ -22,7 +22,7 @@
     <button
       class="message-content movement followable"
       type="button"
-      aria-label={`${row.message.text} (${row.message.destination.id}) · Beskedhandlinger`}
+      aria-label={`${row.message.text} (${row.message.destination.id}) · Message actions`}
       onclick={() => onopen(row.message)}
       ><span class="movement-icon leave" aria-hidden="true">←</span><span class="message-text"
         >{row.message.text} ({row.message.destination.id})</span

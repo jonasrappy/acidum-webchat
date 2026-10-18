@@ -6,7 +6,7 @@ const live = (extra = {}) => ({
   key: 'one',
   name: 'Alma',
   type: 'text',
-  text: 'Hej',
+  text: 'Hello',
   time: Date.now(),
   serverNotify: true,
   ...extra,

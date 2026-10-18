@@ -5,7 +5,7 @@
 
 <Sheet
   id="message-dialog"
-  title="Besked"
+  title="Message"
   open={session.dialogs.message}
   onclose={() => session.closeDialog('message')}
 >
@@ -16,13 +16,13 @@
         id="follow-message"
         class="soft-button"
         disabled={!session.followAccount}
-        onclick={() => session.followMessage()}>Følg efter som {session.followAccount}</button
+        onclick={() => session.followMessage()}>Follow as {session.followAccount}</button
       >
     {/if}
     <button id="copy-message" class="soft-button" onclick={() => session.messageTools.copy()}
-      >Kopiér tekst</button
+      >Copy text</button
     ><button id="save-message" class="soft-button" onclick={() => session.messageTools.toggle()}
-      >{session.messageTools.saved ? 'Fjern fra gemte' : 'Gem besked'}</button
+      >{session.messageTools.saved ? 'Remove from saved' : 'Save message'}</button
     >
   </div>
   <p id="message-action-status" class="setting-note" role="status">{session.messageTools.status}</p>

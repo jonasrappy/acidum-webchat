@@ -1,5 +1,6 @@
 import { messageAttention } from './core.js';
 import { mergeRoomCopies } from './timeline.js';
+import { restoreMessage } from './message-text.js';
 
 export const MAX_LOG_EVENTS = 100;
 const signature = (message) => JSON.stringify([message.type, message.name, message.text]);
@@ -36,7 +37,7 @@ export class EventLog {
       const restored = saved
         .slice(-MAX_LOG_EVENTS)
         .flatMap((row) => (Array.isArray(row?.sources) ? row.sources.slice(0, 50) : [row]));
-      this.capture(restored.filter(valid));
+      this.capture(restored.filter(valid).map(restoreMessage));
     } catch {}
   }
 

@@ -54,7 +54,7 @@ export class LocalHistory {
       })
       .catch(() => {
         if (scope === this.scope)
-          this.status = 'Lokal historik kunne ikke gemmes. Chatten fortsætter.';
+          this.status = 'Local history could not be saved. The chat will continue.';
       });
     return this.writing;
   }
@@ -62,7 +62,7 @@ export class LocalHistory {
   async load(account, oldest, options) {
     if (this.loading || !this.enabled || !this.scope || !this.hasMore) return false;
     this.loading = true;
-    this.status = 'Henter ældre beskeder fra denne enhed…';
+    this.status = 'Loading older messages from this device…';
     const generation = this.generation;
     try {
       await this.flush();
@@ -76,11 +76,10 @@ export class LocalHistory {
       this.before = result.before;
       this.hasMore = result.hasMore;
       this.rows = [...result.messages, ...this.rows].slice(-10000);
-      this.status = result.hasMore ? '' : 'Begyndelsen af den lokalt gemte historik.';
+      this.status = result.hasMore ? '' : 'Beginning of the locally saved history.';
       return true;
     } catch {
-      if (generation === this.generation)
-        this.status = 'Browseren kunne ikke hente den lokale historik.';
+      if (generation === this.generation) this.status = 'The browser could not load local history.';
       return false;
     } finally {
       if (generation === this.generation) this.loading = false;
@@ -96,10 +95,9 @@ export class LocalHistory {
       await clearScope(scope);
       if (scope !== this.scope) return;
       this.resetView();
-      this.status =
-        'Den gemte historik er slettet. Nye beskeder gemmes, hvis “Gem historik” er valgt.';
+      this.status = 'Saved history cleared. New messages will be saved if history is enabled.';
     } catch {
-      if (scope === this.scope) this.status = 'Historikken kunne ikke slettes.';
+      if (scope === this.scope) this.status = 'History could not be cleared.';
     }
   }
 
