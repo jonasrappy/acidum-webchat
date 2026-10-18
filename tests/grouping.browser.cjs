@@ -19,7 +19,7 @@ const {chromium}=require('playwright-core');const assert=require('node:assert/st
   assert.deepEqual(await group.locator('.message-text').allTextContents(),['er kommet ind','har forladt chatten','er kommet ind','heysa']);
   assert.equal(new Set(await group.locator('time').evaluateAll(nodes=>nodes.map(n=>n.dateTime))).size,4);
   assert.equal(await page.evaluate(()=>document.querySelector('.message-name').closest('.message-group')===window.firstAuthorGroup&&window.firstAuthorHeader.isConnected),true);
-  assert.equal(await group.locator('.message-text').last().evaluate(el=>getComputedStyle(el).fontSize),'19px');
+  assert.equal(await group.locator('.message-text').last().evaluate(el=>getComputedStyle(el).fontSize),'16px');
   await group.locator('.message-time').nth(1).click();assert.equal(await page.locator('#message-preview').textContent(),'har forladt chatten');await page.locator('#save-message').click();await page.locator('#message-dialog .close-sheet').click();
   for(const data of [event('text',{user:{name:'Alma'},text:'Hej med dig'}),event('text',{text:'Jeg er tilbage igen'}),event('priv',{from:{name:'hej'},to:{name:'Nova'},text:'En privat besked'})])socket.send(JSON.stringify(data));
   await page.waitForFunction(()=>document.querySelectorAll('.message-group').length===5);
@@ -32,18 +32,19 @@ const {chromium}=require('playwright-core');const assert=require('node:assert/st
   const exits=await page.locator('.movement-icon.leave').evaluateAll(nodes=>nodes.map(n=>getComputedStyle(n).color));assert.equal(exits[0],exits[1]);
   await page.locator('#bottom-settings').click();await page.locator('#show-events').uncheck();await page.waitForFunction(()=>document.querySelectorAll('.message.system').length===0);assert.equal(await page.locator('.message-group').count(),4);await page.locator('#show-events').check();await page.waitForFunction(()=>document.querySelectorAll('.message').length===9);
   await page.locator('#text-size').focus();await page.locator('#text-size').press('ArrowRight');
-  assert.equal(await page.locator('#text-size-value').textContent(),'20 px');assert.equal(await page.locator('.font-preview').evaluate(el=>getComputedStyle(el).fontSize),'20px');
-  await page.locator('#text-size').press('End');assert.equal(await page.locator('#text-size-value').textContent(),'26 px');await page.locator('#settings-dialog .close-sheet').click();
+  assert.equal(await page.locator('#text-size-value').textContent(),'17 px');assert.equal(await page.locator('.font-preview').evaluate(el=>getComputedStyle(el).fontSize),'17px');
+  await page.locator('#text-size').press('Home');assert.equal(await page.locator('#text-size-value').textContent(),'10 px');assert.equal(await group.locator('.message-text').last().evaluate(el=>getComputedStyle(el).fontSize),'10px');assert.equal(await page.locator('#message').evaluate(el=>getComputedStyle(el).fontSize),'16px');
+  await page.locator('#text-size').press('End');assert.equal(await page.locator('#text-size-value').textContent(),'30 px');await page.locator('#settings-dialog .close-sheet').click();
   for(const width of [320,390,768,1440]){
    await page.setViewportSize({width,height:844});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
-   assert.equal(await page.locator('.message-text').filter({hasText:'heysa'}).evaluate(el=>getComputedStyle(el).fontSize),'26px');
+   assert.equal(await page.locator('.message-text').filter({hasText:'heysa'}).evaluate(el=>getComputedStyle(el).fontSize),'30px');
    assert.equal(await page.locator('#timeline').evaluate(el=>el.scrollWidth>el.clientWidth),false);
-   assert.equal(await page.locator('#message').evaluate(el=>getComputedStyle(el).fontSize),'26px');
+   assert.equal(await page.locator('#message').evaluate(el=>getComputedStyle(el).fontSize),'30px');
    const timeEdges=await group.locator('time').evaluateAll(nodes=>nodes.map(n=>n.getBoundingClientRect().right));assert.ok(Math.max(...timeEdges)-Math.min(...timeEdges)<1);
    const clipped=await page.locator('.message-group').evaluateAll(groups=>groups.flatMap(group=>[...group.querySelectorAll('time')].filter(time=>time.getBoundingClientRect().left<group.getBoundingClientRect().left).map(time=>({time:time.textContent,left:time.getBoundingClientRect().left,group:group.getBoundingClientRect().left,gutter:getComputedStyle(group.querySelector('.message')).gridTemplateColumns,meta:getComputedStyle(time.closest('.message-meta')).fontSize}))));assert.deepEqual(clipped,[],String(width));
   }
   await page.reload();await page.waitForFunction(()=>document.querySelectorAll('.message').length===5);
-  await page.locator('#settings-button').click();assert.equal(await page.locator('#text-size').inputValue(),'26');assert.equal(await page.locator('#text-size-value').textContent(),'26 px');await page.locator('#settings-dialog .close-sheet').click();
+  await page.locator('#settings-button').click();assert.equal(await page.locator('#text-size').inputValue(),'30');assert.equal(await page.locator('#text-size-value').textContent(),'30 px');await page.locator('#settings-dialog .close-sheet').click();
   assert.deepEqual(errors,[]);console.log('Join, quit, rejoin and speech share one persistent author block; per-line actions, group boundaries and adjustable persistent text size pass');
  }finally{await browser.close();}
 })().catch(error=>{console.error(error);process.exitCode=1;});

@@ -11,7 +11,7 @@ const {chromium}=require('playwright-core');const assert=require('node:assert/st
   await page.goto(process.env.ACIDUM_TEST_URL||'http://127.0.0.1:8765/');await page.locator('#chat-link').fill('synthetic_keyboard_login_123');await page.locator('#connect-form').evaluate(form=>form.requestSubmit());
   await page.waitForFunction(()=>document.querySelectorAll('.message').length===250);await page.locator('#mobile-accounts button').nth(1).click();await page.waitForTimeout(150);
   assert.equal(await page.locator('.message-group').count(),1);assert.equal(await page.locator('.message-name').count(),1);assert.equal(await page.locator('.message time').count(),250);
-  assert.equal(await page.locator('.message-text').first().evaluate(el=>getComputedStyle(el).fontSize),'19px');
+  assert.equal(await page.locator('.message-text').first().evaluate(el=>getComputedStyle(el).fontSize),'16px');
   await page.evaluate(()=>{window.savedRow=document.querySelector('#messages .message:last-child');window.savedGroup=window.savedRow.closest('.message-group');window.savedStripe=window.savedGroup.classList.contains('alternate');window.mutations={added:0,removed:0};new MutationObserver(records=>{for(const r of records){window.mutations.added+=r.addedNodes.length;window.mutations.removed+=r.removedNodes.length;}}).observe(document.querySelector('#messages'),{childList:true,subtree:true});});
   socket.send(JSON.stringify(event('Milo','text',{user:{name:'Elliot'},text:'Other room traffic'})));await page.waitForTimeout(150);
   assert.deepEqual(await page.evaluate(()=>window.mutations),{added:0,removed:0});
