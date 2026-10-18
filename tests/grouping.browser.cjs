@@ -10,7 +10,7 @@ const {chromium}=require('playwright-core');const assert=require('node:assert/st
   await page.goto(process.env.ACIDUM_TEST_URL||'http://127.0.0.1:8765/');await page.locator('#chat-link').fill('synthetic_grouping_login_123');await page.locator('#connect-form').evaluate(f=>f.requestSubmit());
   await page.waitForFunction(()=>document.querySelectorAll('.message').length===5);
   const accountTags=page.locator('.message-account');assert.ok((await accountTags.allTextContents()).every(text=>['Nova','Milo'].includes(text)));
-  assert.ok((await page.locator('.account-tag-label').allTextContents()).every(text=>text==='Din bruger'));
+  assert.equal(await page.locator('.account-tag-label').count(),0);
   assert.equal(await page.locator('.message-group-author .message-account').count(),0);
   assert.equal(await page.locator('.message-accounts').first().evaluate(el=>Math.abs(el.getBoundingClientRect().top-el.closest('.message-group').getBoundingClientRect().top)<1),true);
   await page.locator('#mobile-accounts button').nth(1).click();
