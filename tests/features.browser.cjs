@@ -27,12 +27,12 @@ const {chromium}=require('playwright-core');const assert=require('node:assert/st
   await page.locator('#private-toggle').click();await page.waitForTimeout(50);
   const link=page.locator('.message-text a');assert.equal(await link.getAttribute('href'),'https://example.com');
   await link.locator('xpath=ancestor::article').locator('.message-time').click();await page.locator('#save-message').click();await page.locator('#message-dialog .close-sheet').click();
-  await page.locator('#bottom-settings').click();await page.locator('#show-saved').click();await page.waitForTimeout(50);assert.equal(await page.locator('.message').count(),1);
-  console.log('Desktop trigger markers, visible whisper toggle, links and saved messages pass');
+  assert.equal(await link.locator('xpath=ancestor::article').locator('.saved-marker').isVisible(),true);
+  console.log('Desktop trigger markers, visible whisper toggle, links and message bookmarks pass');
   await page.locator('#bottom-settings').click();const downloadPromise=page.waitForEvent('download');await page.locator('#export-chat').click();const download=await downloadPromise;assert.ok(download.suggestedFilename().startsWith('acidum-'));await page.locator('#settings-dialog .close-sheet').click();
   await page.reload();await page.waitForFunction(()=>document.querySelectorAll('.message').length>=6);assert.equal(await page.locator('#message').inputValue(),'Quiet ');
-  await page.locator('#bottom-settings').click();await page.locator('#show-saved').click();await page.waitForTimeout(50);assert.equal(await page.locator('.message').count(),1);
-  await page.locator('#bottom-settings').click();assert.equal(await page.locator('#show-saved').textContent(),'Vis alle beskeder');await page.locator('#show-saved').click();await page.locator('#mobile-accounts button').nth(1).click();
+  assert.equal(await page.locator('.message').filter({has:page.locator('a[href="https://example.com"]')}).locator('.saved-marker').isVisible(),true);
+  await page.locator('#mobile-accounts button').nth(1).click();
   socket.send(JSON.stringify(event('Nova','quit',{user:{name:'Quiet'}})));await page.waitForTimeout(180);await page.locator('#bottom-rooms').click();assert.equal(await page.locator('.person-button').filter({hasText:'Quiet'}).count(),0);await page.locator('#rooms-dialog .close-sheet').click();
   await page.locator('.message-name').filter({hasText:'Alma'}).first().click();await page.locator('#person-messages').click();await page.waitForTimeout(50);assert.equal(await page.locator('#person-filter').textContent(),'Alma ×');
   assert.deepEqual(errors,[]);console.log('Export, persistent drafts/bookmarks, departing users and sender filter pass');

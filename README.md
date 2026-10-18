@@ -15,8 +15,9 @@ Token-linkets tekniske format er `https://acium.app/chat?token=…`. Linket husk
 ## Funktioner
 
 - Samlet samtale eller én bruger ad gangen, med kompakt mobilnavigation. Navne vises uden gentagne felter med initialer i navigation, deltagerlister og beskedblokke.
-- Filteret “Kun hvisken” ligger sammen med søgningen. På mobil åbnes det via lup-ikonet, som markeres, når et filter er aktivt. Gemte beskeder åbnes fra Mere/Indstillinger. Søg i indlæst tekst eller filtrér på en bestemt afsender.
-- Beskedtekst på 16 px som standard. Under Mere/Indstillinger → Visning kan størrelsen justeres fra 10 til 30 px med forhåndsvisning; valget huskes på enheden.
+- Filteret “Kun hvisken” ligger sammen med søgningen. Det åbnes via lup-ikonet, som markeres, når et filter er aktivt. Søg i indlæst tekst eller filtrér på en bestemt afsender.
+- Mere/Indstillinger viser indstillinger og handlinger med forklaringer bag spørgsmålstegn. Forbindelsesstatus, genforbindelse og afbrydelse er samlet nederst.
+- Beskedtekst på 16 px som standard. Under Mere/Indstillinger → Visning kan størrelsen justeres fra 10 til 30 px med forhåndsvisning under spørgsmålstegnet; valget huskes på enheden.
 - I Alle samles kopier af samme rumbesked fra flere af dine brugere til én besked med tags for de berørte brugere. Rumkonteksten gemmes ved modtagelsen. Sammenligningen bruger afsender, type, tekst og tidspunkt; kendte fælles rum tillader op til ét sekunds forskel mellem kopierne. Gentagelser fra samme brugerfane, forskellige kendte rum og private beskeder sammenlægges ikke.
 - Sammenhængende indgange, udgange og tekst fra samme person samles i én blok med afsenderen øverst til venstre og tidsstempler i en fast kolonne til højre. I det samlede overblik vises dine egne brugere som separate tags på boksens øverste højre hjørne. Hver linje beholder sit tidspunkt og sine beskedhandlinger. Grøn højrepil viser indgang; rød venstrepil viser udgang eller at personen har forladt chatten. Baggrunden skifter mellem blokkene. En anden person, brugerfane, dato eller et rumskift starter en ny blok; hvisken holdes separat fra almindelige rumbeskeder.
 - Triggerord styres i programmet. Webchatten følger de medsendte `log`-/`notify`-markeringer og markerer også brugernavnet uden forskel på store og små bogstaver. Tællere reagerer på disse markeringer og navneomtaler; almindelig rumtrafik tæller ikke. Programmarkeringer respekteres også på egne beskeder.
@@ -42,7 +43,7 @@ For at chatten virker, sendes token og beskeder direkte til chatserveren over en
 
 Hukommelsen beholder op til 700 indgående beskeder pr. bruger. Den aktive visning tegner først de seneste 250; flere tilføjes, når du selv læser længere tilbage. Live-opdateringer samles med mindst 80 ms mellem tegninger. Uændrede beskedrækker genbruges; nye beskeder indsættes uden at genopbygge samtalen. Tastatur- og viewportændringer ændrer kun layout og læseposition. Aktivitet i andre samtaler tegner ikke den aktuelle beskedliste igen. Skjulte faner tegnes først, når de bliver synlige. Mens du læser ældre beskeder, tegnes samtalen ikke igen for hver ny besked.
 
-Serverprotokollens `lastLine` henter nyere beskeder. Der er ikke fundet en forespørgsel efter vilkårligt gammel serverhistorik. Lazy load bruger derfor allerede leverede beskeder og det arkiv, du har valgt at gemme lokalt. Søgning og eksport omfatter indlæste beskeder; scroll op for at hente flere fra arkivet. Gemte beskeder kan åbnes fra Mere/Indstillinger.
+Serverprotokollens `lastLine` henter nyere beskeder. Der er ikke fundet en forespørgsel efter vilkårligt gammel serverhistorik. Lazy load bruger derfor allerede leverede beskeder og det arkiv, du har valgt at gemme lokalt. Søgning og eksport omfatter indlæste beskeder; scroll op for at hente flere fra arkivet.
 
 Deltagerlisten er fra det seneste modtagne rumskift og de efterfølgende hændelser. Ved manglende data kan den være ufuldstændig. Der er ingen udokumenterede kommandoer til at flytte brugere eller starte hvisken. En hvisken, som modtages, kan læses og filtreres.
 

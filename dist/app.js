@@ -29,13 +29,13 @@ function updateNotificationSettings(){
   const permission=globalThis.Notification?.permission;
   $('enable-notifications').textContent=alerts.enabled&&permission==='granted'?'Slå notifikationer fra':'Aktivér notifikationer';
   $('notification-sound').checked=alerts.sound;
-  $('notification-status').textContent=permission==='denied'?'Notifikationer er blokeret i browserens indstillinger.':alerts.enabled&&permission==='granted'?'Notifikationer er aktiveret, mens chatten er forbundet.':'På iPhone: føj acidum til hjemmeskærmen og åbn derfra. Notifikationer kræver en aktiv chatforbindelse.';
+  $('notification-status').textContent=permission==='denied'?'Notifikationer er blokeret i browserens indstillinger.':'';
 }
 $('enable-notifications').onclick=async()=>{
   if(alerts.enabled&&globalThis.Notification?.permission==='granted'){alerts.disable();updateNotificationSettings();return;}
   const result=await alerts.enable().catch(()=>'unavailable');updateNotificationSettings();
-  if(result==='unsupported')$('notification-status').textContent='Browseren understøtter ikke systemnotifikationer her. På iPhone skal acidum åbnes fra hjemmeskærmen. Beskedalarmer vises stadig i chatten.';
-  if(result==='unavailable')$('notification-status').textContent='Notifikationer kunne ikke aktiveres. Beskedalarmer vises stadig i chatten.';
+  if(result==='unsupported')$('notification-status').textContent='Systemnotifikationer er ikke tilgængelige her. Se ? for hjælp.';
+  if(result==='unavailable')$('notification-status').textContent='Notifikationer kunne ikke aktiveres. Prøv igen.';
 };
 $('notification-sound').onchange=()=>alerts.setSound($('notification-sound').checked);
 document.addEventListener('pointerdown',()=>alerts.unlockSound(),{passive:true});
@@ -72,7 +72,7 @@ async function olderMessages() {
   if (archiveLoading || loadingOlder) return;
   const retained = combinedMessages();
   if (retained.length > pageSize) {pageSize += 250; nearBottom = false; loadingOlder = true; schedule(); return;}
-  if (mode==='saved' || !historyEnabled || !archiveScope || !archiveMore || demo) return;
+  if (!historyEnabled || !archiveScope || !archiveMore || demo) return;
   archiveLoading = true; const view = archiveGeneration;
   $('history-status').textContent = 'Henter ældre beskeder fra denne enhed…';
   try {
@@ -95,18 +95,17 @@ async function olderMessages() {
 function viewAccept(message){
   if(logOnly&&!message.log&&!messageAttention(message))return false;
   if(person&&message.name!==person)return false;
-  if(mode==='saved'&&!localData?.isSaved(message))return false;
   return matchesMode(message,mode);
 }
 function canClearAttention(){return ['all','mentions'].includes(mode)&&!person&&!query&&!document.querySelector('dialog[open]');}
 function combinedMessages() {
   const current=store.messages(active,false,'',showSystems), seen=new Set(current.map(m=>m.account+'\0'+m.key));
-  const archived=mode==='saved'?[...(localData?.saved.values()||[])]:archiveRows;
+  const archived=archiveRows;
   const search=query.toLocaleLowerCase('da');
   const messages=[...archived.filter(m=>!seen.has(m.account+'\0'+m.key)),...current]
     .filter(m=>(!active||m.account===active)&&(showSystems||!m.system))
     .sort((a,b)=>a.time-b.time||a.account.localeCompare(b.account)||a.key.localeCompare(b.key));
-  const view=!active&&mode!=='saved'?mergeRoomCopies(messages):messages;
+  const view=!active?mergeRoomCopies(messages):messages;
   return view.filter(m=>(!search||`${(m.accounts||[m.account]).join(' ')} ${m.name} ${m.text}`.toLocaleLowerCase('da').includes(search))&&viewAccept(m));
 }
 function saveDraft(){clearTimeout(draftTimer);if(localData&&draftAccount)localData.setDraft(draftAccount,$('message').value);}
@@ -119,8 +118,6 @@ function renderFilters(){
   $('view-filters').hidden=!person;$('person-filter').hidden=!person;$('person-filter').textContent=person+' ×';
   $('search-toggle').classList.toggle('has-filter',Boolean(person)||mode==='private');
   $('search-toggle').setAttribute('aria-label',mode==='private'?'Søg og filtrér beskeder · Kun hvisken':'Søg og filtrér beskeder');
-  $('show-saved').textContent=mode==='saved'?'Vis alle beskeder':'Gemte beskeder';
-  $('show-saved').setAttribute('aria-pressed',String(mode==='saved'));
 }
 function openPerson(name,account){selectedPerson={name,account};$('person-title').textContent=name;$('person-account').textContent=account;$('person-dialog').showModal();}
 function isMessageSaved(message){return Boolean((message.sources||[message]).some(m=>localData?.isSaved(m)));}
@@ -148,8 +145,6 @@ function savedTokenSet(value) {
 let rejectedOpens=0;
 function status(text, online = false) {
   $('status').textContent = text; $('status-dot').classList.toggle('online', online);
-  $('mobile-connection').textContent = demo ? 'Eksempel' : online ? 'Online' : 'Offline';
-  $('mobile-connection').classList.toggle('online',online); $('mobile-connection').title=text;
   $('settings-status').textContent=text; updateComposer();
 }
 function openWorkspace() { $('welcome').hidden = true; $('workspace').hidden = false; document.body.classList.add('chat-open'); document.documentElement.classList.add('chat-open'); updateViewport(); }
@@ -218,7 +213,7 @@ function render() {
   const timeline = $('timeline'), before = timeline.scrollHeight, top = timeline.scrollTop;
   const messages = combinedMessages(), visible = messages.slice(-pageSize);
   renderTimeline(timelineGroups(visible,time=>dateFormat.format(time)));
-  $('empty').hidden=Boolean(visible.length);$('older').hidden=messages.length<=pageSize&&!(mode!=='saved'&&historyEnabled&&archiveScope&&archiveMore&&!demo);
+  $('empty').hidden=Boolean(visible.length);$('older').hidden=messages.length<=pageSize&&!(historyEnabled&&archiveScope&&archiveMore&&!demo);
   $('empty-text').textContent = query ? 'Ingen beskeder matcher din søgning i den indlæste historik.' : logOnly ? 'Ingen markerede hændelser endnu.' : !store.names.length ? 'Venter på brugerfaner fra acidum. Kontrollér, at programmet kører med webchat slået til.' : 'Dine beskeder vises, så snart acidum sender dem.';
   if (nearBottom) timeline.scrollTop = timeline.scrollHeight;
   else if (loadingOlder) timeline.scrollTop = top + timeline.scrollHeight - before;
@@ -394,7 +389,7 @@ $('rooms-button').onclick = $('bottom-rooms').onclick = () => openSheet('rooms-d
 $('settings-button').onclick = $('bottom-settings').onclick = () => openSheet('settings-dialog');
 for(const dialog of document.querySelectorAll('dialog.sheet')) {
   dialog.querySelector('.close-sheet').onclick = () => dialog.close();
-  dialog.addEventListener('close',schedule);
+  dialog.addEventListener('close',()=>{for(const help of dialog.querySelectorAll('.settings-help[open]'))help.open=false;schedule();});
   dialog.addEventListener('close',()=>{for(const id of ['bottom-rooms','bottom-settings']){$(id).classList.remove('selected');$(id).setAttribute('aria-pressed','false');}});
   dialog.addEventListener('click',event=>{if(event.target===dialog){const rect=dialog.getBoundingClientRect();if(event.clientX<rect.left||event.clientX>rect.right||event.clientY<rect.top||event.clientY>rect.bottom)dialog.close();}});
 }
@@ -486,7 +481,6 @@ window.addEventListener('pagehide', () => {flushArchive();saveDraft(); intention
 window.addEventListener('pageshow', event => {if (event.persisted && token) {intentional = false; connect();}});
 document.addEventListener('keydown', event => {if (event.key === '/' && !/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName) && !$('workspace').hidden) {event.preventDefault();$('workspace').classList.add('search-open');$('search-toggle').setAttribute('aria-expanded','true'); $('search').focus({preventScroll:true});}});
 $('private-toggle').onclick=()=>{mode=mode==='private'?'all':'private';filterChanged();};
-$('show-saved').onclick=()=>{mode=mode==='saved'?'all':'saved';$('settings-dialog').close();filterChanged();};
 $('person-filter').onclick=()=>{person='';filterChanged();};
 let mentionState={query:null,names:[],selected:-1,key:''}, dismissedMention='';
 function hideMentions(){

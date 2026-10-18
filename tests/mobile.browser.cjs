@@ -21,7 +21,13 @@ const {chromium}=require('playwright-core');const assert=require('node:assert/st
  assert.equal(await page.locator('.room-card').count(),2);assert.ok(await page.locator('.people-list li').count()>0);
  await page.screenshot({path:'/tmp/acidum-qa-mobile-rooms.png'});
  await page.locator('#rooms-dialog .close-sheet').click();await page.locator('#bottom-settings').click();
- await page.locator('#save-history').check();await page.screenshot({path:'/tmp/acidum-qa-mobile-settings.png'});
+ const help=page.locator('summary[aria-label="Om historik"]');
+ assert.equal(await page.locator('#show-saved').count(),0);assert.equal(await page.locator('#mobile-connection').count(),0);
+ assert.equal(await page.getByText('Gem op til 10.000 beskeder lokalt i din browser.',{exact:false}).isVisible(),false);
+ await help.click();assert.equal(await page.getByText('Gem op til 10.000 beskeder lokalt i din browser.',{exact:false}).isVisible(),true);assert.equal(await page.locator('#save-history').isChecked(),false);
+ await help.press('Enter');assert.equal(await page.getByText('Gem op til 10.000 beskeder lokalt i din browser.',{exact:false}).isVisible(),false);
+ await page.locator('#settings-dialog').evaluate(el=>el.scrollTop=0);await page.screenshot({path:'/tmp/acidum-qa-mobile-settings.png'});
+ await page.locator('#save-history').check();
  await page.locator('#settings-dialog .close-sheet').click();
  await page.setViewportSize({width:320,height:568});await page.locator('#search-toggle').click();assert.equal(await page.locator('#private-toggle').isVisible(),true);await page.locator('#search').fill('kaffe');await page.waitForTimeout(200);assert.equal(await page.locator('.message').count(),1);assert.ok((await page.locator('#search-bar').boundingBox()).height<80);assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
  await page.locator('#search').fill('');await page.waitForTimeout(200);await page.locator('#search-toggle').click();await page.setViewportSize({width:390,height:844});
