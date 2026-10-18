@@ -34,7 +34,7 @@ const {chromium}=require('playwright-core');const assert=require('node:assert/st
   await sharedRow.locator('.message-time').click();assert.equal(await page.locator('#save-message').textContent(),'Fjern fra gemte');await page.locator('#save-message').click();await page.locator('#message-dialog .close-sheet').click();assert.equal(await sharedRow.locator('.saved-marker').isVisible(),false);
   for(const [index,account]of ['Nova','Milo','Iris'].entries())socket.send(JSON.stringify(event(account,700+index*10,'join',{user:{name:'Guest'}})));
   await page.waitForFunction(()=>document.querySelectorAll('.movement-icon.enter').length===1);
-  await page.locator('#private-toggle').click();await page.waitForFunction(()=>document.querySelectorAll('.message').length===2);assert.equal(await page.locator('.message.private').count(),2);
+  await page.locator('#search-toggle').click();await page.locator('#private-toggle').click();await page.waitForFunction(()=>document.querySelectorAll('.message').length===2);assert.equal(await page.locator('.message.private').count(),2);
   assert.deepEqual(errors,[]);console.log('Shared room copies display once with all receiving accounts; repeats, different rooms, private messages, later room changes and attention markers remain correct');
  }finally{await browser.close();}
 })().catch(error=>{console.error(error);process.exitCode=1;});

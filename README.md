@@ -15,7 +15,7 @@ Token-linkets tekniske format er `https://acium.app/chat?token=…`. Linket husk
 ## Funktioner
 
 - Samlet samtale eller én bruger ad gangen, med kompakt mobilnavigation. Navne vises uden gentagne felter med initialer i navigation, deltagerlister og beskedblokke.
-- Hvisken-knap på både mobil og computer. Gemte beskeder åbnes fra Mere/Indstillinger. Søg i indlæst tekst eller filtrér på en bestemt afsender.
+- Filteret “Kun hvisken” ligger sammen med søgningen. På mobil åbnes det via lup-ikonet, som markeres, når et filter er aktivt. Gemte beskeder åbnes fra Mere/Indstillinger. Søg i indlæst tekst eller filtrér på en bestemt afsender.
 - Beskedtekst på 16 px som standard. Under Mere/Indstillinger → Visning kan størrelsen justeres fra 10 til 30 px med forhåndsvisning; valget huskes på enheden.
 - I Alle samles kopier af samme rumbesked fra flere af dine brugere til én besked med tags for de berørte brugere. Rumkonteksten gemmes ved modtagelsen. Sammenligningen bruger afsender, type, tekst og tidspunkt; kendte fælles rum tillader op til ét sekunds forskel mellem kopierne. Gentagelser fra samme brugerfane, forskellige kendte rum og private beskeder sammenlægges ikke.
 - Sammenhængende indgange, udgange og tekst fra samme person samles i én blok med afsenderen øverst til venstre og tidsstempler i en fast kolonne til højre. I det samlede overblik vises dine egne brugere som separate tags på boksens øverste højre hjørne. Hver linje beholder sit tidspunkt og sine beskedhandlinger. Grøn højrepil viser indgang; rød venstrepil viser udgang eller at personen har forladt chatten. Baggrunden skifter mellem blokkene. En anden person, brugerfane, dato eller et rumskift starter en ny blok; hvisken holdes separat fra almindelige rumbeskeder.

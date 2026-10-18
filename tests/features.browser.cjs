@@ -20,9 +20,10 @@ const {chromium}=require('playwright-core');const assert=require('node:assert/st
   await page.locator('#mobile-accounts button').nth(1).click();await page.waitForTimeout(50);
   assert.equal(await page.locator('.message.attention').count(),2);
   assert.equal(await page.locator('[data-mode]').count(),0);
-  assert.equal(await page.locator('#private-toggle').isVisible(),true);
+  assert.equal(await page.locator('#private-toggle').isVisible(),false);await page.locator('#search-toggle').click();assert.equal(await page.locator('#private-toggle').isVisible(),true);
   await page.locator('#private-toggle').click();await page.waitForTimeout(50);assert.equal(await page.locator('.message').count(),1);assert.equal(await page.locator('#private-toggle').getAttribute('aria-pressed'),'true');
   assert.ok((await page.locator('.message-text').textContent()).includes('En privat besked'));
+  assert.ok((await page.locator('#search-toggle').getAttribute('class')).includes('has-filter'));await page.locator('#search-toggle').click();assert.equal(await page.locator('#private-toggle').isVisible(),false);assert.ok((await page.locator('#search-toggle').getAttribute('aria-label')).includes('Kun hvisken'));await page.locator('#search-toggle').click();
   await page.locator('#private-toggle').click();await page.waitForTimeout(50);
   const link=page.locator('.message-text a');assert.equal(await link.getAttribute('href'),'https://example.com');
   await link.locator('xpath=ancestor::article').locator('.message-time').click();await page.locator('#save-message').click();await page.locator('#message-dialog .close-sheet').click();
