@@ -10,10 +10,9 @@ const {chromium}=require('playwright-core');const assert=require('node:assert/st
   await page.routeWebSocket('wss://ws0.acium.app/**',ws=>{socket=ws;ws.send(JSON.stringify({tabs:['Nova','Milo']}));ws.onMessage(raw=>{const data=JSON.parse(raw);if(data.say!==undefined)sent.push(data);else if(data.lastLine===0)ws.send(JSON.stringify(fixtures[data.name]||[]));});});
   await page.goto(process.env.ACIDUM_TEST_URL||'http://127.0.0.1:8765/');await page.locator('#chat-link').fill('synthetic_keyboard_login_123');await page.locator('#connect-form').evaluate(form=>form.requestSubmit());
   await page.waitForFunction(()=>document.querySelectorAll('.message').length===250);await page.locator('#mobile-accounts button').nth(1).click();await page.waitForTimeout(150);
-  assert.equal(await page.locator('.message.continuation').count(),249);assert.equal(await page.locator('.message time').count(),250);
-  const grouping=await page.locator('#messages').evaluate(container=>{const rows=[...container.querySelectorAll('.message')];return {font:getComputedStyle(rows[0].querySelector('.message-text')).fontSize,first:rows[0].offsetHeight,second:rows[1].offsetHeight,alternating:rows.every((row,i)=>i===0||row.classList.contains('alternate')!==rows[i-1].classList.contains('alternate')),hiddenName:getComputedStyle(rows[1].querySelector('.message-name')).display};});
-  assert.equal(grouping.font,'17px');assert.equal(grouping.hiddenName,'none');assert.ok(grouping.second<grouping.first);assert.equal(grouping.alternating,true);
-  await page.evaluate(()=>{window.savedRow=document.querySelector('#messages .message:last-child');window.savedStripe=window.savedRow.classList.contains('alternate');window.mutations={added:0,removed:0};new MutationObserver(records=>{for(const r of records){window.mutations.added+=r.addedNodes.length;window.mutations.removed+=r.removedNodes.length;}}).observe(document.querySelector('#messages'),{childList:true,subtree:true});});
+  assert.equal(await page.locator('.message-group').count(),1);assert.equal(await page.locator('.message-name').count(),1);assert.equal(await page.locator('.message time').count(),250);
+  assert.equal(await page.locator('.message-text').first().evaluate(el=>getComputedStyle(el).fontSize),'19px');
+  await page.evaluate(()=>{window.savedRow=document.querySelector('#messages .message:last-child');window.savedGroup=window.savedRow.closest('.message-group');window.savedStripe=window.savedGroup.classList.contains('alternate');window.mutations={added:0,removed:0};new MutationObserver(records=>{for(const r of records){window.mutations.added+=r.addedNodes.length;window.mutations.removed+=r.removedNodes.length;}}).observe(document.querySelector('#messages'),{childList:true,subtree:true});});
   socket.send(JSON.stringify(event('Milo','text',{user:{name:'Elliot'},text:'Other room traffic'})));await page.waitForTimeout(150);
   assert.deepEqual(await page.evaluate(()=>window.mutations),{added:0,removed:0});
   await page.locator('#message').fill('@d');assert.equal(await page.locator('.mention-option').count(),3);
@@ -32,7 +31,7 @@ const {chromium}=require('playwright-core');const assert=require('node:assert/st
   assert.equal(await page.locator('#workspace').evaluate(el=>el.getBoundingClientRect().top),0);assert.equal(await page.locator('.bottom-nav').isVisible(),true);
   socket.send(JSON.stringify(event('Nova','text',{user:{name:'Alma'},text:'New message'})));await page.waitForTimeout(150);
   assert.equal(await page.evaluate(()=>window.savedRow.isConnected),true);
-  assert.equal(await page.evaluate(()=>window.savedRow.classList.contains('alternate')===window.savedStripe),true);
+  assert.equal(await page.evaluate(()=>window.savedRow.closest('.message-group')===window.savedGroup&&window.savedGroup.classList.contains('alternate')===window.savedStripe),true);
   const mutations=await page.evaluate(()=>window.mutations);assert.ok(mutations.added<=2&&mutations.removed<=2,JSON.stringify(mutations));console.log('One new message reuses existing rows:',JSON.stringify(mutations));
   await page.locator('#mobile-accounts button').nth(2).click();await page.locator('#message').fill('@d');assert.equal(await page.locator('.mention-option').textContent(),'Dorte');
   assert.deepEqual(errors,[]);console.log('Restored viewport and separate room suggestions pass');

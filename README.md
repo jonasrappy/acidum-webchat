@@ -16,7 +16,8 @@ Token-linkets tekniske format er `https://acium.app/chat?token=…`. Linket husk
 
 - Samlet samtale eller én bruger ad gangen, med kompakt mobilnavigation.
 - Hvisken-knap på både mobil og computer. Gemte beskeder åbnes fra Mere/Indstillinger. Søg i indlæst tekst eller filtrér på en bestemt afsender.
-- Læsbar beskedtekst på 17 px i kompakte rækker med diskret skiftende baggrund. Samme afsender i samme samtale deler navn og avatar på sammenhængende beskeder; hver besked har sit eget tidspunkt.
+- Beskedtekst på 19 px som standard. Under Mere/Indstillinger → Visning kan størrelsen justeres fra 16 til 26 px med forhåndsvisning; valget huskes på enheden.
+- Sammenhængende indgange, udgange og tekst fra samme person samles i én blok med ét navn og én avatar. Hver linje beholder sit tidspunkt og sine beskedhandlinger. Grøn højrepil viser indgang; rød venstrepil viser udgang eller at personen har forladt chatten. Baggrunden skifter mellem blokkene. En anden person, brugerfane, dato eller et rumskift starter en ny blok; hvisken holdes separat fra almindelige rumbeskeder.
 - Triggerord styres i programmet. Webchatten følger de medsendte `log`-/`notify`-markeringer og markerer også brugernavnet uden forskel på store og små bogstaver. Tællere reagerer på disse markeringer og navneomtaler; almindelig rumtrafik tæller ikke. Programmarkeringer respekteres også på egne beskeder.
 - Nye `notify`-markeringer kan give et banner, en valgfri lyd og systemnotifikationer efter dit samtykke. Historik og gamle gentagelser udløser ikke beskedalarmer.
 - Deltagerliste fra rumskiftets `users`-data, opdateret med ind- og udgange. Når et rumsnapshot ikke er modtaget, bruges observeret aktivitet. Efter forbindelsesbrud markeres listen igen som observeret, indtil et nyt snapshot modtages.
@@ -30,7 +31,7 @@ Token-linkets tekniske format er `https://acium.app/chat?token=…`. Linket husk
 
 ## Data og privatliv
 
-Alt, acidum selv gemmer, ligger i browseren: login-link, kladder, gemte beskeder, indstillinger for beskedalarmer og eventuelt historik. Data tilknyttes det aktuelle login via en SHA-256-identifikator, så kladder og gemte beskeder fra forskellige login ikke blandes. Selve tokenet gemmes separat i browserens `localStorage`; tidligere sessionslagring overføres automatisk. Hvis browseren blokerer vedvarende lagring, forsøges sessionslagring i stedet.
+Alt, acidum selv gemmer, ligger i browseren: login-link, kladder, gemte beskeder, tekststørrelse, indstillinger for beskedalarmer og eventuelt historik. Data tilknyttes det aktuelle login via en SHA-256-identifikator, så kladder og gemte beskeder fra forskellige login ikke blandes. Selve tokenet gemmes separat i browserens `localStorage`; tidligere sessionslagring overføres automatisk. Hvis browseren blokerer vedvarende lagring, forsøges sessionslagring i stedet.
 
 For at chatten virker, sendes token og beskeder direkte til chatserveren over en krypteret WebSocket. GitHub Pages leverer kun sidens statiske filer. Ingen chatdata eller adgangskoder skal ligge i repoet. Del ikke dit token-link med andre.
 
@@ -57,7 +58,7 @@ npm run serve
 
 Åbn http://127.0.0.1:8765. Uden gemt login findes eksempeldata på http://127.0.0.1:8765/#demo. Filerne til hosting ligger i `dist/`; der er intet byggetrin.
 
-Node-tests kontrollerer historikgrænser, dubletter, brugeradskillelse, omtaler, programmarkeringer, beskedalarmer, deltagerlister og lokal lagring. De valgfrie `tests/*.browser.cjs` bruger `playwright-core` og Chromium, med `BROWSER_EXECUTABLE` sat til browserens sti. `ACIDUM_TEST_URL` kan ændre den lokale testadresse. Browsertest bruger syntetiske data. Tastaturtesten simulerer ændringer i viewporthøjde og forskydning, kontrollerer at skrivefelt og samtale forbliver synlige, og måler at uændrede beskedrækker bevares. Et fysisk iPhone-tastatur er ikke tilgængeligt i testmiljøet.
+Node-tests kontrollerer historikgrænser, dubletter, brugeradskillelse, omtaler, programmarkeringer, beskedalarmer, gruppering, deltagerlister og lokal lagring. De valgfrie `tests/*.browser.cjs` bruger `playwright-core` og Chromium, med `BROWSER_EXECUTABLE` sat til browserens sti. `ACIDUM_TEST_URL` kan ændre den lokale testadresse. Browsertest bruger syntetiske data. Tastaturtesten simulerer ændringer i viewporthøjde og forskydning, kontrollerer at skrivefelt og samtale forbliver synlige, og måler at uændrede beskedrækker bevares. Et fysisk iPhone-tastatur er ikke tilgængeligt i testmiljøet.
 
 ## Udgivelse
 

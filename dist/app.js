@@ -3,8 +3,16 @@ import {AlertManager} from './notifications.js?v=11';
 import {LocalData, exportText} from './local-data.js?v=11';
 import {viewportGeometry} from './viewport.js?v=10';
 import {mentionQuery,mentionSuggestions,completeMention} from './mentions.js?v=11';
+import {timelineGroups} from './timeline.js?v=12';
 import {scopeFor, archiveId, saveMessages, loadBefore, clearScope} from './archive.js?v=8';
 const $ = id => document.getElementById(id);
+let textSize=19;
+try{const saved=Number(localStorage.getItem('acidum-text-size'));if(Number.isFinite(saved)&&saved>=16&&saved<=26)textSize=Math.round(saved);}catch{}
+function applyTextSize(value){
+  document.documentElement.style.setProperty('--message-font',value+'px');$('text-size').value=value;$('text-size-value').value=value+' px';
+}
+applyTextSize(textSize);
+$('text-size').addEventListener('input',()=>{textSize=Number($('text-size').value);applyTextSize(textSize);try{localStorage.setItem('acidum-text-size',String(textSize));}catch{}if(!$('workspace').hidden&&nearBottom)requestAnimationFrame(()=>{$('timeline').scrollTop=$('timeline').scrollHeight;});});
 let alertTimer=0,alertMessage=null,pendingAlertAccount=new URLSearchParams(location.hash.slice(1)).get('account');
 const alerts=new AlertManager({onAlert:message=>{
   if(!document.hidden&&!document.querySelector('dialog[open]')&&nearBottom&&(!active||active===message.account)&&viewAccept(message))return;
@@ -39,6 +47,7 @@ let active = '', logOnly = false, query = '', showSystems = true, pageSize = 250
 let tabsSignature = '', notice = false, liveRenderTimer = 0, lastRenderAt = 0;
 let incomingViewDirty=false,incomingNavDirty=false,filterSignature='',headerSignature='',roomsSignature='';
 const renderedRows=new Map();
+let renderedGroups=new Set();
 let archiveScope = '', archiveRows = [], archiveBefore = null, archiveMore = true, archiveLoading = false, archiveGeneration = 0;
 let archivePending = [], archiveTimer, archiveWriting = Promise.resolve();
 let historyEnabled = false;
@@ -204,28 +213,7 @@ function render() {
   renderNavigation();
   const timeline = $('timeline'), before = timeline.scrollHeight, top = timeline.scrollTop;
   const messages = combinedMessages(), visible = messages.slice(-pageSize);
-  const desired=[];let day='';
-  let previousMessage=null,previousDay='';
-  for(const message of visible){
-    const nextDay=dateFormat.format(message.time);
-    if(day!==nextDay){desired.push({key:'day:'+nextDay,day:nextDay});day=nextDay;}
-    const continuation=Boolean(previousMessage&&!message.system&&!previousMessage.system&&message.name&&message.name===previousMessage.name&&message.account===previousMessage.account&&message.type===previousMessage.type&&previousDay===nextDay);
-    desired.push({key:JSON.stringify([message.account,message.key]),message,continuation});previousMessage=message;previousDay=nextDay;
-  }
-  // Keep stripes alternating without repainting existing rows as the window moves.
-  let stripeOffset=0,index=0;
-  for(const item of desired)if(item.message){const existing=renderedRows.get(item.key);if(existing){stripeOffset=Number(existing.classList.contains('alternate'))^(index%2);break;}index++;}
-  const keys=new Set(desired.map(item=>item.key));
-  // Drop only rows that leave the visible window. Unchanged rows keep their DOM and selection.
-  for(const [key,node]of renderedRows)if(!keys.has(key)){node.remove();renderedRows.delete(key);}
-  const container=$('messages');let cursor=container.firstChild;
-  index=0;
-  for(const item of desired){
-    let node=renderedRows.get(item.key);
-    if(!node){node=item.message?createMessageRow(item.message):element('div','day-divider',item.day);renderedRows.set(item.key,node);}
-    if(item.message)patchMessageRow(node,item.message,item.continuation,Boolean((index++%2)^stripeOffset));
-    if(node===cursor)cursor=cursor.nextSibling;else container.insertBefore(node,cursor);
-  }
+  renderTimeline(timelineGroups(visible,time=>dateFormat.format(time)));
   $('empty').hidden=Boolean(visible.length);$('older').hidden=messages.length<=pageSize&&!(mode!=='saved'&&historyEnabled&&archiveScope&&archiveMore&&!demo);
   $('empty-text').textContent = query ? 'Ingen beskeder matcher din søgning i den indlæste historik.' : logOnly ? 'Ingen markerede hændelser endnu.' : !store.names.length ? 'Venter på brugerfaner fra acidum. Kontrollér, at programmet kører med webchat slået til.' : 'Dine beskeder vises, så snart acidum sender dem.';
   if (nearBottom) timeline.scrollTop = timeline.scrollHeight;
@@ -234,22 +222,64 @@ function render() {
   loadingOlder = false;
   $('new-messages').hidden = !notice || nearBottom;
 }
+const rowKey=message=>JSON.stringify([message.account,message.key]);
+function createMessageGroup(group){
+  const {name:sender,account:accountName}=group;
+  const node=element('section','message-group'),head=element('header','message-group-head'),author=element('div','message-group-author');
+  if(group.name){
+    head.append(element('span','avatar',group.name.slice(0,2).toUpperCase()));
+    const name=element('button','message-name',sender);name.type='button';name.onclick=()=>openPerson(sender,accountName);author.append(name);
+    if(group.kind==='private')author.append(element('span','private-label','Hvisken'));
+    node._account=element('span','message-account',group.account);author.append(node._account);head.append(author);node.append(head);
+    node.setAttribute('aria-label',group.name+' · '+group.account+(group.kind==='private'?' · Hvisken':''));
+  }
+  node._lines=element('div','message-group-lines');node.append(node._lines);return node;
+}
+function renderTimeline(groups){
+  const used=new Set(),keys=new Set(),desired=[];let day='',stripeOffset=0,anchored=false;
+  for(const [index,group]of groups.entries()){
+    if(day!==group.day){
+      day=group.day;const key='day:'+day;keys.add(key);
+      let divider=renderedRows.get(key);if(!divider){divider=element('div','day-divider',day);renderedRows.set(key,divider);}desired.push(divider);
+    }
+    // A surviving line anchors its group, even when the oldest line leaves the window.
+    let node;
+    for(const message of group.messages){const key=rowKey(message);keys.add(key);const previous=renderedRows.get(key)?._group;if(!node&&previous&&!used.has(previous))node=previous;}
+    if(node&&!anchored){stripeOffset=Number(node.classList.contains('alternate'))^(index%2);anchored=true;}
+    node??=createMessageGroup(group);used.add(node);desired.push(node);group.node=node;
+  }
+  for(const [key,row]of renderedRows)if(!keys.has(key)){row.remove();renderedRows.delete(key);}
+  for(const [index,group]of groups.entries()){
+    const node=group.node;node.classList.toggle('alternate',Boolean((index%2)^stripeOffset));
+    node.classList.toggle('has-attention',group.messages.some(messageAttention));
+    if(node._account&&node._account.hidden!==Boolean(active))node._account.hidden=Boolean(active);
+    let cursor=node._lines.firstChild;
+    for(const message of group.messages){
+      const key=rowKey(message);let row=renderedRows.get(key);
+      if(!row){row=createMessageRow(message);renderedRows.set(key,row);}patchMessageRow(row,message);row._group=node;
+      if(row===cursor)cursor=cursor.nextSibling;else node._lines.insertBefore(row,cursor);
+    }
+  }
+  const container=$('messages');let cursor=container.firstChild;
+  for(const node of desired){if(node===cursor)cursor=cursor.nextSibling;else container.insertBefore(node,cursor);}
+  for(const node of renderedGroups)if(!used.has(node))node.remove();
+  renderedGroups=used;
+}
 function createMessageRow(message){
   const row=element('article',`message${message.system?' system':''}${message.private?' private':''}`);row.dataset.id=message.id;
-  row.append(element('span','avatar',message.system?'·':(message.name||'?').slice(0,2).toUpperCase()));
-  const body=element('div'),head=element('div','message-head');
-  if(message.name){const name=element('button','message-name',message.name);name.type='button';name.onclick=()=>openPerson(message.name,message.account);head.append(name);}
-  const action=element('button','message-time');action.type='button';action.setAttribute('aria-label','Beskedhandlinger');
-  const time=element('time','',timeFormat.format(message.time));time.dateTime=new Date(message.time).toISOString();action.append(time);action.onclick=()=>openMessage(message);
-  const star=element('span','saved-marker','★'),account=element('span','message-account',message.account);
-  head.append(action,star,account);row._star=star;row._account=account;
-  const text=element('p','message-text');appendTextLinks(text,message.text);body.append(head,text);row.append(body);return row;
+  const meta=element('div','message-meta');
+  const stamp=timeFormat.format(message.time),action=element('button','message-time');action.type='button';action.setAttribute('aria-label',stamp+' · Beskedhandlinger');
+  const time=element('time','',stamp);time.dateTime=new Date(message.time).toISOString();action.append(time);action.onclick=()=>openMessage(message);
+  const star=element('span','saved-marker','★');meta.append(action,star);row._star=star;
+  const content=element('div','message-content');
+  if(['join','part','quit'].includes(message.type)){
+    content.classList.add('movement');const entering=message.type==='join',icon=element('span','movement-icon '+(entering?'enter':'leave'),entering?'→':'←');icon.setAttribute('aria-hidden','true');content.append(icon);
+  }
+  const text=element('p','message-text');appendTextLinks(text,message.text);content.append(text);row.append(meta,content);return row;
 }
-function patchMessageRow(row,message,continuation,alternate){
-  row.classList.toggle('continuation',Boolean(continuation));row.classList.toggle('alternate',alternate);
+function patchMessageRow(row,message){
   row.classList.toggle('attention',messageAttention(message));
   const saved=Boolean(localData?.isSaved(message));if(row._star.hidden===saved)row._star.hidden=!saved;
-  if(row._account.hidden!==Boolean(active))row._account.hidden=Boolean(active);
 }
 let loadingOlder = false;
 function updateTabs(names) {
@@ -331,6 +361,7 @@ function start(input) {
 }
 function disconnect(forget=true) {
   clearTimeout(alertTimer);alertMessage=null;pendingAlertAccount=null;$('alert-banner').hidden=true;
+  renderedGroups.clear();
   saveDraft();localData=null;draftAccount='';mode='all';person='';hideMentions();renderedRows.clear();$('messages').replaceChildren();$('room-cards').replaceChildren();roomsSignature='';headerSignature='';filterSignature='';selectedPerson=null;selectedMessage=null;$('message-preview').textContent='';incomingViewDirty=false;incomingNavDirty=false;
   intentional = true; ++generation; clearTimeout(retryTimer); clearTimeout(liveRenderTimer); liveRenderTimer=0; if (socket) {socket.onclose = null; socket.close();} socket = null;
   flushArchive(); archiveScope = ''; resetArchiveView(); token = null; if(forget)savedTokenSet(null); $('resume-saved').hidden=!savedTokenGet(); store = new ChatStore(); active = ''; logOnly = false; query = ''; demo = false; tabsSignature = '';
