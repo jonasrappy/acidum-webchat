@@ -304,7 +304,7 @@
     #send-as {
       max-width: 100px;
       padding: 8px 6px;
-      font-size: 11px;
+      font-size: 16px;
     }
     .send-button {
       width: 38px;

@@ -36,6 +36,7 @@ class AuthorGroup {
   accounts = $state.raw([]);
   alternate = $state(false);
   showDay = $state(false);
+  superuser = $state(false);
   attention = $derived(this.rows.some((row) => row.attention));
 
   constructor(key, group) {
@@ -55,7 +56,7 @@ export class TimelineWindow {
   rows = new Map();
   serial = 0;
 
-  update(messages, isSaved) {
+  update(messages, isSaved, isSuperuser = (message) => Boolean(message.superuser)) {
     const previousGroups = new Map();
     for (const group of this.groups) {
       for (const row of group.rows) previousGroups.set(row.key, group);
@@ -92,6 +93,7 @@ export class TimelineWindow {
         return row;
       });
       if (!sameItems(group.rows, rows)) group.rows = rows;
+      group.superuser = description.messages.some(isSuperuser);
       if (!sameItems(group.accounts, description.accounts)) group.accounts = description.accounts;
       group.alternate = Boolean((index % 2) ^ stripeOffset);
       group.showDay = day !== description.day;

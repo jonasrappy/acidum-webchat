@@ -51,6 +51,7 @@ export function mergeRoomCopies(messages) {
       log: match.sources.some((m) => m.log),
       serverMarked: match.sources.some((m) => m.serverMarked ?? m.log),
       serverNotify: match.sources.some((m) => m.serverNotify),
+      superuser: match.sources.some((m) => m.superuser),
     };
     match.roomKey ??= message.roomKey;
   }

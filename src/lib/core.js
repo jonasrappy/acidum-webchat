@@ -1,4 +1,8 @@
 export const MAX_MESSAGES = 700;
+const userKey = (name) =>
+  String(name || '')
+    .normalize('NFKC')
+    .toLocaleLowerCase('da');
 export function parseToken(input) {
   const value = String(input || '').trim();
   if (!value) throw new Error('Indsæt dit acidum-webchat-link.');
@@ -88,6 +92,7 @@ export class ChatStore {
     this.tabs = new Map();
     this.names = [];
     this.serial = 0;
+    this.roleRevision = 0;
   }
   tab(name) {
     if (!this.tabs.has(name))
@@ -101,6 +106,7 @@ export class ChatStore {
         rosterComplete: false,
         presence: new Map(),
         presenceRevision: 0,
+        userRoles: new Map(),
       });
     return this.tabs.get(name);
   }
@@ -111,6 +117,24 @@ export class ChatStore {
     );
     for (const name of this.names) this.tab(name);
     for (const name of this.tabs.keys()) if (!this.names.includes(name)) this.tabs.delete(name);
+  }
+  isSuperuser(account, name) {
+    return this.tabs.get(account)?.userRoles.get(userKey(name))?.superuser === true;
+  }
+  rememberSuperuser(tab, user, time) {
+    if (typeof user?.name !== 'string' || !user.name) return;
+    if (![true, false, 1, 0].includes(user.superuser)) return;
+    const key = userKey(user.name);
+    const previous = tab.userRoles.get(key);
+    if (previous && previous.time > time) return;
+    const superuser = user.superuser === true || user.superuser === 1;
+    tab.userRoles.set(key, { superuser, time });
+    if (Boolean(previous?.superuser) !== superuser) this.roleRevision++;
+    if (tab.userRoles.size > 1000) {
+      const oldest = tab.userRoles.keys().next().value;
+      if (tab.userRoles.get(oldest).superuser) this.roleRevision++;
+      tab.userRoles.delete(oldest);
+    }
   }
   add(event) {
     if (
@@ -134,6 +158,15 @@ export class ChatStore {
       Boolean(event.notify),
     ]);
     if (tab.keys.has(key)) return null;
+    const sender = event.type === 'priv' ? event.from : event.user;
+    this.rememberSuperuser(tab, sender, time);
+    if (event.type === 'room' && Array.isArray(event.users)) {
+      for (const user of event.users.slice(0, 500)) this.rememberSuperuser(tab, user, time);
+    }
+    if (event.type === 'log' && event.event === 'panic' && Array.isArray(event.users)) {
+      for (const user of event.users.slice(0, 500))
+        this.rememberSuperuser(tab, { name: user?.name, superuser: true }, time);
+    }
     const room =
       event.type === 'room'
         ? event.room
@@ -159,6 +192,7 @@ export class ChatStore {
       serverMarked: Boolean(event.log || event.notify),
       serverNotify: Boolean(event.notify),
       attention: needsAttention(event),
+      superuser: this.isSuperuser(event.me.name, description.name),
       ...description,
     };
     tab.keys.add(key);

@@ -182,3 +182,62 @@ test('desktop markers stay account-specific and distinguish log highlighting fro
   assert.equal(notify.serverNotify, true);
   assert.equal(messageAttention(JSON.parse(JSON.stringify(log))), true);
 });
+
+test('superuser metadata follows room snapshots and whisper senders without marking recipients', () => {
+  const store = new ChatStore();
+  store.setTabs(['Test', 'Other']);
+  store.add({
+    ...event(1),
+    type: 'room',
+    users: [{ name: 'Quiet', superuser: 1 }],
+  });
+  const text = store.add({ ...event(2), user: { name: 'QUIET' } });
+  assert.equal(text.superuser, true);
+  assert.equal(store.isSuperuser('Other', 'Quiet'), false);
+  const whisper = store.add({
+    ...event(3),
+    type: 'priv',
+    from: { name: 'Moderator', superuser: true },
+    to: { name: 'Test' },
+  });
+  assert.equal(whisper.superuser, true);
+  assert.equal(
+    store.add({
+      ...event(4),
+      type: 'priv',
+      from: { name: 'Guest' },
+      to: { name: 'Moderator', superuser: true },
+    }).superuser,
+    false,
+  );
+  assert.equal(JSON.parse(JSON.stringify(whisper)).superuser, true);
+});
+
+test('panic identifies superusers independently of active panic and rejects older role changes', () => {
+  const store = new ChatStore();
+  store.setTabs(['Test']);
+  const plain = store.add(event(1));
+  assert.equal(plain.superuser, false);
+  store.add({ ...event(2), type: 'log', event: 'panic', users: [{ name: 'Guest' }] });
+  assert.equal(store.isSuperuser('Test', 'guest'), true);
+  store.add({ ...event(3), type: 'log', event: 'panic', users: [] });
+  assert.equal(store.add(event(4)).superuser, true);
+  store.add({ ...event(10), user: { name: 'Guest', superuser: false } });
+  store.add({ ...event(5), user: { name: 'Guest', superuser: true } });
+  assert.equal(store.isSuperuser('Test', 'Guest'), false);
+  assert.equal(
+    store.add({ ...event(11), text: 'superbruger panic', notify: true }).superuser,
+    false,
+  );
+});
+
+test('role metadata is bounded and discarded with its account', () => {
+  const store = new ChatStore();
+  store.setTabs(['Test']);
+  for (let i = 0; i < 1100; i++)
+    store.add({ ...event(i), user: { name: 'User' + i, superuser: false } });
+  assert.equal(store.tab('Test').userRoles.size, 1000);
+  store.setTabs([]);
+  store.setTabs(['Test']);
+  assert.equal(store.tab('Test').userRoles.size, 0);
+});

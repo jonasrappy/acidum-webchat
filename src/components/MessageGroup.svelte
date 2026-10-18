@@ -8,8 +8,10 @@
   class="message-group"
   class:alternate={group.alternate}
   class:has-attention={group.attention}
+  class:superuser={group.superuser}
   aria-label={group.name
     ? group.name +
+      (group.superuser ? ' · Superbruger' : '') +
       ' · ' +
       group.accounts.join(', ') +
       (group.kind === 'private' ? ' · Hvisken' : '')
@@ -21,6 +23,8 @@
         <button
           class="message-name"
           type="button"
+          title={group.superuser ? 'Superbruger' : undefined}
+          aria-label={group.superuser ? group.name + ' · Superbruger' : undefined}
           onclick={() => session.openPerson(group.name, group.accounts)}>{group.name}</button
         >
         {#if group.kind === 'private'}<span class="private-label">Hvisken</span>{/if}
@@ -104,6 +108,17 @@
   }
   .message-group.has-attention .message-name {
     color: var(--accent);
+  }
+  .message-group.superuser {
+    --superuser-color: #ffc477;
+    background: #352a1f;
+    box-shadow: inset 3px 0 var(--superuser-color);
+  }
+  .message-group.superuser.alternate {
+    background: #403123;
+  }
+  .message-group.superuser .message-name {
+    color: var(--superuser-color);
   }
   .message-accounts {
     display: flex;

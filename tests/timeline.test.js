@@ -25,12 +25,13 @@ test('copies in the same room become one line with every receiving account and i
       }),
     );
   const nova = source('Nova', 100),
-    milo = source('Milo', 109, { log: true, serverMarked: true });
+    milo = source('Milo', 109, { log: true, serverMarked: true, superuser: true });
   const merged = mergeRoomCopies([nova, milo]);
   assert.equal(merged.length, 1);
   assert.deepEqual(merged[0].accounts, ['Milo', 'Nova']);
   assert.equal(messageAttention(merged[0]), true);
   assert.equal(merged[0].log, true);
+  assert.equal(merged[0].superuser, true);
   assert.equal(nova.accounts, undefined);
   assert.equal(merged[0].sources[0], nova);
   assert.equal(messageAttention(mergeRoomCopies([nova, source('Milo', 110)])[0]), true);

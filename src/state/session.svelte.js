@@ -329,8 +329,10 @@ export class ChatSession {
         this.viewDirty = this.navDirty = true;
         continue;
       }
+      const roleRevision = this.store.roleRevision;
       const message = this.store.add(event);
       if (!message) continue;
+      if (this.store.roleRevision !== roleRevision) this.viewDirty = true;
       if (!this.demo) this.history.queue(message);
       if (!historical && message.serverNotify) this.notifications.receive(message);
       const visible =
@@ -432,8 +434,14 @@ export class ChatSession {
     const before = node?.scrollHeight || 0;
     const top = node?.scrollTop || 0;
     const messages = this.combinedMessages();
-    this.timeline.update(messages.slice(-this.pageSize), (message) =>
-      this.messageTools.isSaved(message),
+    this.timeline.update(
+      messages.slice(-this.pageSize),
+      (message) => this.messageTools.isSaved(message),
+      (message) =>
+        message.superuser ||
+        (message.accounts || [message.account]).some((account) =>
+          this.store.isSuperuser(account, message.name),
+        ),
     );
     this.hasOlder =
       messages.length > this.pageSize ||
