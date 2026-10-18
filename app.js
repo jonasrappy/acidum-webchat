@@ -257,8 +257,7 @@ function renderTimeline(groups){
     node._routeAccounts=group.accounts;
     node.classList.toggle('has-attention',group.messages.some(messageAttention));
     if(node._context!==group.context){node._context=group.context;
-      const label=element('span','account-tag-label',group.accounts.length>1?'Dine brugere':'Din bruger');
-      node._accounts.replaceChildren(label,...group.accounts.map(account=>{const tag=element('span','message-account',account);tag.title='Din bruger: '+account;return tag;}));
+      node._accounts.replaceChildren(...group.accounts.map(account=>{const tag=element('span','message-account',account);tag.title=account;return tag;}));
     }
     if(node._accounts.hidden!==Boolean(active))node._accounts.hidden=Boolean(active);
     const hideHead=!group.name&&Boolean(active);if(node._head.hidden!==hideHead)node._head.hidden=hideHead;
