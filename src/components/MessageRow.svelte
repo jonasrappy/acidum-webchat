@@ -22,10 +22,10 @@
     <button
       class="message-content movement followable"
       type="button"
-      aria-label={row.message.text + ' · Beskedhandlinger'}
+      aria-label={`${row.message.text} (${row.message.destination.id}) · Beskedhandlinger`}
       onclick={() => onopen(row.message)}
       ><span class="movement-icon leave" aria-hidden="true">←</span><span class="message-text"
-        >{row.message.text}</span
+        >{row.message.text} ({row.message.destination.id})</span
       ></button
     >
   {:else}
