@@ -1,13 +1,40 @@
-import {ChatStore, parseToken, retryDelay, messageAttention, messageLinks, matchesMode} from './core.js?v=8';
-import {LocalData, exportText} from './local-data.js?v=8';
+import {ChatStore, parseToken, retryDelay, messageAttention, messageLinks, matchesMode} from './core.js?v=11';
+import {AlertManager} from './notifications.js?v=11';
+import {LocalData, exportText} from './local-data.js?v=11';
 import {viewportGeometry} from './viewport.js?v=10';
-import {mentionQuery,mentionSuggestions,completeMention} from './mentions.js?v=10';
+import {mentionQuery,mentionSuggestions,completeMention} from './mentions.js?v=11';
 import {scopeFor, archiveId, saveMessages, loadBefore, clearScope} from './archive.js?v=8';
 const $ = id => document.getElementById(id);
+let alertTimer=0,alertMessage=null,pendingAlertAccount=new URLSearchParams(location.hash.slice(1)).get('account');
+const alerts=new AlertManager({onAlert:message=>{
+  if(!document.hidden&&!document.querySelector('dialog[open]')&&nearBottom&&(!active||active===message.account)&&viewAccept(message))return;
+  alertMessage=message;$('alert-title').textContent=message.account+' · '+(message.name||'Beskedalarm');$('alert-body').textContent=message.text;$('alert-banner').hidden=false;
+  clearTimeout(alertTimer);alertTimer=setTimeout(()=>{$('alert-banner').hidden=true;},7000);
+},onOpen:account=>openAlertAccount(account)});
+function openAlertAccount(account){
+  if(!store.names.includes(account)){pendingAlertAccount=account;return;}
+  for(const dialog of document.querySelectorAll('dialog[open]'))dialog.close();
+  mode='all';person='';query='';$('search').value='';choose(account);$('alert-banner').hidden=true;
+}
+$('alert-banner').onclick=()=>{if(alertMessage)openAlertAccount(alertMessage.account);};
+function updateNotificationSettings(){
+  const permission=globalThis.Notification?.permission;
+  $('enable-notifications').textContent=alerts.enabled&&permission==='granted'?'Slå notifikationer fra':'Aktivér notifikationer';
+  $('notification-sound').checked=alerts.sound;
+  $('notification-status').textContent=permission==='denied'?'Notifikationer er blokeret i browserens indstillinger.':alerts.enabled&&permission==='granted'?'Notifikationer er aktiveret, mens chatten er forbundet.':'På iPhone: føj acidum til hjemmeskærmen og åbn derfra. Notifikationer kræver en aktiv chatforbindelse.';
+}
+$('enable-notifications').onclick=async()=>{
+  if(alerts.enabled&&globalThis.Notification?.permission==='granted'){alerts.disable();updateNotificationSettings();return;}
+  const result=await alerts.enable().catch(()=>'unavailable');updateNotificationSettings();
+  if(result==='unsupported')$('notification-status').textContent='Browseren understøtter ikke systemnotifikationer her. På iPhone skal acidum åbnes fra hjemmeskærmen. Beskedalarmer vises stadig i chatten.';
+  if(result==='unavailable')$('notification-status').textContent='Notifikationer kunne ikke aktiveres. Beskedalarmer vises stadig i chatten.';
+};
+$('notification-sound').onchange=()=>alerts.setSound($('notification-sound').checked);
+document.addEventListener('pointerdown',()=>alerts.unlockSound(),{passive:true});
+document.addEventListener('keydown',()=>alerts.unlockSound(),{passive:true});
 let store = new ChatStore(), socket, token, retryTimer, retry = 0, generation = 0, intentional = false;
 let lastChatAccount = '', localData=null, draftAccount='', draftTimer;
 let mode='all', person='', selectedPerson=null, selectedMessage=null;
-const emptyTerms=[];
 let active = '', logOnly = false, query = '', showSystems = true, pageSize = 250, frame = 0, demo = false, nearBottom = true;
 let tabsSignature = '', notice = false, liveRenderTimer = 0, lastRenderAt = 0;
 let incomingViewDirty=false,incomingNavDirty=false,filterSignature='',headerSignature='',roomsSignature='';
@@ -56,13 +83,11 @@ async function olderMessages() {
   } catch {if(view === archiveGeneration) $('history-status').textContent = 'Browseren kunne ikke hente den lokale historik.';}
   finally {if(view === archiveGeneration) archiveLoading = false;}
 }
-function termsFor(account){return localData?.triggers.get(account)||emptyTerms;}
 function viewAccept(message){
-  const terms=termsFor(message.account);
-  if(logOnly&&!message.log&&!messageAttention(message,terms))return false;
+  if(logOnly&&!message.log&&!messageAttention(message))return false;
   if(person&&message.name!==person)return false;
   if(mode==='saved'&&!localData?.isSaved(message))return false;
-  return matchesMode(message,mode,terms);
+  return matchesMode(message,mode);
 }
 function canClearAttention(){return ['all','mentions'].includes(mode)&&!person&&!query&&!document.querySelector('dialog[open]');}
 function combinedMessages() {
@@ -79,10 +104,11 @@ function clearDraft(){hideMentions();$('message').value='';if(localData&&draftAc
 function filterChanged(){resetArchiveView();pageSize=250;nearBottom=true;schedule();}
 function renderFilters(){
   const signature=mode+'\0'+person;if(signature===filterSignature)return;filterSignature=signature;
-  $('workspace').classList.toggle('filtered',mode!=='all'||Boolean(person));
-  for(const button of document.querySelectorAll('#view-filters [data-mode]')){const selected=button.dataset.mode===mode;button.classList.toggle('active',selected);button.setAttribute('aria-pressed',String(selected));}
-  $('person-filter').hidden=!person;$('person-filter').textContent=person+' ×';
-  $('search-toggle').classList.toggle('has-filter',mode!=='all'||Boolean(person));
+  $('private-toggle').classList.toggle('active',mode==='private');$('private-toggle').setAttribute('aria-pressed',String(mode==='private'));
+  $('view-filters').hidden=!person;$('person-filter').hidden=!person;$('person-filter').textContent=person+' ×';
+  $('search-toggle').classList.toggle('has-filter',Boolean(person));
+  $('show-saved').textContent=mode==='saved'?'Vis alle beskeder':'Gemte beskeder';
+  $('show-saved').setAttribute('aria-pressed',String(mode==='saved'));
 }
 function openPerson(name,account){selectedPerson={name,account};$('person-title').textContent=name;$('person-account').textContent=account;$('person-dialog').showModal();}
 function openMessage(message){selectedMessage=message;$('message-preview').textContent=message.text;$('message-action-status').textContent='';$('save-message').textContent=localData?.isSaved(message)?'Fjern fra gemte':'Gem besked';$('message-dialog').showModal();}
@@ -91,7 +117,6 @@ function appendTextLinks(parent,text){
   for(const link of messageLinks(text)){const at=text.indexOf(link,offset);if(at<offset)continue;parent.append(document.createTextNode(text.slice(offset,at)));const a=element('a','',link);a.href=link;a.target='_blank';a.rel='noopener noreferrer';parent.append(a);offset=at+link.length;}
   parent.append(document.createTextNode(text.slice(offset)));
 }
-function updateTriggerEditor(){const name=$('trigger-account').value;$('trigger-words').value=termsFor(name).join(', ');$('trigger-status').textContent='Gælder kun på denne enhed. Medsendte markeringer virker fortsat.';}
 const timeFormat = new Intl.DateTimeFormat('da-DK', {hour: '2-digit', minute: '2-digit'});
 const dateFormat = new Intl.DateTimeFormat('da-DK', {day: 'numeric', month: 'long', year: 'numeric'});
 function element(tag, cls, text) { const el = document.createElement(tag); if (cls) el.className = cls; if (text != null) el.textContent = text; return el; }
@@ -180,19 +205,25 @@ function render() {
   const timeline = $('timeline'), before = timeline.scrollHeight, top = timeline.scrollTop;
   const messages = combinedMessages(), visible = messages.slice(-pageSize);
   const desired=[];let day='';
+  let previousMessage=null,previousDay='';
   for(const message of visible){
     const nextDay=dateFormat.format(message.time);
     if(day!==nextDay){desired.push({key:'day:'+nextDay,day:nextDay});day=nextDay;}
-    desired.push({key:JSON.stringify([message.account,message.key]),message});
+    const continuation=Boolean(previousMessage&&!message.system&&!previousMessage.system&&message.name&&message.name===previousMessage.name&&message.account===previousMessage.account&&message.type===previousMessage.type&&previousDay===nextDay);
+    desired.push({key:JSON.stringify([message.account,message.key]),message,continuation});previousMessage=message;previousDay=nextDay;
   }
+  // Keep stripes alternating without repainting existing rows as the window moves.
+  let stripeOffset=0,index=0;
+  for(const item of desired)if(item.message){const existing=renderedRows.get(item.key);if(existing){stripeOffset=Number(existing.classList.contains('alternate'))^(index%2);break;}index++;}
   const keys=new Set(desired.map(item=>item.key));
   // Drop only rows that leave the visible window. Unchanged rows keep their DOM and selection.
   for(const [key,node]of renderedRows)if(!keys.has(key)){node.remove();renderedRows.delete(key);}
   const container=$('messages');let cursor=container.firstChild;
+  index=0;
   for(const item of desired){
     let node=renderedRows.get(item.key);
     if(!node){node=item.message?createMessageRow(item.message):element('div','day-divider',item.day);renderedRows.set(item.key,node);}
-    if(item.message)patchMessageRow(node,item.message);
+    if(item.message)patchMessageRow(node,item.message,item.continuation,Boolean((index++%2)^stripeOffset));
     if(node===cursor)cursor=cursor.nextSibling;else container.insertBefore(node,cursor);
   }
   $('empty').hidden=Boolean(visible.length);$('older').hidden=messages.length<=pageSize&&!(mode!=='saved'&&historyEnabled&&archiveScope&&archiveMore&&!demo);
@@ -214,8 +245,9 @@ function createMessageRow(message){
   head.append(action,star,account);row._star=star;row._account=account;
   const text=element('p','message-text');appendTextLinks(text,message.text);body.append(head,text);row.append(body);return row;
 }
-function patchMessageRow(row,message){
-  row.classList.toggle('attention',messageAttention(message,termsFor(message.account)));
+function patchMessageRow(row,message,continuation,alternate){
+  row.classList.toggle('continuation',Boolean(continuation));row.classList.toggle('alternate',alternate);
+  row.classList.toggle('attention',messageAttention(message));
   const saved=Boolean(localData?.isSaved(message));if(row._star.hidden===saved)row._star.hidden=!saved;
   if(row._account.hidden!==Boolean(active))row._account.hidden=Boolean(active);
 }
@@ -227,12 +259,10 @@ function updateTabs(names) {
   $('send-as').replaceChildren(element('option', '', 'Vælg bruger'), ...store.names.map(name => {const option = element('option','',name); option.value = name; return option;}));
   $('send-as').firstElementChild.value = '';
   $('send-as').value = store.names.includes(previous) ? previous : store.names[0] || '';
-  const triggerName=$('trigger-account').value;
-  $('trigger-account').replaceChildren(...store.names.map(name=>{const option=element('option','',name);option.value=name;return option;}));
-  $('trigger-account').value=store.names.includes(triggerName)?triggerName:store.names[0]||'';
   updateComposer();
+  if(pendingAlertAccount&&store.names.includes(pendingAlertAccount)){const name=pendingAlertAccount;pendingAlertAccount=null;openAlertAccount(name);}
 }
-function ingest(payload) {
+function ingest(payload,{historical=false}={}) {
   const events = Array.isArray(payload) ? payload : [payload];
   for (const event of events.slice(0,10000)) {
     if (Array.isArray(event?.tabs)) {
@@ -243,6 +273,7 @@ function ingest(payload) {
       const message = store.add(event);
       if (!message) continue;
       queueArchive(message);
+      if(!historical&&message.serverNotify)alerts.receive(message);
       const visible = !document.querySelector('dialog[open]') && (!active || active === message.account) && viewAccept(message) && (!query||`${message.account} ${message.name} ${message.text}`.toLocaleLowerCase('da').includes(query.toLocaleLowerCase('da')));
       if (message.attention && (document.hidden || !visible || !nearBottom)){store.tab(message.account).unread++;incomingNavDirty=true;}
       if(visible&&(showSystems||!message.system))incomingViewDirty=true;
@@ -271,7 +302,7 @@ function connect() {
   socket.onopen = () => { if (current !== generation) return; status('Forbundet', true); };
   socket.onmessage = event => {
     if (current !== generation || typeof event.data !== 'string' || event.data.length > 8_000_000) return;
-    try { const data = JSON.parse(event.data); receivedData=true; rejectedOpens=0; retry = 0; ingest(data); } catch { /* Ignore malformed protocol frames without logging private contents. */ }
+    try { const data = JSON.parse(event.data); receivedData=true; rejectedOpens=0; retry = 0; ingest(data,{historical:Array.isArray(data)}); } catch { /* Ignore malformed protocol frames without logging private contents. */ }
   };
   socket.onerror = () => { if (current === generation) socket.close(); };
   socket.onclose = event => {
@@ -294,12 +325,12 @@ function start(input) {
   scopeFor(parsed).then(scope=>{if(token !== parsed)return; archiveScope = scope;
     let storage;try{storage=localStorage;}catch{storage={getItem:()=>null,setItem:()=>{throw new Error('Unavailable');}};}
     localData=new LocalData(storage,scope);
-    for(const [name,terms]of localData.triggers)store.setTriggers(name,terms);
-    const current=$('send-as').value;if($('message').value)localData.setDraft(current,$('message').value);else $('message').value=localData.draft(current);refreshLimit();updateTriggerEditor(); if(historyEnabled) {for(const tab of store.tabs.values())for(const message of tab.messages)queueArchive(message);} schedule();});
+    const current=$('send-as').value;if($('message').value)localData.setDraft(current,$('message').value);else $('message').value=localData.draft(current);refreshLimit(); if(historyEnabled) {for(const tab of store.tabs.values())for(const message of tab.messages)queueArchive(message);} schedule();});
   $('demo-label').hidden = true; $('chat-link').value = ''; $('login-error').textContent = '';
   openWorkspace(); connect(); schedule();
 }
 function disconnect(forget=true) {
+  clearTimeout(alertTimer);alertMessage=null;pendingAlertAccount=null;$('alert-banner').hidden=true;
   saveDraft();localData=null;draftAccount='';mode='all';person='';hideMentions();renderedRows.clear();$('messages').replaceChildren();$('room-cards').replaceChildren();roomsSignature='';headerSignature='';filterSignature='';selectedPerson=null;selectedMessage=null;$('message-preview').textContent='';incomingViewDirty=false;incomingNavDirty=false;
   intentional = true; ++generation; clearTimeout(retryTimer); clearTimeout(liveRenderTimer); liveRenderTimer=0; if (socket) {socket.onclose = null; socket.close();} socket = null;
   flushArchive(); archiveScope = ''; resetArchiveView(); token = null; if(forget)savedTokenSet(null); $('resume-saved').hidden=!savedTokenGet(); store = new ChatStore(); active = ''; logOnly = false; query = ''; demo = false; tabsSignature = '';
@@ -315,7 +346,7 @@ $('all-button').onclick = () => choose(''); $('log-button').onclick = () => choo
 $('bottom-chat').onclick = () => choose(store.names.includes(lastChatAccount)?lastChatAccount:'',false);
 $('bottom-log').onclick = () => choose('',true);
 function openSheet(id) {
-  if(id==='rooms-dialog')renderRooms();if(id==='settings-dialog'){if(active)$('trigger-account').value=active;updateTriggerEditor();}$(id).showModal();
+  if(id==='rooms-dialog')renderRooms();if(id==='settings-dialog')updateNotificationSettings();$(id).showModal();
   const button=$(id==='rooms-dialog'?'bottom-rooms':'bottom-settings');button.classList.add('selected');button.setAttribute('aria-pressed','true');
 }
 $('rooms-button').onclick = $('bottom-rooms').onclick = () => openSheet('rooms-dialog');
@@ -413,7 +444,8 @@ window.addEventListener('offline', () => {clearTimeout(retryTimer); status('Inge
 window.addEventListener('pagehide', () => {flushArchive();saveDraft(); intentional = true; clearTimeout(retryTimer); socket?.close();});
 window.addEventListener('pageshow', event => {if (event.persisted && token) {intentional = false; connect();}});
 document.addEventListener('keydown', event => {if (event.key === '/' && !/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName) && !$('workspace').hidden) {event.preventDefault();$('workspace').classList.add('search-open');$('search-toggle').setAttribute('aria-expanded','true'); $('search').focus({preventScroll:true});}});
-for(const button of document.querySelectorAll('#view-filters [data-mode]'))button.onclick=()=>{mode=button.dataset.mode;filterChanged();};
+$('private-toggle').onclick=()=>{mode=mode==='private'?'all':'private';filterChanged();};
+$('show-saved').onclick=()=>{mode=mode==='saved'?'all':'saved';$('settings-dialog').close();filterChanged();};
 $('person-filter').onclick=()=>{person='';filterChanged();};
 let mentionState={query:null,names:[],selected:-1,key:''}, dismissedMention='';
 function hideMentions(){
@@ -454,16 +486,10 @@ $('message').addEventListener('keyup',event=>{if(['ArrowLeft','ArrowRight','Home
 $('message').addEventListener('click',refreshMentions);
 $('message').addEventListener('blur',hideMentions);
 $('message').addEventListener('input',()=>{dismissedMention='';refreshLimit();refreshMentions();clearTimeout(draftTimer);draftTimer=setTimeout(saveDraft,200);});
-$('trigger-account').onchange=updateTriggerEditor;
-$('save-triggers').onclick=()=>{
-  const account=$('trigger-account').value;if(!account||!localData)return;
-  const terms=localData.setTriggers(account,$('trigger-words').value);store.setTriggers(account,terms);
-  $('trigger-status').textContent='Gemt for '+account+' på denne enhed.';filterChanged();
-};
 $('person-mention').onclick=()=>{
   if(!selectedPerson)return;const {name,account}=selectedPerson;
   for(const dialog of document.querySelectorAll('dialog[open]'))dialog.close();
-  choose(account);const prefix='@'+name+' ';$('message').value=(prefix+$('message').value).slice(0,100);saveDraft();refreshLimit();$('message').focus({preventScroll:true});
+  choose(account);const prefix=name+' ';$('message').value=(prefix+$('message').value).slice(0,100);saveDraft();refreshLimit();$('message').focus({preventScroll:true});
 };
 $('person-messages').onclick=()=>{
   if(!selectedPerson)return;const {name,account}=selectedPerson;
@@ -515,7 +541,7 @@ function enterDemo() {resetArchiveView();localData=new LocalData({getItem:()=>nu
   ingest(examples.map((e,i) => ({me:{name:e.name},user:{name:e.user||e.name},type:e.type||'text',text:e.text,room:e.room,users:e.users,time:now-(examples.length-i)*60000})));
 };
 const fragment = new URLSearchParams(location.hash.slice(1)), incoming = fragment.get('token');
-if (incoming) history.replaceState(null,'',location.pathname + location.search);
+if (incoming||pendingAlertAccount) history.replaceState(null,'',location.pathname + location.search);
 try {
   const saved=incoming||savedTokenGet();
   if(location.hash==='#demo'&&!saved)enterDemo();

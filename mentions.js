@@ -11,7 +11,7 @@ export function mentionSuggestions(users,query,limit=6) {
 export function completeMention(text,query,name,limit=100) {
   if(!query)return null;
   const tail=text.slice(query.end), extension=tail.match(/^[\p{L}\p{N}_-]*/u)[0];
-  const suffix=tail.slice(extension.length), insertion='@'+name+(!suffix||!/^[\s.,!?;:]/u.test(suffix)?' ':'');
+  const suffix=tail.slice(extension.length), insertion=name+(!suffix||!/^[\s.,!?;:]/u.test(suffix)?' ':'');
   const result=text.slice(0,query.start)+insertion+suffix;
   if(result.length>limit)return null;
   const caret=query.start+insertion.length+(suffix.startsWith(' ')?1:0);
