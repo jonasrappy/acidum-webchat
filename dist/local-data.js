@@ -16,5 +16,5 @@ export class LocalData {
   isSaved(message){return this.saved.has(this.id(message));}
 }
 export function exportText(messages) {
-  return messages.map(m=>`${new Date(m.time).toISOString()} [${m.account}] ${m.name?m.name+': ':''}${m.text}`).join('\n');
+  return messages.map(m=>`${new Date(m.time).toISOString()} [${(m.accounts||[m.account]).join(', ')}] ${m.name?m.name+': ':''}${m.text}`).join('\n');
 }

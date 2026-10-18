@@ -62,7 +62,9 @@ export class ChatStore {
     const tab = this.tab(event.me.name);
     const key = JSON.stringify([time, event.type, description.name, description.text, Boolean(event.log), Boolean(event.notify)]);
     if (tab.keys.has(key)) return null;
-    const message = {id: ++this.serial, key, time, account: event.me.name, type: event.type, log: Boolean(event.log || event.notify || event.type === 'log'), serverMarked:Boolean(event.log||event.notify), serverNotify:Boolean(event.notify), attention: needsAttention(event), ...description};
+    const room=event.type==='room'?event.room:event.type!=='part'&&event.room?event.room:time>=tab.roomSince?tab.room:null;
+    const roomKey=room?.id!=null?'id:'+String(room.id):room?.name&&room.name!=='Ukendt rum'?'name:'+room.name:undefined;
+    const message = {id: ++this.serial, key, time, roomKey, account: event.me.name, type: event.type, log: Boolean(event.log || event.notify || event.type === 'log'), serverMarked:Boolean(event.log||event.notify), serverNotify:Boolean(event.notify), attention: needsAttention(event), ...description};
     tab.keys.add(key); tab.messages.push(message); tab.lastLine = Math.max(tab.lastLine, time);
     if (event.type === 'room' && time >= tab.roomSince) {
       tab.room = {name: String(event.room?.name || 'Ukendt rum'), id: event.room?.id};
@@ -94,7 +96,7 @@ export function retryDelay(attempt, random = Math.random) { return Math.round(Ma
 
 export function messageAttention(message) {
   if(attentionCache.has(message))return attentionCache.get(message);
-  const value=needsAttention({type:message.type,me:{name:message.account},user:{name:message.name},from:{name:message.name},text:message.text,notify:message.serverMarked??message.log});
+  const value=(message.accounts||[message.account]).some(account=>needsAttention({type:message.type,me:{name:account},user:{name:message.name},from:{name:message.name},text:message.text,notify:message.serverMarked??message.log}));
   attentionCache.set(message,value);return value;
 }
 export function messageLinks(text) {
