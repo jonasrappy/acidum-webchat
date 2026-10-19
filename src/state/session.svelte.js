@@ -19,6 +19,7 @@ import { trackViewport } from '../actions/viewport.js';
 import { TimelineWindow } from './timeline.svelte.js';
 import { LocalHistory } from './history.svelte.js';
 import { EventLog } from '../lib/event-log.js';
+import { DesktopOverview } from './overview.svelte.js';
 
 class Account {
   room = $state.raw(null);
@@ -66,12 +67,23 @@ export class ChatSession {
   notice = $state(false);
   hasOlder = $state(false);
   rosterRevision = $state(0);
+  roleRevision = $state(0);
+  wide = $state(false);
+  layout = $state(readPreference('acidum-desktop-layout', 'overview'));
+  peopleOpen = $state(readPreference('acidum-room-people', 'yes') !== 'no');
   dialogs = $state({ rooms: false, settings: false, person: false, message: false });
   selectedPerson = $state.raw(null);
   alert = $state.raw(null);
   history = new LocalHistory();
   eventLog = new EventLog();
   timeline = new TimelineWindow();
+  overview = new DesktopOverview();
+
+  overviewAvailable = $derived(
+    this.wide && !this.active && !this.logOnly && this.accounts.length > 1,
+  );
+  overviewActive = $derived(this.overviewAvailable && this.layout === 'overview');
+  roomRail = $derived(this.wide && Boolean(this.active) && !this.logOnly && this.peopleOpen);
 
   totalUnread = $derived(this.accounts.reduce((sum, account) => sum + account.unread, 0));
   currentAccount = $derived(this.accounts.find((account) => account.name === this.active));
@@ -134,7 +146,11 @@ export class ChatSession {
     this.composer = new ComposerState(() => this.localData);
     this.messageTools = new MessageTools(
       () => this.localData,
-      () => this.timeline.updateBookmarks((message) => this.messageTools.isSaved(message)),
+      () => {
+        const isSaved = (message) => this.messageTools.isSaved(message);
+        this.timeline.updateBookmarks(isSaved);
+        for (const panel of this.overview.panels) panel.timeline.updateBookmarks(isSaved);
+      },
     );
     this.connection = new ChatConnection({
       onData: (data, options) => this.ingest(data, options),
@@ -156,11 +172,22 @@ export class ChatSession {
 
   mount() {
     const removeViewport = trackViewport(() => this.scrollToBottom());
+    const desktop = window.matchMedia('(min-width: 1100px)');
+    const updateDesktop = () => {
+      const changed = this.wide !== desktop.matches;
+      this.wide = desktop.matches;
+      if (changed && this.open) {
+        this.nearBottom = true;
+        this.schedule();
+      }
+    };
+    updateDesktop();
     const listeners = [];
     const listen = (target, event, handler) => {
       target.addEventListener(event, handler);
       listeners.push(() => target.removeEventListener(event, handler));
     };
+    listen(desktop, 'change', updateDesktop);
     listen(document, 'visibilitychange', () => {
       if (document.hidden) {
         this.composer.save();
@@ -204,6 +231,7 @@ export class ChatSession {
       removeViewport();
       this.composer.save();
       this.history.detach();
+      this.overview.reset();
       this.connection.stop();
       this.notifications.destroy();
       clearTimeout(this.searchTimer);
@@ -228,6 +256,7 @@ export class ChatSession {
     this.open = true;
     this.loginError = '';
     this.history.resetView();
+    this.overview.reset();
     this.localData = null;
     this.eventLog = new EventLog();
     this.history.scope = '';
@@ -274,6 +303,7 @@ export class ChatSession {
     this.store = new ChatStore();
     this.accounts = [];
     this.timeline.clear();
+    this.overview.reset();
     this.active = '';
     this.searchText = '';
     this.query = '';
@@ -306,10 +336,14 @@ export class ChatSession {
   }
 
   syncNavigation() {
+    this.roleRevision = this.store.roleRevision;
     const previous = new Map(this.accounts.map((account) => [account.name, account]));
     const accounts = this.store.names.map((name) => {
       const account = previous.get(name) || new Account(name);
-      account.update(this.store.tab(name), this.dialogs.rooms);
+      account.update(
+        this.store.tab(name),
+        this.dialogs.rooms || (this.roomRail && name === this.active),
+      );
       return account;
     });
     if (
@@ -356,14 +390,29 @@ export class ChatSession {
         this.accept(message) &&
         (!this.active || this.active === message.account) &&
         this.matchesQuery(message);
-      if (message.attention && (document.hidden || !visible || !this.nearBottom)) {
+      const atLatest = this.overviewActive
+        ? this.overview.canRead(message.account)
+        : this.nearBottom;
+      if (message.attention && (document.hidden || !visible || !atLatest)) {
         this.store.tab(message.account).unread++;
         this.navDirty = true;
       }
       if (visible && (this.showEvents || !message.system)) this.viewDirty = true;
-      if (message.type === 'room' || this.dialogs.rooms) this.navDirty = true;
+      if (
+        message.type === 'room' ||
+        this.dialogs.rooms ||
+        (this.roomRail && message.account === this.active)
+      )
+        this.navDirty = true;
       if (message.account === this.composer.account) this.rosterRevision++;
       if (visible && !this.nearBottom) this.notice = true;
+      if (
+        this.overviewActive &&
+        this.accept(message) &&
+        this.matchesQuery(message) &&
+        (this.showEvents || !message.system)
+      )
+        this.overview.note(message);
     }
     if (logChanged) {
       const changed = this.eventLog.capture([...this.store.messages(''), ...received]);
@@ -378,7 +427,7 @@ export class ChatSession {
           const viewDirty = this.viewDirty;
           const navDirty = this.navDirty;
           this.viewDirty = this.navDirty = false;
-          if (viewDirty && this.nearBottom) this.refresh();
+          if (viewDirty && (this.nearBottom || this.overviewActive)) this.refresh();
           else if (navDirty) this.syncNavigation();
         },
         Math.max(0, 80 - (performance.now() - this.lastRender)),
@@ -403,7 +452,7 @@ export class ChatSession {
     );
   }
 
-  combinedMessages() {
+  combinedMessages(extra = []) {
     if (this.logOnly)
       return this.eventLog.rows.filter(
         (message) =>
@@ -415,11 +464,10 @@ export class ChatSession {
     const current = this.active
       ? this.store.tabs.get(this.active)?.messages || []
       : [...this.store.tabs.values()].flatMap((tab) => tab.messages);
-    const seen = new Set(current.map((message) => message.account + '\0' + message.key));
-    const messages = [
-      ...this.history.rows.filter((message) => !seen.has(message.account + '\0' + message.key)),
-      ...current,
-    ]
+    const unique = new Map();
+    for (const message of [...this.history.rows, ...extra, ...current])
+      unique.set(message.account + '\0' + message.key, message);
+    const messages = [...unique.values()]
       .filter(
         (message) =>
           (!this.active || message.account === this.active) && (this.showEvents || !message.system),
@@ -439,9 +487,13 @@ export class ChatSession {
   }
 
   clearAttention() {
-    if (!this.nearBottom || !this.canClearAttention()) return;
+    if (document.hidden || !this.canClearAttention()) return;
     for (const [name, tab] of this.store.tabs)
-      if (!this.active || this.active === name) tab.unread = 0;
+      if (
+        (!this.active || this.active === name) &&
+        (this.overviewActive ? this.overview.canRead(name) : this.nearBottom)
+      )
+        tab.unread = 0;
   }
 
   schedule() {
@@ -459,6 +511,11 @@ export class ChatSession {
     this.lastRender = performance.now();
     this.clearAttention();
     this.syncNavigation();
+    if (this.overviewActive) {
+      this.overview.refresh(this);
+      this.timeline.clear();
+      return;
+    }
     const node = this.timelineNode;
     const before = node?.scrollHeight || 0;
     const top = node?.scrollTop || 0;
@@ -466,11 +523,7 @@ export class ChatSession {
     this.timeline.update(
       messages.slice(-this.pageSize),
       (message) => this.messageTools.isSaved(message),
-      (message) =>
-        message.superuser ||
-        (message.accounts || [message.account]).some((account) =>
-          this.store.isSuperuser(account, message.name),
-        ),
+      (message) => this.isSuperuser(message),
     );
     this.hasOlder =
       !this.logOnly &&
@@ -499,6 +552,13 @@ export class ChatSession {
   }
 
   scrollToBottom() {
+    if (this.overviewActive) {
+      requestAnimationFrame(() => {
+        for (const panel of this.overview.panels)
+          if (panel.nearBottom && panel.node) panel.node.scrollTop = panel.node.scrollHeight;
+      });
+      return;
+    }
     if (this.open && this.nearBottom)
       requestAnimationFrame(() => {
         if (this.timelineNode) this.timelineNode.scrollTop = this.timelineNode.scrollHeight;
@@ -544,9 +604,37 @@ export class ChatSession {
 
   filterChanged() {
     this.history.resetView();
+    this.overview.reset();
     this.pageSize = 250;
     this.nearBottom = true;
     this.refresh();
+  }
+
+  isSuperuser(message) {
+    return (
+      message.superuser ||
+      (message.accounts || [message.account]).some((account) =>
+        this.store.isSuperuser(account, message.name),
+      )
+    );
+  }
+
+  setLayout(layout) {
+    this.layout = layout;
+    writePreference('acidum-desktop-layout', layout);
+    this.filterChanged();
+  }
+
+  togglePeople() {
+    this.peopleOpen = !this.peopleOpen;
+    writePreference('acidum-room-people', this.peopleOpen ? 'yes' : 'no');
+    this.syncNavigation();
+    this.scrollToBottom();
+  }
+
+  replyAs(name) {
+    this.setSendAs(name, false);
+    tick().then(() => document.getElementById('message')?.focus({ preventScroll: true }));
   }
 
   choose(name, logOnly = false) {
@@ -704,9 +792,12 @@ export class ChatSession {
   }
 
   exportChat() {
-    const blob = new Blob([exportText(this.combinedMessages())], {
-      type: 'text/plain;charset=utf-8',
-    });
+    const blob = new Blob(
+      [exportText(this.overviewActive ? this.overview.messages(this) : this.combinedMessages())],
+      {
+        type: 'text/plain;charset=utf-8',
+      },
+    );
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
@@ -721,11 +812,13 @@ export class ChatSession {
   }
   setHistory(value) {
     this.history.setEnabled(value);
+    this.overview.reset();
     if (value && !this.demo) this.queueCurrentHistory();
     this.schedule();
   }
   async clearHistory() {
     await this.history.clear();
+    this.overview.reset();
     this.schedule();
   }
 
@@ -733,7 +826,7 @@ export class ChatSession {
     if (
       !document.hidden &&
       !this.dialogOpen &&
-      this.nearBottom &&
+      (this.overviewActive ? this.overview.canRead(message.account) : this.nearBottom) &&
       (!this.active || this.active === message.account) &&
       this.accept(message)
     )

@@ -14,8 +14,8 @@
     <h3>Appearance</h3>
     <Help label="About appearance"
       ><p>
-        Text size is saved on this device. Joins and departures show room movements and other events
-        in the conversation.
+        Text size is saved on this device. Room activity shows people entering or leaving rooms,
+        changing rooms, and other chat events in the conversation.
       </p>
       <p class="font-preview">An example message.</p></Help
     >
@@ -32,7 +32,7 @@
       oninput={(event) => session.setTextSize(event.currentTarget.value)}
     />
     <label class="setting-row" for="show-events"
-      ><span><strong>Show joins and departures</strong></span><input
+      ><span><strong>Show room activity</strong></span><input
         id="show-events"
         type="checkbox"
         checked={session.showEvents}

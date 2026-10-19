@@ -84,6 +84,12 @@ const assert = require('node:assert/strict');
       page.locator('.message-group').filter({
         has: page.locator('.message-name', { hasText: name }),
       });
+    await page.waitForFunction(() => {
+      const group = [...document.querySelectorAll('.message-group')].find(
+        (node) => node.querySelector('.message-name')?.textContent === 'QuietMod',
+      );
+      return group?.querySelectorAll('.message-account').length === 2;
+    });
     assert.equal(await page.locator('.message-group.superuser').count(), 3);
     assert.deepEqual(await group('QuietMod').locator('.message-account').allTextContents(), [
       'Milo',

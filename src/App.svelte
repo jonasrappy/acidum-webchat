@@ -6,6 +6,8 @@
   import ChatHeader from './components/ChatHeader.svelte';
   import MobileNavigation from './components/MobileNavigation.svelte';
   import Timeline from './components/Timeline.svelte';
+  import Overview from './components/Overview.svelte';
+  import RoomPeople from './components/RoomPeople.svelte';
   import Composer from './components/Composer.svelte';
   import AlertBanner from './components/AlertBanner.svelte';
 
@@ -27,7 +29,14 @@
 
 <svelte:head><title>{session.title}</title></svelte:head>
 <Login {session} />
-<div id="workspace" class="workspace" class:search-open={session.searchOpen} hidden={!session.open}>
+<div
+  id="workspace"
+  class="workspace"
+  class:search-open={session.searchOpen}
+  class:overview-layout={session.overviewActive}
+  class:people-layout={session.roomRail}
+  hidden={!session.open}
+>
   <nav class="skip-navigation" aria-label="Shortcuts">
     <a
       class="skip-link"
@@ -42,7 +51,14 @@
   <main class="chat-main">
     <ChatHeader {session} />
     <MobileNavigation {session} position="top" />
-    <Timeline {session} />
+    {#if session.overviewActive}
+      <Overview {session} />
+    {:else}
+      <div class="conversation-layout">
+        <Timeline {session} />
+        {#if session.roomRail}<RoomPeople {session} />{/if}
+      </div>
+    {/if}
     <Composer {session} />
     <MobileNavigation {session} position="bottom" />
   </main>

@@ -14,18 +14,22 @@ The token link has the technical format `https://acium.app/chat?token=…`. It i
 
 ## Features
 
+- On desktop, **All chats** opens a room overview with independent message panels. Accounts in the same known room share a panel. Panels keep a fixed order, and busy rooms cannot push quieter rooms out of the view. Choose **Timeline** for one chronological stream; the layout choice is saved on this device.
+- Reply from a panel by selecting its account name, without switching views. Each account keeps its own draft.
+- Opening one account on desktop shows a live participant list beside the conversation. Hide or restore it with the participant button.
 - View all conversations together or select one account. Mobile account tabs fit their names and keep the selected account visible when switching accounts or resizing the screen.
 - Search loaded messages, filter by sender, or show whispers only. Active filters remain visible when search is closed and can be removed directly.
 - Compact navigation, readable controls, keyboard shortcuts, and dialogs with fixed headers and close buttons. Help is available behind question-mark buttons. Connection settings are at the bottom of **More / Settings**; connection failures also appear in the chat.
+- **Show room activity** controls whether people entering or leaving rooms, changing rooms, and other system events appear in the conversation.
 - Message text defaults to 16 px. Adjust it from 10 to 30 px under **Appearance**, with a preview in the help panel. The size is saved on your device.
 - In **All**, copies of the same public room message received by multiple accounts appear once, with tags for each receiving account. Room context is recorded when messages arrive. Matching considers sender, type, text, and timestamp; copies from the same known room may differ by up to one second. Repeated messages from one account, different known rooms, and private messages stay separate.
-- Consecutive joins, departures, and messages from the same person share one block, with the sender on the left and timestamps in a fixed column on the right. Each line keeps its own timestamp and actions. A green right arrow marks a join; a red left arrow marks a departure. Backgrounds alternate between blocks. A different sender, account, date, or room event starts a new block. Whispers stay separate from public messages.
+- Consecutive room entries, room exits, and messages from the same person share one block, with the sender on the left and timestamps in a fixed column on the right. Each line keeps its own timestamp and actions. A green right arrow marks someone entering a room; a red left arrow marks someone leaving. Backgrounds alternate between blocks. A different sender, account, date, or room event starts a new block. Whispers stay separate from public messages.
 - Trigger words are managed in the desktop app. The webchat respects its `log` and `notify` markers and also matches your account name without case sensitivity. Unread counts reflect these markers and name mentions, rather than ordinary room traffic. Server markers also apply to your own messages.
 - Recent `notify` messages can produce an in-app banner, optional sound, and system notifications after permission is granted. Historical messages and old replays do not trigger alerts.
 - The event log always retains the latest 100 events locally per login, without expiry and independently of optional chat history. Merged room copies count as one event. Old replays do not replace newer events, and restoring the log does not trigger alerts.
 - Superusers have an orange name and border with a warm message background, including whispers and merged room copies. Identification uses received `superuser` fields and names in panic events. Without that information, the sender appears normally; message text is not used to guess roles.
 - Room participant lists use `users` data received on room entry and update as people join and leave. Without a room snapshot, the list shows observed activity. After disconnection, it returns to observed status until another snapshot arrives.
-- Tap a departure message or its timestamp and choose **Follow as…** when the event includes a room ID. Known destination IDs appear in parentheses. Following sends `/goto <id>` as the account selected in the composer, whose name appears on the button. Drafts are preserved, and the server decides whether the account can enter the destination.
+- Tap a room-change message or its timestamp and choose **Follow as…** when the event includes a room ID. Known destination IDs appear in parentheses. Following sends `/goto <id>` as the account selected in the composer, whose name appears on the button. Drafts are preserved, and the server decides whether the account can enter the destination.
 - Tap a name to mention someone or view their messages. This does not send a message automatically. Type `@` and part of a name for optional suggestions from the selected account's room. Choosing a suggestion inserts the name without `@`. Enter selects a suggestion only after you highlight it with the arrow keys.
 - Drafts are saved locally for each account. Trigger settings are not stored in the webchat.
 - Tap a timestamp to copy or save a message. Up to 200 saved messages are retained separately from rolling history.
@@ -37,13 +41,13 @@ The token link has the technical format `https://acium.app/chat?token=…`. It i
 
 ## Language
 
-The interface, help, notifications, demo conversations, and documentation are in English. Chat events and whisper prefixes keep their familiar Danish wording, including joins, departures, room changes, and panic events. Dates use English formatting and a 24-hour clock. Account names, room names, and received message content remain unchanged.
+The interface, help, notifications, demo conversations, and documentation are in English. Chat events and whisper prefixes keep their familiar Danish wording, including people entering or leaving rooms, room changes, and panic events. Dates use English formatting and a 24-hour clock. Account names, room names, and received message content remain unchanged.
 
 Previously saved English chat events are restored to Danish while existing message identities are preserved, so history, saved messages, and replay detection remain compatible.
 
 ## Data and privacy
 
-Everything acidum saves is stored in your browser: the login link, drafts, saved messages, the latest 100 log events, text size, notification preferences, and optional history. Local data is scoped to the current login using a SHA-256 identifier, keeping drafts, events, and saved messages from different logins separate. The token itself is stored separately in browser `localStorage`; older session storage is migrated automatically. If persistent storage is blocked, session storage is attempted instead.
+Everything acidum saves is stored in your browser: the login link, drafts, saved messages, the latest 100 log events, text size, desktop layout, participant-list visibility, notification preferences, and optional history. Local data is scoped to the current login using a SHA-256 identifier, keeping drafts, events, and saved messages from different logins separate. The token itself is stored separately in browser `localStorage`; older session storage is migrated automatically. If persistent storage is blocked, session storage is attempted instead.
 
 To connect, the token and messages are sent directly to the chat server over an encrypted WebSocket. GitHub Pages only serves static site files. Chat data and passwords do not belong in the repository. Do not share your token link.
 
@@ -51,7 +55,7 @@ To connect, the token and messages are sent directly to the chat server over an 
 
 ## Performance and limitations
 
-Memory retains up to 700 incoming messages per account. The active view initially renders the latest 250, adding older messages as you scroll back. Live updates are batched with at least 80 ms between renders. Keyed Svelte components reuse unchanged message rows and sender groups. Message data uses raw reactive state without deep proxies. Room lists and settings load on demand; archive code loads only when local history is used. Keyboard and viewport changes update layout and reading position. Activity in other conversations does not redraw the current message list. Hidden tabs defer rendering until visible. While you read older messages, incoming traffic does not redraw the conversation for every message.
+Memory retains up to 700 incoming messages per account. The timeline initially renders the latest 250 messages. The desktop overview divides that initial budget between its room panels, so each room keeps its latest messages even when another is busy. Older messages load per panel as you scroll up or select **Load older messages**. Live updates are batched with at least 80 ms between renders. Keyed Svelte components reuse unchanged message rows and sender groups. Message data uses raw reactive state without deep proxies. Dialogs and settings load on demand; archive code loads only when local history is used. Keyboard and viewport changes update layout and reading position. Activity in other conversations does not redraw the current message list. Hidden tabs defer rendering until visible. While you read older messages, incoming traffic does not redraw that conversation for every message. Other desktop panels continue updating independently. Only visible panels at the latest messages clear their accounts’ unread markers. A shared visibility observer covers the room panels; there are no observers per message.
 
 The server protocol's `lastLine` request retrieves newer messages. No request for arbitrary older server history has been identified. Lazy loading therefore uses messages already received and the archive you choose to save locally. Search and export cover loaded messages; scroll up to load more from the archive.
 
@@ -76,7 +80,7 @@ Open http://127.0.0.1:8765. With no saved login, demo data is available at http:
 
 Node tests cover history limits, deduplication, account isolation, mentions, server markers, alerts, grouping, participant lists, local storage, and compatibility with previously saved messages.
 
-With a preview server running, `npm run test:browser` runs `tests/*.browser.cjs` using `playwright-core` and Chromium. Set `BROWSER_EXECUTABLE` to the browser executable path. `ACIDUM_TEST_URL` overrides the test URL. Browser tests use synthetic data. They cover mobile layouts, touch targets, filters, dialog focus and scrolling, large text, connection feedback, storage, and chat behavior. The keyboard test simulates viewport height and offset changes, checks that the composer and conversation remain visible, and verifies that unchanged message rows are reused. A physical iPhone keyboard is not available in the test environment.
+With a preview server running, `npm run test:browser` runs `tests/*.browser.cjs` using `playwright-core` and Chromium. Set `BROWSER_EXECUTABLE` to the browser executable path. `ACIDUM_TEST_URL` overrides the test URL. Browser tests use synthetic data. They cover mobile layouts, desktop room panels, independent reading positions, shared-room deduplication, live participant changes, touch targets, filters, dialog focus and scrolling, large text, connection feedback, storage, and chat behavior. The keyboard test simulates viewport height and offset changes, checks that the composer and conversation remain visible, and verifies that unchanged message rows are reused. A physical iPhone keyboard is not available in the test environment.
 
 ## Publishing
 

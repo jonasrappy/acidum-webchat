@@ -10,7 +10,7 @@
   --accent: #d9f279;
   --active: #303923;
   --ink: #1b2210;
-  --content-width: 960px;
+  --content-width: 1280px;
   --gutter: clamp(16px, 2.5vw, 32px);
   --control-line: #737c65;
   --mono: 'SFMono-Regular', Consolas, 'Liberation Mono', monospace;
@@ -140,8 +140,20 @@ svg {
   display: grid;
   grid-template-columns: 216px minmax(0, 1fr);
   height: var(--app-height, 100dvh);
-  max-width: 1800px;
   margin: auto;
+}
+.overview-layout,
+.people-layout {
+  --content-width: 100%;
+}
+.conversation-layout {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+}
+.conversation-layout > .conversation {
+  min-width: 0;
 }
 .nav-item {
   position: relative;

@@ -27,6 +27,31 @@
   </div>
   <span id="demo-label" class="demo-label" hidden={!session.demo}>Demo data</span>
   <div class="header-actions">
+    {#if session.overviewAvailable}
+      <div class="layout-switch" role="group" aria-label="Conversation layout">
+        <button
+          id="layout-overview"
+          aria-pressed={session.layout === 'overview'}
+          onclick={() => session.setLayout('overview')}>Overview</button
+        >
+        <button
+          id="layout-timeline"
+          aria-pressed={session.layout === 'timeline'}
+          onclick={() => session.setLayout('timeline')}>Timeline</button
+        >
+      </div>
+    {/if}
+    {#if session.wide && session.active && !session.logOnly}
+      <button
+        id="participants-toggle"
+        class="icon-button"
+        aria-label="Show room participants"
+        aria-expanded={session.roomRail}
+        aria-controls={session.roomRail ? 'room-people' : undefined}
+        title="Room participants"
+        onclick={() => session.togglePeople()}><Icon name="people" /></button
+      >
+    {/if}
     <button
       id="search-toggle"
       class="icon-button"
@@ -45,7 +70,7 @@
       aria-label="Rooms and people"
       aria-haspopup="dialog"
       title="Rooms and people"
-      onclick={() => session.openDialog('rooms')}><Icon name="people" /></button
+      onclick={() => session.openDialog('rooms')}><Icon name="room" /></button
     >
     <button
       id="settings-button"
@@ -182,6 +207,28 @@
     flex: none;
     align-items: center;
     gap: 5px;
+  }
+  .layout-switch {
+    display: flex;
+    gap: 2px;
+    margin-right: 8px;
+    padding: 3px;
+    border: 1px solid #59634c;
+    border-radius: 3px;
+  }
+  .layout-switch button {
+    min-height: 36px;
+    padding: 6px 12px;
+    border: 0;
+    border-radius: 1px;
+    color: #bdc6b1;
+    background: transparent;
+    font-size: 13px;
+  }
+  .layout-switch button[aria-pressed='true'] {
+    background: var(--active);
+    color: var(--accent);
+    box-shadow: inset 0 -2px var(--accent);
   }
   .has-filter {
     position: relative;
