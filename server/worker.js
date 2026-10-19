@@ -51,7 +51,7 @@ export async function cleanup(db, { physical = 0, incoming = 0, state } = {}) {
     if (state.charged <= CLEANUP_TARGET && incoming < 5000000) return;
     await db
       .prepare(
-        'DELETE FROM sync_records WHERE seq IN (SELECT seq FROM sync_records ORDER BY time, seq LIMIT 500)',
+        'DELETE FROM sync_records WHERE seq IN (SELECT seq FROM sync_records INDEXED BY sync_oldest ORDER BY time, seq LIMIT 500)',
       )
       .run();
     state = null;
@@ -165,7 +165,9 @@ async function upload(request, env, vault, originalEnv) {
 }
 
 async function catalog(env, vault) {
-  const head = await env.DB.prepare('SELECT MAX(seq) AS head FROM sync_records WHERE vault = ?')
+  const head = await env.DB.prepare(
+    'SELECT MAX(seq) AS head FROM sync_records INDEXED BY sync_vault_seq WHERE vault = ?',
+  )
     .bind(vault)
     .first();
   const rows = (
@@ -185,7 +187,7 @@ async function download(url, env, vault) {
       return response({ error: 'Invalid sync cursor' }, 400);
     const rows = (
       await env.DB.prepare(
-        'SELECT seq, id, stream, kind, time, iv, data FROM sync_records WHERE vault = ? AND seq > ? ORDER BY seq LIMIT ?',
+        'SELECT seq, id, stream, kind, time, iv, data FROM sync_records INDEXED BY sync_vault_seq WHERE vault = ? AND seq > ? ORDER BY seq LIMIT ?',
       )
         .bind(vault, after, PAGE_SIZE + 1)
         .all()
@@ -204,7 +206,9 @@ async function download(url, env, vault) {
   // Capture the cursor first: a concurrent insert is then included by the next changes request.
   const head =
     stream === null
-      ? await env.DB.prepare('SELECT MAX(seq) AS head FROM sync_records WHERE vault = ?')
+      ? await env.DB.prepare(
+          'SELECT MAX(seq) AS head FROM sync_records INDEXED BY sync_vault_seq WHERE vault = ?',
+        )
           .bind(vault)
           .first()
       : { head: 0 };
@@ -223,7 +227,13 @@ async function download(url, env, vault) {
     }
   }
   const sql =
-    'SELECT id, stream, kind, time, iv, data FROM sync_records WHERE vault = ?' +
+    'SELECT id, stream, kind, time, iv, data FROM sync_records INDEXED BY ' +
+    (stream !== null
+      ? 'sync_vault_stream_time'
+      : kind === 'log'
+        ? 'sync_vault_log'
+        : 'sync_vault_time') +
+    ' WHERE vault = ?' +
     (stream !== null ? ' AND stream = ?' : '') +
     (kind === 'log' ? " AND kind = 'log'" : '') +
     (cursor ? ' AND (time, id) < (?, ?)' : '') +
