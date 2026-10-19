@@ -9,6 +9,7 @@
   <div
     id="mobile-accounts"
     class="mobile-accounts"
+    hidden={session.logOnly}
     role="tablist"
     use:keyboardTabs
     aria-label="Choose account"

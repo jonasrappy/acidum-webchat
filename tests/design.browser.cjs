@@ -89,6 +89,14 @@ const assert = require('node:assert/strict');
       await page.locator(mobile ? '#bottom-log' : '#log-button').click();
       assert.deepEqual(await frame(), expected, `Event log frame at ${width}`);
       const logBounds = await messageBounds();
+      if (mobile) {
+        assert.equal(await page.locator('#mobile-accounts').isVisible(), false);
+        const header = await page.locator('.chat-header').boundingBox();
+        const timeline = await page.locator('#timeline').boundingBox();
+        assert.equal(timeline.y, header.y + header.height);
+        await page.locator('#bottom-chat').click();
+        assert.equal(await page.locator('#mobile-accounts').isVisible(), true);
+      }
       await page
         .locator(mobile ? '#mobile-accounts button' : '#accounts button')
         .nth(mobile ? 1 : 0)
