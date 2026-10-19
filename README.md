@@ -20,7 +20,7 @@ The token link has the technical format `https://acium.app/chat?token=…`. It i
 - View all conversations together or select one account. Mobile account tabs fit their names and keep the selected account visible when switching accounts or resizing the screen.
 - Search loaded messages, filter by sender, or show whispers only. Active filters remain visible when search is closed and can be removed directly.
 - Compact navigation, readable controls, keyboard shortcuts, and dialogs with fixed headers and close buttons. Help is available behind question-mark buttons. Connection settings are at the bottom of **More / Settings**; connection failures also appear in the chat.
-- **Show room activity** controls whether people entering or leaving rooms, changing rooms, and other system events appear in the conversation.
+- **Show room activity** controls whether people entering or leaving rooms, changing rooms, and other system events appear in the conversation. The choice is saved on this device and restored when the page reloads or reopens.
 - Message text defaults to 16 px. Adjust it from 10 to 30 px under **Appearance**, with a preview in the help panel. The size is saved on your device.
 - In **All**, copies of the same public room message received by multiple accounts appear once, with tags for each receiving account. Room context is recorded when messages arrive. Matching considers sender, type, text, and timestamp; copies from the same known room may differ by up to one second. Repeated messages from one account, different known rooms, and private messages stay separate.
 - Consecutive room entries, room exits, and messages from the same person share one block, with the sender on the left and timestamps in a fixed column on the right. Each line keeps its own timestamp and actions. A green right arrow marks someone entering a room; a red left arrow marks someone leaving. Backgrounds alternate between blocks. A different sender, account, date, or room event starts a new block. Whispers stay separate from public messages.
@@ -47,7 +47,7 @@ Previously saved English chat events are restored to Danish while existing messa
 
 ## Data and privacy
 
-Everything acidum saves is stored in your browser: the login link, drafts, saved messages, the latest 100 log events, text size, desktop layout, participant-list visibility, notification preferences, and optional history. Local data is scoped to the current login using a SHA-256 identifier, keeping drafts, events, and saved messages from different logins separate. The token itself is stored separately in browser `localStorage`; older session storage is migrated automatically. If persistent storage is blocked, session storage is attempted instead.
+Everything acidum saves is stored in your browser: the login link, drafts, saved messages, the latest 100 log events, text size, room-activity visibility, desktop layout, participant-list visibility, notification preferences, and optional history. Local data is scoped to the current login using a SHA-256 identifier, keeping drafts, events, and saved messages from different logins separate. The token itself is stored separately in browser `localStorage`; older session storage is migrated automatically. If persistent storage is blocked, session storage is attempted instead.
 
 To connect, the token and messages are sent directly to the chat server over an encrypted WebSocket. GitHub Pages only serves static site files. Chat data and passwords do not belong in the repository. Do not share your token link.
 

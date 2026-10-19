@@ -62,7 +62,7 @@ export class ChatSession {
   query = $state('');
   searchText = $state('');
   searchOpen = $state(false);
-  showEvents = $state(true);
+  showEvents = $state(readPreference('acidum-show-room-activity', 'yes') !== 'no');
   textSize = $state(16);
   notice = $state(false);
   hasOlder = $state(false);
@@ -706,6 +706,7 @@ export class ChatSession {
   }
   setShowEvents(value) {
     this.showEvents = value;
+    writePreference('acidum-show-room-activity', value ? 'yes' : 'no');
     this.filterChanged();
   }
   setTextSize(value) {

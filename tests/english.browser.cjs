@@ -159,9 +159,36 @@ const assert = require('node:assert/strict');
     assert.equal(await page.locator('#message').inputValue(), 'Milo draft');
     await page.locator('#send-as').selectOption('Nova');
     assert.equal(await page.locator('#message').inputValue(), 'Nova draft');
+
+    await page.locator('#bottom-settings').click();
+    await page.locator('#show-events').uncheck();
+    await page.locator('#notification-sound').check();
+    await page.locator('#save-history').uncheck();
+    await page.locator('#text-size').evaluate((input) => {
+      input.value = '20';
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+    await page.reload();
+    await page.locator('.message-name').first().waitFor();
+    assert.equal(await page.locator('.message.system').count(), 0);
+    await page.locator('#bottom-settings').click();
+    assert.equal(await page.locator('#show-events').isChecked(), false);
+    assert.equal(await page.locator('#notification-sound').isChecked(), true);
+    assert.equal(await page.locator('#save-history').isChecked(), false);
+    assert.equal(await page.locator('#text-size').inputValue(), '20');
+    await page.locator('#show-events').check();
+    await page.locator('#notification-sound').uncheck();
+    await page.locator('#save-history').check();
+    await page.reload();
+    await page.locator('.message.system').first().waitFor();
+    await page.locator('#bottom-settings').click();
+    assert.equal(await page.locator('#show-events').isChecked(), true);
+    assert.equal(await page.locator('#notification-sound').isChecked(), false);
+    assert.equal(await page.locator('#save-history').isChecked(), true);
+    assert.equal(await page.locator('#text-size').inputValue(), '20');
     assert.deepEqual(errors, []);
     console.log(
-      'English UI, Danish chat events, unchanged user content, compatible saved data, and account-aware composer pass',
+      'English UI, Danish chat events, compatible saved data, account-aware composer, and settings persistence pass',
     );
   } finally {
     await browser.close();
