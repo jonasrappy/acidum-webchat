@@ -47,6 +47,70 @@ const assert = require('node:assert/strict');
     await page.locator('#connect-form').evaluate((form) => form.requestSubmit());
     await page.locator('.message-name').first().waitFor();
 
+    const frame = () =>
+      page.evaluate(() => {
+        const bounds = (selector) => {
+          const node = document.querySelector(selector);
+          if (!node.getClientRects().length) return null;
+          const { x, y, width, height } = node.getBoundingClientRect();
+          return selector === '#view-title' ? { x, y } : { x, y, width, height };
+        };
+        return Object.fromEntries(
+          [
+            '.workspace',
+            '.chat-main',
+            '.chat-header',
+            '#view-title',
+            '#search-toggle',
+            '#rooms-button',
+            '#settings-button',
+          ].map((selector) => [selector, bounds(selector)]),
+        );
+      });
+    const messageBounds = () =>
+      page.locator('#messages').evaluate((node) => {
+        const { x, width } = node.getBoundingClientRect();
+        return { x, width };
+      });
+    for (const [width, height] of [
+      [320, 568],
+      [390, 844],
+      [667, 375],
+      [768, 1024],
+      [1440, 900],
+      [1920, 1080],
+      [2560, 1440],
+    ]) {
+      await page.setViewportSize({ width, height });
+      const mobile = width <= 700;
+      const all = page.locator(mobile ? '#mobile-accounts button' : '#all-button').first();
+      await all.click();
+      const expected = await frame();
+      await page.locator(mobile ? '#bottom-log' : '#log-button').click();
+      assert.deepEqual(await frame(), expected, `Event log frame at ${width}`);
+      const logBounds = await messageBounds();
+      await page
+        .locator(mobile ? '#mobile-accounts button' : '#accounts button')
+        .nth(mobile ? 1 : 0)
+        .click();
+      assert.deepEqual(await frame(), expected, `Account frame at ${width}`);
+      if (width >= 1100) {
+        await page.locator('#participants-toggle').click();
+        assert.deepEqual(await frame(), expected, `Participant toggle at ${width}`);
+        await page.locator('#participants-toggle').click();
+      }
+      await all.click();
+      if (width >= 1100) {
+        await page.locator('#layout-timeline').click();
+        assert.deepEqual(await frame(), expected, `Timeline frame at ${width}`);
+      }
+      assert.deepEqual(await messageBounds(), logBounds, `Message width at ${width}`);
+      if (width >= 1100) {
+        await page.locator('#layout-overview').click();
+        assert.deepEqual(await frame(), expected, `Overview frame at ${width}`);
+      }
+    }
+
     for (const [width, height] of [
       [320, 568],
       [390, 844],
@@ -187,7 +251,7 @@ const assert = require('node:assert/strict');
     assert.ok((await page.locator('#message').inputValue()).startsWith('A long message'));
     assert.deepEqual(errors, []);
     console.log(
-      'Touch targets, responsive long names, removable filters, modal scroll/focus, large text and offline feedback pass',
+      'Stable view frames, touch targets, responsive long names, removable filters, modal scroll/focus, large text and offline feedback pass',
     );
   } finally {
     await browser.close();

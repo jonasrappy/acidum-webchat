@@ -152,7 +152,7 @@
     align-items: center;
     justify-content: space-between;
     gap: 12px;
-    padding: 0 max(var(--gutter), calc((100% - var(--content-width)) / 2));
+    padding: 0 var(--gutter);
     color: #f4d3a6;
     background: #3a3023;
     border-bottom: 1px solid #7d694d;
@@ -178,13 +178,15 @@
     align-items: center;
     justify-content: space-between;
     gap: 12px;
+    height: 74px;
     min-height: 74px;
-    padding: 12px max(var(--gutter), calc((100% - var(--content-width)) / 2));
+    padding: 10px var(--gutter);
     border-bottom: 1px solid var(--line);
   }
   .chat-header > div:first-child {
     flex: 1;
     min-width: 0;
+    align-self: stretch;
   }
   .chat-header h1 {
     margin: 0;
@@ -258,7 +260,7 @@
     flex: none;
     align-items: center;
     gap: 8px;
-    padding: 10px max(var(--gutter), calc((100% - var(--content-width)) / 2));
+    padding: 10px var(--gutter);
     border-bottom: 1px solid var(--line);
   }
   :global(.search-open) .toolbar {
@@ -336,7 +338,7 @@
     flex: none;
     gap: 6px;
     flex-wrap: wrap;
-    padding: 8px max(var(--gutter), calc((100% - var(--content-width)) / 2));
+    padding: 8px var(--gutter);
     border-bottom: 1px solid var(--line);
   }
   .view-filters button {
@@ -358,7 +360,8 @@
       padding-inline: 16px;
     }
     .chat-header {
-      min-height: 56px;
+      height: 58px;
+      min-height: 58px;
       padding: 6px 12px 6px 16px;
       gap: 8px;
     }
@@ -402,19 +405,22 @@
       padding: 6px 12px;
     }
     :global(.keyboard-open) .chat-header {
-      min-height: 54px;
+      height: 57px;
+      min-height: 57px;
     }
     :global(.keyboard-open) #view-subtitle {
       display: none;
     }
     :global(.compact-viewport) .chat-header {
-      min-height: 44px;
+      height: 49px;
+      min-height: 49px;
       padding-block: 2px;
     }
   }
   @media (max-width: 700px) and (max-height: 580px) {
     .chat-header {
-      min-height: 48px;
+      height: 53px;
+      min-height: 53px;
       padding-block: 4px;
     }
     #view-subtitle {

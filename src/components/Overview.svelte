@@ -162,6 +162,7 @@
     overflow: auto;
     overscroll-behavior: contain;
     scrollbar-width: thin;
+    scrollbar-gutter: stable;
   }
   .overview.two-rows {
     grid-template-rows: repeat(2, minmax(0, 1fr));

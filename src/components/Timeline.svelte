@@ -58,9 +58,7 @@
   }
   #messages {
     width: 100%;
-    max-width: var(--content-width);
     flex: none;
-    margin-inline: auto;
   }
   .timeline {
     display: flex;
@@ -74,6 +72,7 @@
     padding: 16px var(--gutter);
     scroll-padding-block: 12px;
     scrollbar-width: thin;
+    scrollbar-gutter: stable;
     scrollbar-color: #505744 transparent;
   }
   .older {

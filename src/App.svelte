@@ -29,14 +29,7 @@
 
 <svelte:head><title>{session.title}</title></svelte:head>
 <Login {session} />
-<div
-  id="workspace"
-  class="workspace"
-  class:search-open={session.searchOpen}
-  class:overview-layout={session.overviewActive}
-  class:people-layout={session.roomRail}
-  hidden={!session.open}
->
+<div id="workspace" class="workspace" class:search-open={session.searchOpen} hidden={!session.open}>
   <nav class="skip-navigation" aria-label="Shortcuts">
     <a
       class="skip-link"

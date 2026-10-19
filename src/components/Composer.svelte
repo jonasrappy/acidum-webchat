@@ -258,8 +258,6 @@
     align-items: center;
     gap: 8px;
     min-height: 54px;
-    max-width: var(--content-width);
-    margin-inline: auto;
     padding: 5px 6px;
     border: 1px solid var(--control-line);
     border-radius: 3px;
@@ -329,10 +327,6 @@
     color: #c0ceac;
     font: 11px/1.4 var(--mono);
     white-space: nowrap;
-  }
-  .send-error {
-    max-width: var(--content-width);
-    margin-inline: auto;
   }
   .mention-menu {
     position: absolute;
