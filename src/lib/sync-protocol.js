@@ -112,6 +112,18 @@ async function compress(bytes) {
     : { bytes, compressed: false };
 }
 
+export async function syncStreamId(keys, account) {
+  return base64(
+    new Uint8Array(
+      await crypto.subtle.sign(
+        'HMAC',
+        keys.signing,
+        encoder.encode('stream:' + JSON.stringify(account)),
+      ),
+    ),
+  );
+}
+
 export async function encryptSyncMessage(keys, input) {
   if (!validSyncMessage(input)) return null;
   const { id: localId, sources, accounts, archiveId, scope, ...message } = input;
@@ -140,7 +152,14 @@ export async function encryptSyncMessage(keys, input) {
     ),
   );
   if (data.length > 65536) throw new Error('A history batch is too large to sync.');
-  return { id, time, kind, iv: base64(iv), data: base64(data) };
+  return {
+    id,
+    stream: await syncStreamId(keys, message.account),
+    time,
+    kind,
+    iv: base64(iv),
+    data: base64(data),
+  };
 }
 
 export async function decryptSyncMessage(keys, record) {
@@ -214,10 +233,21 @@ export class SyncClient {
               ? 'Sync storage is full. Local chat continues; upload will retry later.'
               : 'The sync server is unavailable. Local chat continues.',
       );
+      const detail = await response.json().catch(() => ({}));
+      if (detail.code === 'daily_limit') {
+        error.message = 'Daily sync limit reached. Sync resumes at 00:00 UTC.';
+        error.code = detail.code;
+      }
       error.status = response.status;
       error.retryAfter = Math.min(
-        3600000,
-        Math.max(0, Number(response.headers.get('Retry-After')) * 1000),
+        detail.code === 'daily_limit' ? 86400000 : 3600000,
+        Math.max(
+          0,
+          Number(response.headers.get('Retry-After')) * 1000,
+          detail.code === 'daily_limit' && Number.isFinite(detail.resetAt)
+            ? detail.resetAt - Date.now()
+            : 0,
+        ),
       );
       throw error;
     }
@@ -242,9 +272,12 @@ export class SyncClient {
   changes(after) {
     return this.request('messages?after=' + encodeURIComponent(after));
   }
-  latest(kind = 'chat', before = '') {
+  streams() {
+    return this.request('streams');
+  }
+  latest(kind = 'chat', before = '', stream = null) {
     return this.request(
-      `messages?kind=${kind}${before ? '&before=' + encodeURIComponent(before) : ''}`,
+      `messages?kind=${kind}${before ? '&before=' + encodeURIComponent(before) : ''}${stream !== null ? '&stream=' + encodeURIComponent(stream) : ''}`,
     );
   }
 }

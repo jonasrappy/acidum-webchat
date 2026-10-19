@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Collector } from '../server/collector-core.mjs';
 import worker from '../server/worker.js';
-import { D1 } from './helpers/d1.mjs';
+import { D1, quotaBinding } from './helpers/d1.mjs';
 
 class Socket extends EventTarget {
   static connections = [];
@@ -36,7 +36,7 @@ const hash = (text) =>
 test('collector persists encrypted offline records and cursors, resumes after restart and deduplicates replays', async () => {
   const dir = mkdtempSync(join(tmpdir(), 'acidum-test-'));
   const DB = new D1();
-  const env = { DB, INSTANCE_KEY_HASH: await hash(instance) };
+  const env = { DB, QUOTA: quotaBinding(), INSTANCE_KEY_HASH: await hash(instance) };
   let offline = true;
   const fetcher = (url, init) =>
     offline

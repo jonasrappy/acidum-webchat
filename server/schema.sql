@@ -14,6 +14,7 @@ CREATE TABLE IF NOT EXISTS sync_records (
   seq INTEGER PRIMARY KEY AUTOINCREMENT,
   vault TEXT NOT NULL,
   id TEXT NOT NULL,
+  stream TEXT NOT NULL DEFAULT '',
   kind TEXT NOT NULL CHECK (kind IN ('chat', 'log')),
   time INTEGER NOT NULL,
   iv TEXT NOT NULL,
@@ -43,3 +44,22 @@ BEGIN
 END;
 
 CREATE INDEX IF NOT EXISTS sync_vault_log ON sync_records (vault, time DESC, id DESC) WHERE kind = 'log';
+
+CREATE INDEX IF NOT EXISTS sync_vault_stream_time ON sync_records (vault, stream, time DESC, id DESC);
+CREATE TABLE IF NOT EXISTS sync_streams (
+  vault TEXT NOT NULL, stream TEXT NOT NULL, seq INTEGER NOT NULL,
+  PRIMARY KEY (vault, stream)
+) WITHOUT ROWID;
+INSERT OR IGNORE INTO sync_streams (vault, stream, seq)
+SELECT vault, stream, MAX(seq) FROM sync_records GROUP BY vault, stream;
+CREATE TRIGGER IF NOT EXISTS sync_stream_inserted AFTER INSERT ON sync_records
+BEGIN
+  INSERT INTO sync_streams (vault, stream, seq) VALUES (NEW.vault, NEW.stream, NEW.seq)
+  ON CONFLICT (vault, stream) DO UPDATE SET seq = MAX(seq, excluded.seq);
+END;
+CREATE TRIGGER IF NOT EXISTS sync_stream_updated AFTER UPDATE OF stream ON sync_records
+WHEN NEW.stream <> OLD.stream
+BEGIN
+  INSERT INTO sync_streams (vault, stream, seq) VALUES (NEW.vault, NEW.stream, NEW.seq)
+  ON CONFLICT (vault, stream) DO UPDATE SET seq = MAX(seq, excluded.seq);
+END;

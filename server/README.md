@@ -37,13 +37,13 @@ npx wrangler deploy
 
 The private sync link is `https://YOUR-WORKER.YOUR-SUBDOMAIN.workers.dev/#key=YOUR_CONNECTION_KEY`. Paste it into **Settings → Sync → Sync server link** and choose **Connect sync** on each device. The connection key is in the URL fragment, so opening the link does not send it as a URL query. The application sends it in a request header when syncing. Do not publish the link.
 
-Existing loaded messages, retained log events, and optional local history are queued on connection. New incoming messages are queued automatically. **Sync now** retries immediately; normal syncing batches messages and polls about once a minute while the page is visible. Scroll up to load older cloud history. **Use device only** disables this device's sync connection without deleting the remote archive. Drafts, preferences, notification settings, and manually saved messages remain local.
+Existing loaded messages, retained log events, and optional local history are queued on connection. New incoming messages are queued automatically. **Sync now** retries immediately; normal syncing batches messages and polls about once a minute while the page is visible. Opening or reloading loads up to 100 messages per account, with separate cursors for older pages. A busy account cannot displace a quieter account from that initial history. The latest 100 marked events load separately into the event log without pulling their older messages into the conversation. Scroll up to fetch older cloud history for the selected account or room panel. **Use device only** disables this device's sync connection without deleting the remote archive. Drafts, preferences, notification settings, and manually saved messages remain local.
 
 ## Encryption and duplicate prevention
 
 The browser or collector derives separate encryption, authentication, and record-identity keys from the chat token with HKDF-SHA-256. Each message uses AES-256-GCM with a random nonce. Larger records are compressed before encryption. The Worker receives encrypted records, timestamps, event categories, and a derived authentication value; it never receives the original chat token or message text. Keep the token private: someone with both the token and sync link can access the same history.
 
-A deterministic HMAC of the original receiving account and message key identifies each record. Device IDs and local row numbers do not affect identity. The database has a unique constraint on the token-derived vault and record ID. Simultaneous phone, desktop, and collector uploads therefore store one record, and the browser merges cloud, live, and local copies by their original identity. Public room copies received by different accounts still use the chat's existing room-aware display merging.
+A deterministic HMAC of the original receiving account and message key identifies each record. A separate opaque HMAC identifies the account stream, so indexed per-account history does not expose account names to the database. Device IDs and local row numbers do not affect identity. The database has a unique constraint on the token-derived vault and record ID. Simultaneous phone, desktop, and collector uploads therefore store one record, and the browser merges cloud, live, and local copies by their original identity. Public room copies received by different accounts still use the chat's existing room-aware display merging.
 
 ## Storage and Free-plan budgets
 
@@ -55,9 +55,33 @@ D1's Free plan allows 500 MB per database. This implementation targets **under 4
 - Hourly scheduled cleanup also runs when no browser is open. Deleted pages can be reused by SQLite; the file may keep its existing size.
 - Application budgets allow at most 4,000 new records and 3,000 upload requests per UTC day, leaving room for index updates, counters, and deletions within the Free-plan write allowance. Additional activity on the same Cloudflare account still shares that account's quotas. Provider limits can defer sync before these application budgets are reached.
 
+## Shared daily quota guard
+
+A SQLite-backed Cloudflare Durable Object coordinates this deployment's daily D1 budget across phones, computers, collectors, Worker instances, and scheduled cleanup. It uses the Free plan and stores only counters and reservation IDs, not chat content or tokens. The generic Wrangler configuration creates its `QUOTA` binding and `SyncQuota` class.
+
+Before any D1 work, a request reserves conservative read and write allowances. D1's actual `meta.rows_read` and `meta.rows_written` reconcile completed work, including indexes and triggers. In-flight reservations count immediately, so concurrent devices cannot each spend the same remaining budget. Failed requests retain their full reservation when usage is unknown. Requests interrupted by a restart are never silently refunded.
+
+Both reads and writes stop when another request cannot fit within **4,750,000 rows read** or **95,000 rows written** for the UTC day: at least 5% below the D1 Free allowances. The check itself runs outside D1, so refused requests do not read or write D1. An unavailable guard fails closed. Quota state survives restarts. At **00:00 UTC**, spent usage resets and any in-flight reservations carry forward conservatively. Clients wait until that reset while keeping encrypted pending messages locally; live WebSocket chat continues.
+
+The guard has an additional 15,000 admissions/day ceiling and at most 256 outstanding reservations to leave room within its own Free-plan request and storage-operation allowances. Large cleanup jobs reserve their budget separately and can be deferred if the remaining allowance is insufficient. Existing conservative upload limits still apply. Unused reservations may stop sync before the headline limits; they do not permit exceeding them.
+
+The budget covers D1 operations made through this deployment, including cleanup. SQL run directly in the dashboard, maintenance scripts, and other applications bypass this guard, while Cloudflare's allowance is account-wide. Use a dedicated database/account for an isolated budget. For an existing deployment, seed already-used allowance with `QUOTA_BASELINE_DAY` (`YYYY-MM-DD`), `QUOTA_BASELINE_READS`, and `QUOTA_BASELINE_WRITES` before its first guarded request. Include a safety reserve for delayed analytics and maintenance. These optional values are not reset into future days.
+
 At a quota or capacity guard, uploads wait and retry. The live chat remains usable. This is a bound on writes made through this Worker, not a restriction on manual database edits or another service writing into the same database. Use a dedicated database. The server does not upgrade your plan.
 
 See Cloudflare's [D1 limits](https://developers.cloudflare.com/d1/platform/limits/), [pricing and indexed-write accounting](https://developers.cloudflare.com/d1/platform/pricing/), and [database-size metadata](https://developers.cloudflare.com/d1/worker-api/return-object/).
+
+## Upgrading an existing sync database
+
+Fresh databases use `schema.sql`. For a database created before account streams were added, apply the migration once before deploying the updated Worker:
+
+```sh
+npx wrangler d1 execute acidum-sync --remote --file migrations/0002-streams.sql
+npx wrangler deploy
+node server/backfill-streams.mjs ~/.config/acidum/collector.json
+```
+
+Run the Node command from the repository root. It reads the private token and sync link from the collector configuration, decrypts records locally, and adds only their opaque account index to D1. Existing ciphertext and message identities are preserved. It is safe to rerun. Backfilling follows the same quota guard. Reload each browser after upgrading. Older clients remain compatible with the message endpoint; records without an account index use a bounded legacy history until indexed.
 
 ## Optional collector
 

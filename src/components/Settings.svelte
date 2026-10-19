@@ -154,8 +154,10 @@
     <Help label="About sync"
       ><p>
         Connect your own private sync server to share received messages and the event log between
-        devices using the same chat login. Messages are encrypted before upload. Your chat login
-        token is never sent to the sync server. The private sync link is saved only on this device.
+        devices using the same chat login. Each account initially loads its latest 100 messages;
+        older messages load when you scroll up. The event log syncs separately. Messages are
+        encrypted before upload. Your chat login token is never sent to the sync server. The private
+        sync link is saved only on this device.
       </p>
       <p>
         Without a sync link, everything stays on this device. Drafts, saved messages and settings
@@ -163,7 +165,9 @@
       </p>
       <p>
         Older cloud history is removed automatically as storage fills. Uploads stop before the
-        database reaches 400 MB. Free-plan limits may delay syncing; chat keeps working locally.
+        database reaches 400 MB. A shared daily guard pauses all sync before 4.75 million rows read
+        or 95,000 rows written, with headroom for in-flight requests. It resumes at 00:00 UTC. Live
+        chat keeps working locally.
       </p>
       <p>
         <a

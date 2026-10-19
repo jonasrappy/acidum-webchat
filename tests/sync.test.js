@@ -8,7 +8,7 @@ import {
   SyncClient,
   parseSyncLink,
 } from '../src/lib/sync-protocol.js';
-import { D1 } from './helpers/d1.mjs';
+import { D1, quotaBinding } from './helpers/d1.mjs';
 
 const instance = 'synthetic_private_instance_key_1234567890123';
 const link = 'https://sync.example.test/#key=' + instance;
@@ -26,7 +26,7 @@ const message = (number = 0, account = 'Nova') => ({
 });
 async function setup() {
   const DB = new D1();
-  const env = { DB, INSTANCE_KEY_HASH: await hash(instance) };
+  const env = { DB, QUOTA: quotaBinding(), INSTANCE_KEY_HASH: await hash(instance) };
   const client = new SyncClient(link, await syncKeys('synthetic_sync_token_123'), (url, init) =>
     worker.fetch(new Request(url, init), env),
   );
@@ -144,6 +144,76 @@ test('free-plan daily guard defers records without deleting existing history', a
     );
     assert.equal(DB.db.prepare('SELECT COUNT(*) AS total FROM sync_records').get().total, 0);
     assert.equal(DB.db.prepare('SELECT lease_until FROM sync_state').get().lease_until, 0);
+  } finally {
+    DB.close();
+  }
+});
+
+test('initial history is limited to 100 per opaque account stream and older pages stay scoped', async () => {
+  const { DB, client } = await setup();
+  const { syncStreamId } = await import('../src/lib/sync-protocol.js');
+  try {
+    for (const account of ['Nova', 'Milo']) {
+      for (let start = 0; start < 150; start += 30) {
+        await client.upload(
+          await Promise.all(
+            Array.from({ length: 30 }, (_, index) =>
+              encryptSyncMessage(client.keys, {
+                ...message(start + index, account),
+                time: (account === 'Milo' ? 1600000000000 : 1700000000000) + start + index,
+              }),
+            ),
+          ),
+        );
+      }
+    }
+    const catalog = await client.streams();
+    assert.equal(catalog.streams.length, 2);
+    for (const account of ['Nova', 'Milo']) {
+      const stream = await syncStreamId(client.keys, account);
+      const latest = await client.latest('chat', '', stream);
+      assert.equal(latest.records.length, 100);
+      assert.equal(latest.hasMore, true);
+      assert.equal((await decryptSyncMessage(client.keys, latest.records[0])).account, account);
+      assert.equal((await client.latest('chat', latest.before, stream)).records.length, 50);
+    }
+  } finally {
+    DB.close();
+  }
+});
+
+test('legacy encrypted records gain an account stream without duplicate rows or replaced ciphertext', async () => {
+  const { DB, client } = await setup();
+  try {
+    const record = await encryptSyncMessage(client.keys, message());
+    const { stream, ...legacy } = record;
+    await client.upload([legacy]);
+    await client.upload([
+      { ...record, data: (await encryptSyncMessage(client.keys, message())).data },
+    ]);
+    const stored = DB.db.prepare('SELECT stream, data FROM sync_records').all();
+    assert.equal(stored.length, 1);
+    assert.equal(stored[0].stream, stream);
+    assert.equal(stored[0].data, legacy.data);
+  } finally {
+    DB.close();
+  }
+});
+
+test('an upload whose lease was replaced cannot acknowledge records that were never inserted', async () => {
+  const { DB, client } = await setup();
+  try {
+    const batch = DB.batch.bind(DB);
+    DB.batch = async (statements) => {
+      DB.db.prepare('UPDATE sync_state SET lease = ?').run('replacement');
+      return batch(statements);
+    };
+    await assert.rejects(
+      client.upload([await encryptSyncMessage(client.keys, message())]),
+      (error) => error.status === 429,
+    );
+    assert.equal(DB.db.prepare('SELECT COUNT(*) AS total FROM sync_records').get().total, 0);
+    assert.equal(DB.db.prepare('SELECT lease FROM sync_state').get().lease, 'replacement');
   } finally {
     DB.close();
   }

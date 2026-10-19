@@ -575,7 +575,7 @@ export class ChatSession {
     this.hasOlder =
       !this.logOnly &&
       (messages.length > this.pageSize ||
-        this.sync.hasMore ||
+        this.sync.hasOlder(this.active ? [this.active] : []) ||
         Boolean(this.history.enabled && this.history.scope && this.history.hasMore && !this.demo));
     if (this.nearBottom) this.notice = false;
     const revision = ++this.scrollRevision;
@@ -636,7 +636,10 @@ export class ChatSession {
       this.refresh({ older: true });
       return;
     }
-    if (this.sync.hasMore && (await this.sync.loadOlder())) {
+    if (
+      this.sync.hasOlder(this.active ? [this.active] : []) &&
+      (await this.sync.loadOlder(this.active ? [this.active] : []))
+    ) {
       this.pageSize += 250;
       this.nearBottom = false;
       this.loadingOlder = true;

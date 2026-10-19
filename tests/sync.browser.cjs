@@ -3,7 +3,7 @@ const assert = require('node:assert/strict');
 
 (async () => {
   const { default: worker } = await import('../server/worker.js');
-  const { D1 } = await import('./helpers/d1.mjs');
+  const { D1, quotaBinding } = await import('./helpers/d1.mjs');
   const { syncKeys, encryptSyncMessage, SyncClient } = await import('../src/lib/sync-protocol.js');
   const DB = new D1();
   const key = 'synthetic_private_instance_key_1234567890123';
@@ -12,7 +12,7 @@ const assert = require('node:assert/strict');
   const INSTANCE_KEY_HASH = Buffer.from(
     await crypto.subtle.digest('SHA-256', new TextEncoder().encode(key)),
   ).toString('base64url');
-  const env = { DB, INSTANCE_KEY_HASH };
+  const env = { DB, QUOTA: quotaBinding(), INSTANCE_KEY_HASH };
   const client = new SyncClient(link, await syncKeys(token), (url, init) =>
     worker.fetch(new Request(url, init), env),
   );

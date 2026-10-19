@@ -20,7 +20,8 @@ export class CloudSync {
   draftLink = $state('');
   rows = $state.raw([]);
   hasMore = $state(false);
-  before = null;
+  histories = new Map();
+  accountStreams = new Map();
   cursor = null;
   persisting = Promise.resolve();
   persistTimer = null;
@@ -32,7 +33,9 @@ export class CloudSync {
   client = null;
   pending = new Map();
   seen = new Set();
+  remoteSeen = new Set();
   retry = 30000;
+  pausedUntil = 0;
 
   constructor(onMessages) {
     this.onMessages = onMessages;
@@ -56,10 +59,13 @@ export class CloudSync {
     const generation = ++this.generation;
     clearTimeout(this.timer);
     this.status = 'Connecting sync…';
-    this.busy = false;
+    this.pausedUntil = 0;
+    this.busy = true;
     this.rows = [];
     this.seen.clear();
-    this.before = null;
+    this.remoteSeen.clear();
+    this.histories.clear();
+    this.accountStreams.clear();
     this.cursor = null;
     this.hasMore = false;
     try {
@@ -71,23 +77,68 @@ export class CloudSync {
       this.enabled = true;
       this.draftLink = link.trim();
       writePreference('acidum-sync-' + this.scope, this.draftLink);
-      const latest = await client.latest();
+      await this.snapshot(client, generation);
       if (generation !== this.generation) return false;
-      this.before = latest.before;
-      this.hasMore = latest.hasMore;
-      this.cursor = latest.head;
-      await this.receive(latest.records, generation);
-      await this.pullLog(client, generation);
       this.status = 'Sync connected';
       this.schedule(1000);
       return true;
     } catch (error) {
       if (generation === this.generation) {
         this.status = error.message;
-        if (this.enabled) this.schedule(60000);
+        if (error.code === 'daily_limit') this.pausedUntil = Date.now() + error.retryAfter;
+        if (this.enabled) this.schedule(Math.max(60000, error.retryAfter || 0));
       }
       return false;
+    } finally {
+      if (generation === this.generation) this.busy = false;
     }
+  }
+
+  hasOlder(accounts = []) {
+    return [...this.histories.values()].some(
+      (page) =>
+        page.hasMore &&
+        (!accounts.length ||
+          !page.accounts.size ||
+          accounts.some((name) => page.accounts.has(name))),
+    );
+  }
+
+  async snapshot(client, generation) {
+    let catalog;
+    try {
+      catalog = await client.streams();
+    } catch (error) {
+      if (error.status !== 404) throw error;
+      catalog = { streams: [null], head: null };
+    }
+    if (generation !== this.generation) return;
+    let head = catalog.head;
+    await Promise.all(
+      catalog.streams.map(async (stream) => {
+        const page = await client.latest('chat', '', stream);
+        if (generation !== this.generation) return;
+        const messages = await this.receive(page.records, generation);
+        if (generation !== this.generation) return;
+        const account = this.accountStreams.get(stream);
+        this.histories.set(stream, {
+          stream,
+          before: page.before,
+          hasMore: page.hasMore,
+          accounts: new Set([
+            ...messages.map((message) => message.account),
+            ...(account ? [account] : []),
+          ]),
+        });
+        if (head === null) head = page.head;
+      }),
+    );
+    if (generation !== this.generation) return;
+    await this.pullLog(client, generation);
+    if (generation !== this.generation) return;
+    this.cursor = head || 0;
+    this.hasMore = this.hasOlder();
+    this.onMessages([]);
   }
 
   queue(message) {
@@ -115,7 +166,7 @@ export class CloudSync {
   persistPending(client, owner) {
     const generation = this.generation;
     const messages = [...this.pending.entries()];
-    const seen = new Set(this.seen);
+    const seen = new Set(this.remoteSeen);
     const operation = this.persisting
       .catch(() => {})
       .then(() => this.savePending(client, owner, messages, seen, generation));
@@ -139,35 +190,53 @@ export class CloudSync {
     }
   }
 
-  async receive(records, generation = this.generation) {
+  async receive(records, generation = this.generation, { history = true } = {}) {
+    if (!records.length) return [];
     const messages = [];
     for (const record of records) {
-      if (generation !== this.generation) return;
-      if (this.seen.has(record.id)) continue;
+      if (generation !== this.generation) return [];
+      if ((history ? this.seen : this.remoteSeen).has(record.id)) continue;
       const message = restoreMessage(await decryptSyncMessage(this.client.keys, record));
       if (generation !== this.generation) return;
-      this.seen.add(record.id);
+      this.remoteSeen.add(record.id);
+      if (history) this.seen.add(record.id);
+      if (record.stream) this.accountStreams.set(record.stream, message.account);
       messages.push(message);
     }
-    if (!messages.length) return;
-    const unique = new Map(
-      [...this.rows, ...messages].map((message) => [syncMessageId(message), message]),
+    // A received record is already stored remotely, including a copy queued by this device.
+    await this.persisting.catch(() => {});
+    if (generation !== this.generation) return;
+    await removePending(
+      this.owner,
+      records.map((record) => record.id),
     );
-    this.rows = [...unique.values()]
-      .sort((a, b) => a.time - b.time || a.key.localeCompare(b.key))
-      .slice(-MAX_SYNC_MESSAGES);
+    if (!messages.length) return [];
+    if (history) {
+      const unique = new Map(
+        [...this.rows, ...messages].map((message) => [syncMessageId(message), message]),
+      );
+      this.rows = [...unique.values()]
+        .sort((a, b) => a.time - b.time || a.key.localeCompare(b.key))
+        .slice(-MAX_SYNC_MESSAGES);
+    }
+    if (this.remoteSeen.size > 20000) this.remoteSeen = new Set([...this.remoteSeen].slice(-10000));
     if (this.seen.size > 20000) this.seen = new Set([...this.seen].slice(-10000));
     this.onMessages(messages);
+    return messages;
   }
 
   async pullLog(client, generation) {
     const result = await client.latest('log');
     if (generation !== this.generation) return;
-    await this.receive(result.records, generation);
+    await this.receive(result.records, generation, { history: false });
   }
 
   async run() {
     if (!this.enabled || !this.client || this.busy) return;
+    if (Date.now() < this.pausedUntil) {
+      this.schedule(this.pausedUntil - Date.now());
+      return;
+    }
     if (document.hidden || !navigator.onLine) {
       this.schedule(60000);
       return;
@@ -177,23 +246,8 @@ export class CloudSync {
     const owner = this.owner;
     this.busy = true;
     try {
-      await this.persistPending(client, owner);
-      for (let batch = 0; batch < 4; batch++) {
-        if (generation !== this.generation) return;
-        const pending = await readPending(owner);
-        if (!pending.length) break;
-        const accepted = await client.upload(pending);
-        await removePending(owner, accepted.accepted);
-      }
-      if (generation !== this.generation) return;
       if (this.cursor === null) {
-        const result = await client.latest();
-        if (generation !== this.generation) return;
-        this.before = result.before;
-        this.hasMore = result.hasMore;
-        this.cursor = result.head;
-        await this.receive(result.records, generation);
-        await this.pullLog(client, generation);
+        await this.snapshot(client, generation);
       } else {
         for (let page = 0; page < 5; page++) {
           const result = await client.changes(this.cursor);
@@ -203,6 +257,15 @@ export class CloudSync {
           if (!result.hasMore) break;
         }
       }
+      await this.persistPending(client, owner);
+      for (let batch = 0; batch < 4; batch++) {
+        if (generation !== this.generation) return;
+        const pending = await readPending(owner);
+        if (!pending.length) break;
+        const accepted = await client.upload(pending);
+        await removePending(owner, accepted.accepted);
+      }
+      if (generation !== this.generation) return;
       this.status =
         'Synced · ' +
         new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
@@ -210,6 +273,7 @@ export class CloudSync {
     } catch (error) {
       if (generation === this.generation) this.status = error.message;
       this.retry = error.retryAfter || Math.min(this.retry * 2, 1800000);
+      if (error.code === 'daily_limit') this.pausedUntil = Date.now() + this.retry;
     } finally {
       if (generation === this.generation) {
         this.busy = false;
@@ -218,16 +282,26 @@ export class CloudSync {
     }
   }
 
-  async loadOlder() {
-    if (!this.enabled || !this.client || !this.hasMore || this.loading) return false;
+  async loadOlder(accounts = []) {
+    if (!this.enabled || !this.client || !this.hasOlder(accounts) || this.loading) return false;
+    const page = [...this.histories.values()]
+      .filter(
+        (page) =>
+          page.hasMore &&
+          (!accounts.length ||
+            !page.accounts.size ||
+            accounts.some((name) => page.accounts.has(name))),
+      )
+      .sort((a, b) => JSON.parse(b.before).time - JSON.parse(a.before).time)[0];
     const generation = this.generation;
     const client = this.client;
     this.loading = true;
     try {
-      const result = await client.latest('chat', this.before);
+      const result = await client.latest('chat', page.before, page.stream);
       if (generation !== this.generation) return false;
-      this.before = result.before;
-      this.hasMore = result.hasMore;
+      page.before = result.before;
+      page.hasMore = result.hasMore;
+      this.hasMore = this.hasOlder();
       await this.receive(result.records, generation);
       return true;
     } catch (error) {
@@ -288,9 +362,12 @@ export class CloudSync {
     this.seen.clear();
     this.rows = [];
     this.hasMore = false;
-    this.before = null;
+    this.histories.clear();
+    this.accountStreams.clear();
+    this.remoteSeen.clear();
     this.cursor = null;
     this.token = this.scope = this.owner = '';
     this.status = 'Device only';
+    this.pausedUntil = 0;
   }
 }

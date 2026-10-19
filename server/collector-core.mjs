@@ -189,9 +189,11 @@ export class Collector {
       this.retryAt = 0;
     } catch (error) {
       this.status.error =
-        error.status === 429
-          ? 'Sync busy or daily quota reached; waiting'
-          : 'Upload unavailable; encrypted records queued';
+        error.code === 'daily_limit'
+          ? 'Daily sync limit reached; waiting for 00:00 UTC'
+          : error.status === 429
+            ? 'Sync busy or daily quota reached; waiting'
+            : 'Upload unavailable; encrypted records queued';
       this.retryDelay = Math.min((this.retryDelay || 30000) * 2, 1800000);
       this.retryAt = Date.now() + (error.retryAfter || this.retryDelay);
     } finally {

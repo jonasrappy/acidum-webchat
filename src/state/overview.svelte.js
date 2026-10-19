@@ -26,7 +26,7 @@ class RoomPanel {
   update(messages, session, { force = false, older = false } = {}) {
     this.hasOlder =
       messages.length > this.limit ||
-      session.sync.hasMore ||
+      session.sync.hasOlder([...this.members]) ||
       Boolean(
         session.history.enabled && session.history.scope && this.history.hasMore && !session.demo,
       );
@@ -171,7 +171,10 @@ export class DesktopOverview {
     try {
       const messages = this.messages(session).filter((message) => this.owner(message) === panel);
       if (messages.length <= panel.limit) {
-        if (session.sync.hasMore && (await session.sync.loadOlder())) {
+        if (
+          session.sync.hasOlder([...panel.members]) &&
+          (await session.sync.loadOlder([...panel.members]))
+        ) {
           if (!this.panels.includes(panel) || !session.overviewActive) return;
         } else {
           await session.history.flush();

@@ -1,3 +1,5 @@
+import { withQuota, quotaResponse, READ_BUDGET, WRITE_BUDGET, CLEANUP_BUDGET } from './quota.js';
+export { SyncQuota } from './quota.js';
 export const STORAGE_LIMIT = 400000000;
 export const STOP_WRITES_AT = 380000000;
 export const CLEANUP_AT = 350000000;
@@ -19,6 +21,7 @@ function response(body, status = 200, headers = {}) {
     status,
     headers: {
       'Access-Control-Allow-Origin': '*',
+      'Access-Control-Expose-Headers': 'Retry-After',
       'Cache-Control': 'no-store',
       'X-Content-Type-Options': 'nosniff',
       ...headers,
@@ -31,6 +34,7 @@ function validRecord(record) {
     record &&
     /^[A-Za-z0-9_-]{43}$/.test(record.id) &&
     ['chat', 'log'].includes(record.kind) &&
+    (record.stream == null || record.stream === '' || /^[A-Za-z0-9_-]{43}$/.test(record.stream)) &&
     Number.isSafeInteger(record.time) &&
     record.time >= 0 &&
     record.time <= Date.now() + 300000 &&
@@ -40,10 +44,9 @@ function validRecord(record) {
   );
 }
 
-export async function cleanup(db, { physical = 0, incoming = 0 } = {}) {
+export async function cleanup(db, { physical = 0, incoming = 0, state } = {}) {
   for (let attempt = 0; attempt < 10; attempt++) {
-    const result = await db.prepare('SELECT charged, records FROM sync_state WHERE id = 1').run();
-    const state = result.results[0];
+    state ??= await db.prepare('SELECT charged, records FROM sync_state WHERE id = 1').first();
     if (state.charged + incoming <= 250000000 && physical < CLEANUP_AT) return;
     if (state.charged <= CLEANUP_TARGET && incoming < 5000000) return;
     await db
@@ -51,6 +54,7 @@ export async function cleanup(db, { physical = 0, incoming = 0 } = {}) {
         'DELETE FROM sync_records WHERE seq IN (SELECT seq FROM sync_records ORDER BY time, seq LIMIT 500)',
       )
       .run();
+    state = null;
   }
 }
 
@@ -59,12 +63,12 @@ async function acquire(db) {
   const now = Date.now();
   const result = await db
     .prepare(
-      'UPDATE sync_state SET lease = ?, lease_until = ? WHERE id = 1 AND lease_until < ? RETURNING charged, records',
+      'UPDATE sync_state SET lease = ?, lease_until = ? WHERE id = 1 AND lease_until < ? RETURNING charged, records, day, uploads, inserted',
     )
     .bind(lease, now + 30000, now)
     .run();
   return result.results.length
-    ? { lease, physical: Number(result.meta.size_after), started: now }
+    ? { lease, physical: Number(result.meta.size_after), started: now, state: result.results[0] }
     : null;
 }
 
@@ -75,7 +79,7 @@ async function release(db, lease) {
     .run();
 }
 
-async function upload(request, env, vault) {
+async function upload(request, env, vault, originalEnv) {
   if (Number(request.headers.get('Content-Length')) > MAX_BODY)
     return response({ error: 'Upload too large' }, 413);
   const reader = request.body?.getReader();
@@ -116,14 +120,13 @@ async function upload(request, env, vault) {
   if (!lock) return response({ error: 'Sync busy' }, 429, { 'Retry-After': '5' });
   try {
     const day = new Date().toISOString().slice(0, 10);
-    await env.DB.prepare(
-      'UPDATE sync_state SET day = ?, uploads = 0, inserted = 0 WHERE id = 1 AND day <> ?',
-    )
-      .bind(day, day)
-      .run();
-    const budget = await env.DB.prepare(
-      'SELECT uploads, inserted FROM sync_state WHERE id = 1',
-    ).first();
+    const budget = lock.state;
+    if (budget.day !== day) {
+      await env.DB.prepare('UPDATE sync_state SET day = ?, uploads = 0, inserted = 0 WHERE id = 1')
+        .bind(day)
+        .run();
+      budget.uploads = budget.inserted = 0;
+    }
     if (budget.uploads >= 3000 || budget.inserted + data.records.length > 4000)
       return response({ error: 'Daily free-plan budget reached' }, 429, { 'Retry-After': '3600' });
     const records = data.records.map((record) => ({
@@ -131,29 +134,48 @@ async function upload(request, env, vault) {
       charge: record.data.length * 2 + 4096,
     }));
     const incoming = records.reduce((sum, record) => sum + record.charge, 0);
-    await cleanup(env.DB, { physical: lock.physical, incoming });
+    if (
+      (lock.state.charged + incoming > 250000000 || lock.physical >= CLEANUP_AT) &&
+      lock.state.charged > CLEANUP_TARGET
+    )
+      await withQuota(originalEnv, CLEANUP_BUDGET, (db) =>
+        cleanup(db, { physical: lock.physical, incoming, state: lock.state }),
+      );
     if (!Number.isFinite(lock.physical) || lock.physical >= STOP_WRITES_AT)
       return response({ error: 'Storage guard active', limit: STORAGE_LIMIT }, 507);
     if (Date.now() - lock.started > 15000)
       return response({ error: 'Sync busy' }, 429, { 'Retry-After': '10' });
     const results = await env.DB.batch([
-      env.DB.prepare('UPDATE sync_state SET uploads = uploads + 1 WHERE id = 1'),
       env.DB.prepare(
-        "INSERT OR IGNORE INTO sync_records (vault, id, kind, time, iv, data, charge) SELECT ?, json_extract(value, '$.id'), json_extract(value, '$.kind'), json_extract(value, '$.time'), json_extract(value, '$.iv'), json_extract(value, '$.data'), json_extract(value, '$.charge') FROM json_each(?) WHERE (SELECT lease FROM sync_state WHERE id = 1) = ? AND (SELECT lease_until FROM sync_state WHERE id = 1) > CAST(strftime('%s', 'now') AS INTEGER) * 1000",
+        'UPDATE sync_state SET uploads = uploads + 1 WHERE id = 1 AND lease = ? RETURNING id',
+      ).bind(lock.lease),
+      env.DB.prepare(
+        "INSERT INTO sync_records (vault, id, stream, kind, time, iv, data, charge) SELECT ?, json_extract(value, '$.id'), COALESCE(json_extract(value, '$.stream'), ''), json_extract(value, '$.kind'), json_extract(value, '$.time'), json_extract(value, '$.iv'), json_extract(value, '$.data'), json_extract(value, '$.charge') FROM json_each(?) WHERE (SELECT lease FROM sync_state WHERE id = 1) = ? ON CONFLICT(vault, id) DO UPDATE SET stream = excluded.stream WHERE sync_records.stream = '' AND excluded.stream <> ''",
       ).bind(vault, JSON.stringify(records), lock.lease),
-      env.DB.prepare(
-        'SELECT id FROM sync_records WHERE vault = ? AND id IN (SELECT value FROM json_each(?))',
-      ).bind(vault, JSON.stringify(records.map((record) => record.id))),
     ]);
-    const physical = Number(results.at(-1).meta.size_after);
-    if (physical >= CLEANUP_AT) await cleanup(env.DB, { physical });
+    if (!results[0].results.length)
+      return response({ error: 'Sync busy' }, 429, { 'Retry-After': '5' });
     return response({
-      accepted: results.at(-1).results.map((record) => record.id),
+      accepted: data.records.map((record) => record.id),
       limit: STORAGE_LIMIT,
     });
   } finally {
     await release(env.DB, lock.lease);
   }
+}
+
+async function catalog(env, vault) {
+  const head = await env.DB.prepare('SELECT MAX(seq) AS head FROM sync_records WHERE vault = ?')
+    .bind(vault)
+    .first();
+  const rows = (
+    await env.DB.prepare(
+      'SELECT stream, seq FROM sync_streams WHERE vault = ? ORDER BY stream LIMIT 50',
+    )
+      .bind(vault)
+      .all()
+  ).results;
+  return response({ version: 1, streams: rows.map((row) => row.stream), head: head.head || 0 });
 }
 
 async function download(url, env, vault) {
@@ -163,7 +185,7 @@ async function download(url, env, vault) {
       return response({ error: 'Invalid sync cursor' }, 400);
     const rows = (
       await env.DB.prepare(
-        'SELECT seq, id, kind, time, iv, data FROM sync_records WHERE vault = ? AND seq > ? ORDER BY seq LIMIT ?',
+        'SELECT seq, id, stream, kind, time, iv, data FROM sync_records WHERE vault = ? AND seq > ? ORDER BY seq LIMIT ?',
       )
         .bind(vault, after, PAGE_SIZE + 1)
         .all()
@@ -176,11 +198,19 @@ async function download(url, env, vault) {
       hasMore: rows.length > PAGE_SIZE,
     });
   }
+  const stream = url.searchParams.get('stream');
+  if (stream !== null && stream !== '' && !/^[A-Za-z0-9_-]{43}$/.test(stream))
+    return response({ error: 'Invalid account stream' }, 400);
   // Capture the cursor first: a concurrent insert is then included by the next changes request.
-  const head = await env.DB.prepare('SELECT MAX(seq) AS head FROM sync_records WHERE vault = ?')
-    .bind(vault)
-    .first();
+  const head =
+    stream === null
+      ? await env.DB.prepare('SELECT MAX(seq) AS head FROM sync_records WHERE vault = ?')
+          .bind(vault)
+          .first()
+      : { head: 0 };
   const kind = url.searchParams.get('kind') || 'chat';
+  if (kind === 'log' && stream !== null)
+    return response({ error: 'The event log uses a separate global history' }, 400);
   if (!['chat', 'log'].includes(kind)) return response({ error: 'Invalid history type' }, 400);
   let cursor;
   if (url.searchParams.has('before')) {
@@ -193,11 +223,17 @@ async function download(url, env, vault) {
     }
   }
   const sql =
-    'SELECT id, kind, time, iv, data FROM sync_records WHERE vault = ?' +
+    'SELECT id, stream, kind, time, iv, data FROM sync_records WHERE vault = ?' +
+    (stream !== null ? ' AND stream = ?' : '') +
     (kind === 'log' ? " AND kind = 'log'" : '') +
     (cursor ? ' AND (time, id) < (?, ?)' : '') +
     ' ORDER BY time DESC, id DESC LIMIT ?';
-  const params = [vault, ...(cursor ? [cursor.time, cursor.id] : []), PAGE_SIZE + 1];
+  const params = [
+    vault,
+    ...(stream !== null ? [stream] : []),
+    ...(cursor ? [cursor.time, cursor.id] : []),
+    PAGE_SIZE + 1,
+  ];
   const rows = (
     await env.DB.prepare(sql)
       .bind(...params)
@@ -230,7 +266,8 @@ export default {
     const url = new URL(request.url);
     if (url.pathname === '/health' && request.method === 'GET')
       return response({ service: 'acidum-sync', version: 1, storageLimit: STORAGE_LIMIT });
-    if (url.pathname !== '/v1/messages') return response({ error: 'Not found' }, 404);
+    if (!['/v1/messages', '/v1/streams'].includes(url.pathname))
+      return response({ error: 'Not found' }, 404);
     const instance = request.headers.get('X-Acidum-Key') || '';
     if (!env.INSTANCE_KEY_HASH || (await hash(instance)) !== env.INSTANCE_KEY_HASH)
       return response({ error: 'Unauthorized' }, 401);
@@ -238,10 +275,19 @@ export default {
     if (!auth) return response({ error: 'Unauthorized' }, 401);
     const vault = await hash(auth);
     try {
-      if (request.method === 'POST') return await upload(request, env, vault);
-      if (request.method === 'GET') return await download(url, env, vault);
+      if (url.pathname === '/v1/streams')
+        return request.method === 'GET'
+          ? await withQuota(env, READ_BUDGET, (DB) => catalog({ ...env, DB }, vault))
+          : response({ error: 'Method not allowed' }, 405);
+      if (request.method === 'POST')
+        return await withQuota(env, WRITE_BUDGET, (DB) =>
+          upload(request, { ...env, DB }, vault, env),
+        );
+      if (request.method === 'GET')
+        return await withQuota(env, READ_BUDGET, (DB) => download(url, { ...env, DB }, vault));
       return response({ error: 'Method not allowed' }, 405);
     } catch (error) {
+      if (['daily_limit', 'busy', 'unavailable'].includes(error.code)) return quotaResponse(error);
       if (String(error).includes('sync_capacity'))
         return response({ error: 'Storage guard active' }, 507);
       if (String(error).includes('sync_daily_limit'))
@@ -250,12 +296,22 @@ export default {
     }
   },
   async scheduled(event, env) {
-    const lock = await acquire(env.DB);
-    if (!lock) return;
     try {
-      await cleanup(env.DB, { physical: lock.physical });
-    } finally {
-      await release(env.DB, lock.lease);
-    }
+      await withQuota(env, WRITE_BUDGET, async (DB) => {
+        const lock = await acquire(DB);
+        if (!lock) return;
+        try {
+          if (
+            (lock.state.charged > 250000000 || lock.physical >= CLEANUP_AT) &&
+            lock.state.charged > CLEANUP_TARGET
+          )
+            await withQuota(env, CLEANUP_BUDGET, (db) =>
+              cleanup(db, { physical: lock.physical, state: lock.state }),
+            );
+        } finally {
+          await release(DB, lock.lease);
+        }
+      });
+    } catch {}
   },
 };

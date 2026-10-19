@@ -7,5 +7,7 @@
   "d1_databases": [
     { "binding": "DB", "database_name": "acidum-sync", "database_id": "YOUR_DATABASE_ID" },
   ],
+  "durable_objects": { "bindings": [{ "name": "QUOTA", "class_name": "SyncQuota" }] },
+  "migrations": [{ "tag": "quota-v1", "new_sqlite_classes": ["SyncQuota"] }],
   "triggers": { "crons": ["17 * * * *"] },
 }
