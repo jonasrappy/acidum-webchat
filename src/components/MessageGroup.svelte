@@ -42,6 +42,7 @@
   <div class="message-group-lines">
     {#each group.rows as row (row.key)}<MessageRow
         {row}
+        own={session.isOwnMessage(row.message)}
         onopen={(message) => session.openMessage(message)}
       />{/each}
   </div>

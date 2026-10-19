@@ -1,5 +1,5 @@
 <script>
-  let { row, onopen } = $props();
+  let { row, onopen, own = false } = $props();
 </script>
 
 <article
@@ -7,6 +7,7 @@
   class:system={row.message.system}
   class:private={row.message.private}
   class:attention={row.attention}
+  class:own
   data-id={row.message.id}
 >
   <div class="message-meta">
@@ -151,6 +152,13 @@
   .message-time:hover,
   .message-time:hover time {
     color: var(--accent);
+  }
+  .message.own:not(.attention) .message-text {
+    color: #d2dfe3;
+    background: #2b3539;
+    border-left: 2px solid #667f89;
+    border-radius: 0 2px 2px 0;
+    padding: 2px 7px;
   }
   .message.attention .message-text {
     color: #f1f9da;

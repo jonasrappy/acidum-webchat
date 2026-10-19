@@ -15,7 +15,9 @@
     <Help label="About appearance"
       ><p>
         Text size is saved on this device. Room activity shows people entering or leaving rooms,
-        changing rooms, and other chat events in the conversation.
+        changing rooms, and other chat events in the conversation. Your messages can use a subtle
+        blue-grey marker, including messages from your other connected accounts. This choice is
+        saved on this device.
       </p>
       {#if session.wide}<p>
           Desktop panels can have separate message fields with fixed senders, or one shared bar at
@@ -41,6 +43,14 @@
         type="checkbox"
         checked={session.showEvents}
         onchange={(event) => session.setShowEvents(event.currentTarget.checked)}
+      /></label
+    >
+    <label class="setting-row" for="highlight-own-messages"
+      ><span><strong>Highlight my messages</strong></span><input
+        id="highlight-own-messages"
+        type="checkbox"
+        checked={session.highlightOwnMessages}
+        onchange={(event) => session.setHighlightOwnMessages(event.currentTarget.checked)}
       /></label
     >
     {#if session.wide}

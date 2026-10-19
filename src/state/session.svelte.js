@@ -63,6 +63,7 @@ export class ChatSession {
   searchText = $state('');
   searchOpen = $state(false);
   showEvents = $state(readPreference('acidum-show-room-activity', 'yes') !== 'no');
+  highlightOwnMessages = $state(readPreference('acidum-highlight-own-messages', 'yes') !== 'no');
   textSize = $state(16);
   notice = $state(false);
   hasOlder = $state(false);
@@ -91,6 +92,9 @@ export class ChatSession {
   roomRail = $derived(this.wide && Boolean(this.active) && !this.logOnly && this.peopleOpen);
 
   totalUnread = $derived(this.accounts.reduce((sum, account) => sum + account.unread, 0));
+  ownNames = $derived(
+    new Set(this.accounts.map((account) => account.name.normalize('NFKC').toLocaleLowerCase('en'))),
+  );
   currentAccount = $derived(this.accounts.find((account) => account.name === this.active));
   followAccount = $derived(
     this.accounts.some((account) => account.name === this.composer.account)
@@ -626,6 +630,14 @@ export class ChatSession {
     this.refresh();
   }
 
+  isOwnMessage(message) {
+    return (
+      this.highlightOwnMessages &&
+      (message.type === 'text' || message.type === 'priv') &&
+      this.ownNames.has(message.name.normalize('NFKC').toLocaleLowerCase('en'))
+    );
+  }
+
   isSuperuser(message) {
     return (
       message.superuser ||
@@ -751,6 +763,11 @@ export class ChatSession {
     writePreference('acidum-show-room-activity', value ? 'yes' : 'no');
     this.filterChanged();
   }
+  setHighlightOwnMessages(value) {
+    this.highlightOwnMessages = value;
+    writePreference('acidum-highlight-own-messages', value ? 'yes' : 'no');
+  }
+
   setTextSize(value) {
     this.textSize = Number(value);
     writePreference('acidum-text-size', String(this.textSize));
