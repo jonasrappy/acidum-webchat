@@ -40,19 +40,6 @@
       />
     {/each}
   </nav>
-  <div class="sidebar-bottom">
-    <div class="connection">
-      <span id="status-dot" class="status-dot" class:online={session.online}></span><span
-        id="status"
-        role="status">{session.status}</span
-      >
-    </div>
-    <button id="reconnect" class="text-button" onclick={() => session.reconnect()}>Reconnect</button
-    >
-    <button id="disconnect" class="text-button muted" onclick={() => session.disconnect()}
-      >Disconnect</button
-    >
-  </div>
 </aside>
 
 <style>
@@ -89,32 +76,6 @@
   #account-count {
     color: var(--accent);
     font-variant-numeric: tabular-nums;
-  }
-  .sidebar-bottom {
-    margin-top: auto;
-    padding: 24px 11px 0;
-  }
-  .connection {
-    display: flex;
-    gap: 7px;
-    align-items: center;
-    color: var(--muted);
-    font-size: 12px;
-    margin-bottom: 5px;
-  }
-  .status-dot {
-    width: 6px;
-    height: 6px;
-    border-radius: 50%;
-    background: #e1b278;
-    flex: none;
-  }
-  .status-dot.online {
-    background: var(--accent);
-  }
-  .sidebar-bottom .text-button {
-    margin-right: 14px;
-    font-size: 13px;
   }
   @media (max-width: 1000px) and (min-width: 701px) {
     .sidebar {
