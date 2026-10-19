@@ -79,12 +79,7 @@
       use:watch={panel}
     >
       <header class="panel-header">
-        <h2 id={`panel-title-${index}`}>
-          {panel.accounts[0].room?.name ||
-            panel.accounts.map((account) => account.name).join(' · ')}
-          {#if panel.accounts[0].room?.id != null}<small>{panel.accounts[0].room.id}</small>{/if}
-        </h2>
-        <div class="panel-accounts" role="group" aria-label="Reply as">
+        <h2 id={`panel-title-${index}`} class="panel-accounts">
           {#each panel.accounts as account (account.name)}
             <button
               class="reply-account"
@@ -97,7 +92,13 @@
                 >{/if}</button
             >
           {/each}
-        </div>
+        </h2>
+        {#if panel.accounts[0].room}
+          <p class="panel-room" title={panel.accounts[0].room.name}>
+            <span>{panel.accounts[0].room.name}</span>
+            {#if panel.accounts[0].room.id != null}<small>{panel.accounts[0].room.id}</small>{/if}
+          </p>
+        {/if}
       </header>
       <div class="panel-conversation">
         <!-- svelte-ignore a11y_no_noninteractive_tabindex (Each scrollable conversation needs keyboard access.) -->
@@ -198,15 +199,31 @@
   h2 {
     display: flex;
     align-items: baseline;
-    gap: 8px;
+    gap: 2px;
+    flex: 1;
     min-width: 0;
     margin: 0;
     font-size: 15px;
     font-weight: 650;
     overflow-wrap: anywhere;
   }
-  h2 small {
+  .panel-room {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    min-width: 0;
+    max-width: 55%;
+    margin: 0;
     color: var(--muted);
+    font-size: 12px;
+  }
+  .panel-room > span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .panel-room small {
+    flex: none;
     font: 11px/1.5 var(--mono);
   }
   .panel-accounts {
@@ -227,7 +244,8 @@
     border-radius: 2px;
     background: transparent;
     color: #c4cbb8;
-    font-size: 13px;
+    font-size: 15px;
+    font-weight: 650;
     overflow-wrap: anywhere;
   }
   .reply-account:hover {
