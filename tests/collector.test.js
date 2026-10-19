@@ -95,6 +95,21 @@ test('collector persists encrypted offline records and cursors, resumes after re
     await collector.chain;
     await collector.flush();
     assert.equal(DB.db.prepare('SELECT COUNT(*) AS total FROM sync_records').get().total, 2);
+    const nightSocket = collector.socket;
+    nightSocket.close();
+    assert.equal(collector.connected, false);
+    await new Promise((resolve) => setTimeout(resolve, 2100));
+    assert.notEqual(collector.socket, nightSocket);
+    collector.socket.dispatchEvent(new Event('open'));
+    collector.socket.receive({ tabs: ['Nova'] });
+    collector.socket.receive({
+      ...event,
+      time: event.time + 4000,
+      text: 'After scheduled desktop restart',
+    });
+    await collector.chain;
+    await collector.flush();
+    assert.equal(DB.db.prepare('SELECT COUNT(*) AS total FROM sync_records').get().total, 3);
     const status = JSON.parse(readFileSync(config.statusFile, 'utf8'));
     assert.equal(status.connected, true);
     assert.ok(status.lastUpload);
