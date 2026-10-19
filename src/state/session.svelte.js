@@ -82,9 +82,10 @@ export class ChatSession {
   composer = $state.raw(null);
   composers = new Map();
 
-  overviewAvailable = $derived(
+  layoutAvailable = $derived(
     this.wide && !this.active && !this.logOnly && this.accounts.length > 1,
   );
+  overviewAvailable = $derived(this.layoutAvailable && this.accounts.length <= 6);
   overviewActive = $derived(this.overviewAvailable && this.layout === 'overview');
   panelComposers = $derived(this.overviewActive && this.desktopComposer !== 'shared');
   roomRail = $derived(this.wide && Boolean(this.active) && !this.logOnly && this.peopleOpen);

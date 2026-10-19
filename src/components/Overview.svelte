@@ -64,8 +64,8 @@
 <div
   id="timeline"
   class="overview"
-  class:multiple-rows={session.overview.panels.length > 2}
-  class:many-rooms={session.overview.panels.length > 3}
+  class:two-rows={session.overview.panels.length > 2 && session.overview.panels.length <= 4}
+  class:three-rows={session.overview.panels.length > 4}
   bind:this={root}
   tabindex="0"
   role="tabpanel"
@@ -153,16 +153,19 @@
     flex: 1;
     min-height: 0;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    grid-template-rows: minmax(240px, 1fr);
-    grid-auto-rows: minmax(240px, 1fr);
+    grid-template-rows: minmax(0, 1fr);
+    grid-auto-rows: minmax(0, 1fr);
     gap: 12px;
     padding: 12px var(--gutter);
     overflow: auto;
     overscroll-behavior: contain;
     scrollbar-width: thin;
   }
-  .overview.multiple-rows {
-    grid-template-rows: repeat(2, minmax(240px, 1fr));
+  .overview.two-rows {
+    grid-template-rows: repeat(2, minmax(0, 1fr));
+  }
+  .overview.three-rows {
+    grid-template-rows: repeat(3, minmax(0, 1fr));
   }
   .room-panel {
     display: flex;
@@ -288,13 +291,5 @@
     border-radius: 3px;
     font-size: 13px;
     white-space: nowrap;
-  }
-  @media (min-width: 1640px) {
-    .overview.multiple-rows {
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-    }
-    .overview.multiple-rows:not(.many-rooms) {
-      grid-template-rows: minmax(240px, 1fr);
-    }
   }
 </style>

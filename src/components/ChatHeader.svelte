@@ -27,16 +27,18 @@
   </div>
   <span id="demo-label" class="demo-label" hidden={!session.demo}>Demo data</span>
   <div class="header-actions">
-    {#if session.overviewAvailable}
+    {#if session.layoutAvailable}
       <div class="layout-switch" role="group" aria-label="Conversation layout">
         <button
           id="layout-overview"
-          aria-pressed={session.layout === 'overview'}
+          aria-pressed={session.overviewActive}
+          disabled={!session.overviewAvailable}
+          title={!session.overviewAvailable ? 'Overview supports up to 6 accounts' : undefined}
           onclick={() => session.setLayout('overview')}>Overview</button
         >
         <button
           id="layout-timeline"
-          aria-pressed={session.layout === 'timeline'}
+          aria-pressed={!session.overviewActive}
           onclick={() => session.setLayout('timeline')}>Timeline</button
         >
       </div>

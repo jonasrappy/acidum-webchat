@@ -62,8 +62,8 @@ const assert = require('node:assert/strict');
         return { x, y, right, bottom };
       }),
     );
-    assert.equal(new Set(positions.map((p) => p.x)).size, 3);
-    assert.equal(new Set(positions.map((p) => p.y)).size, 2);
+    assert.equal(new Set(positions.map((p) => p.x)).size, 2);
+    assert.equal(new Set(positions.map((p) => p.y)).size, 3);
     assert.ok(positions.every((p) => p.right <= 1920 && p.bottom <= 1080));
     for (const name of accounts)
       assert.equal(
@@ -156,6 +156,41 @@ const assert = require('node:assert/strict');
     );
     await page.locator('#settings-dialog .close-sheet').click();
     await page.locator('.message').first().waitFor();
+
+    for (const count of [3, 4, 5, 6]) {
+      socket.send(JSON.stringify({ tabs: accounts.slice(0, count) }));
+      await page.waitForFunction(
+        (count) => document.querySelectorAll('.room-panel').length === count,
+        count,
+      );
+      const layout = await page.locator('#timeline').evaluate((root) => {
+        const bounds = root.getBoundingClientRect();
+        const cards = [...root.querySelectorAll('.room-panel')].map((node) =>
+          node.getBoundingClientRect(),
+        );
+        return {
+          columns: new Set(cards.map((rect) => rect.x)).size,
+          rows: new Set(cards.map((rect) => rect.y)).size,
+          heights: cards.map((rect) => rect.height),
+          visible: cards.every(
+            (rect) => rect.top >= bounds.top && rect.bottom <= bounds.bottom + 1,
+          ),
+        };
+      });
+      assert.equal(layout.columns, 2);
+      assert.equal(layout.rows, Math.ceil(count / 2));
+      assert.ok(Math.max(...layout.heights) - Math.min(...layout.heights) < 1);
+      assert.equal(layout.visible, true);
+    }
+    socket.send(JSON.stringify({ tabs: [...accounts, 'Extra'] }));
+    await page.locator('#layout-overview:disabled').waitFor();
+    assert.equal(await page.locator('.room-panel').count(), 0);
+    assert.equal(await page.locator('#messages').count(), 1);
+    assert.equal(await page.locator('#layout-timeline').getAttribute('aria-pressed'), 'true');
+    assert.equal(await page.locator('#send-as option').count(), 8);
+    socket.send(JSON.stringify({ tabs: accounts }));
+    await page.waitForFunction(() => document.querySelectorAll('.room-panel').length === 6);
+    assert.equal(await page.locator('#layout-overview').isEnabled(), true);
 
     await panel('Nova')
       .locator('.panel-messages')
@@ -359,16 +394,17 @@ const assert = require('node:assert/strict');
     }
     await page.setViewportSize({ width: 1100, height: 600 });
     await page.waitForTimeout(100);
-    socket.send(JSON.stringify(event('Echo', 'text', { text: 'Offscreen attention', log: true })));
-    await panel('Echo').locator('.badge').waitFor();
-    assert.equal(await panel('Echo').locator('.badge').textContent(), '1');
+    socket.send(JSON.stringify(event('Echo', 'text', { text: 'Visible attention', log: true })));
     await panel('Echo')
       .locator('.message-text')
-      .filter({ hasText: 'Offscreen attention', exact: true })
+      .filter({ hasText: 'Visible attention', exact: true })
       .waitFor();
-    await page.locator('#timeline').evaluate((node) => {
-      node.scrollTop = node.scrollHeight;
-    });
+    assert.equal(
+      await page
+        .locator('#timeline')
+        .evaluate((node) => node.scrollHeight <= node.clientHeight + 1),
+      true,
+    );
     await page.waitForFunction(
       () => !document.querySelector('[aria-label="Reply as Echo"] .badge'),
     );

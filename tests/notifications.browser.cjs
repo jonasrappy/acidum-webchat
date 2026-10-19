@@ -54,6 +54,26 @@ const assert = require('node:assert/strict');
     const manifest = await page.locator('link[rel=manifest]').getAttribute('href');
     const manifestData = await (await page.request.get(new URL(manifest, url).href)).json();
     assert.equal(manifestData.name, 'acidum');
+    const touchIcon = page.locator('link[rel="apple-touch-icon"]');
+    assert.equal(await touchIcon.getAttribute('sizes'), '180x180');
+    const icons = [
+      { src: await touchIcon.getAttribute('href'), size: 180 },
+      ...manifestData.icons
+        .filter((icon) => icon.type === 'image/png')
+        .map((icon) => ({
+          src: icon.src,
+          size: Number(icon.sizes.split('x')[0]),
+        })),
+    ];
+    for (const icon of icons) {
+      const response = await page.request.get(new URL(icon.src, url).href);
+      assert.equal(response.status(), 200);
+      assert.ok(response.headers()['content-type'].startsWith('image/png'));
+      const data = await response.body();
+      assert.equal(data.subarray(1, 4).toString(), 'PNG');
+      assert.equal(data.readUInt32BE(16), icon.size);
+      assert.equal(data.readUInt32BE(20), icon.size);
+    }
     await page.locator('#chat-link').fill('synthetic_notification_login_123');
     await page.locator('#connect-form').evaluate((f) => f.requestSubmit());
     await page.locator('.message.attention').waitFor();
