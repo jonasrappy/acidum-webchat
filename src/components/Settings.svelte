@@ -149,6 +149,60 @@
       onclick={() => session.clearHistory()}>Clear saved history</button
     >
   </section>
+  <section class="settings-group">
+    <h3>Sync</h3>
+    <Help label="About sync"
+      ><p>
+        Connect your own private sync server to share received messages and the event log between
+        devices using the same chat login. Messages are encrypted before upload. Your chat login
+        token is never sent to the sync server. The private sync link is saved only on this device.
+      </p>
+      <p>
+        Without a sync link, everything stays on this device. Drafts, saved messages and settings
+        stay local. A server collector can keep receiving messages while your browsers are closed.
+      </p>
+      <p>
+        Older cloud history is removed automatically as storage fills. Uploads stop before the
+        database reaches 400 MB. Free-plan limits may delay syncing; chat keeps working locally.
+      </p>
+      <p>
+        <a
+          href="https://github.com/jonasrappy/acidum-webchat/blob/main/server/README.md"
+          target="_blank"
+          rel="noopener noreferrer">Set up your own sync server</a
+        >
+      </p></Help
+    >
+    <label class="sync-label" for="sync-link">Sync server link</label>
+    <input
+      id="sync-link"
+      class="sync-link"
+      type="password"
+      autocomplete="off"
+      placeholder="https://…/#key=…"
+      bind:value={session.sync.draftLink}
+    />
+    <div class="sheet-actions">
+      <button
+        id="sync-connect"
+        class="soft-button"
+        disabled={!session.sync.draftLink.trim() || session.demo}
+        onclick={() => session.connectSync()}>Connect sync</button
+      >
+      {#if session.sync.enabled}
+        <button
+          id="sync-now"
+          class="soft-button"
+          disabled={session.sync.busy}
+          onclick={() => session.sync.run()}>Sync now</button
+        >
+        <button id="sync-disconnect" class="soft-button" onclick={() => session.disconnectSync()}
+          >Use device only</button
+        >
+      {/if}
+    </div>
+    <p id="sync-status" class="setting-note" role="status">{session.sync.status}</p>
+  </section>
   <section class="settings-group settings-connection-group">
     <h3>Connection</h3>
     <Help label="About connection and login"
@@ -175,6 +229,22 @@
 </Sheet>
 
 <style>
+  .sync-label {
+    display: block;
+    color: var(--muted);
+    margin-bottom: 6px;
+  }
+  .sync-link {
+    width: 100%;
+    min-height: 44px;
+    margin-bottom: 10px;
+    padding: 8px 10px;
+    border: 1px solid var(--control-line);
+    border-radius: 3px;
+    background: var(--bg);
+    color: var(--text);
+    font-size: 16px;
+  }
   .settings-group {
     position: relative;
     padding: 20px 0;

@@ -26,6 +26,7 @@ class RoomPanel {
   update(messages, session, { force = false, older = false } = {}) {
     this.hasOlder =
       messages.length > this.limit ||
+      session.sync.hasMore ||
       Boolean(
         session.history.enabled && session.history.scope && this.history.hasMore && !session.demo,
       );
@@ -170,19 +171,23 @@ export class DesktopOverview {
     try {
       const messages = this.messages(session).filter((message) => this.owner(message) === panel);
       if (messages.length <= panel.limit) {
-        await session.history.flush();
-        if (!this.panels.includes(panel) || !session.overviewActive || session.demo) return;
-        panel.history.scope = session.history.scope;
-        panel.history.enabled = session.history.enabled;
-        if (
-          !(await panel.history.load('', messages[0], {
-            query: session.query,
-            systems: session.showEvents,
-            accept: (message) => panel.members.has(message.account) && session.accept(message),
-          }))
-        )
-          return;
-        if (!this.panels.includes(panel) || !session.overviewActive) return;
+        if (session.sync.hasMore && (await session.sync.loadOlder())) {
+          if (!this.panels.includes(panel) || !session.overviewActive) return;
+        } else {
+          await session.history.flush();
+          if (!this.panels.includes(panel) || !session.overviewActive || session.demo) return;
+          panel.history.scope = session.history.scope;
+          panel.history.enabled = session.history.enabled;
+          if (
+            !(await panel.history.load('', messages[0], {
+              query: session.query,
+              systems: session.showEvents,
+              accept: (message) => panel.members.has(message.account) && session.accept(message),
+            }))
+          )
+            return;
+          if (!this.panels.includes(panel) || !session.overviewActive) return;
+        }
       }
       panel.nearBottom = false;
       panel.loaded += 100;

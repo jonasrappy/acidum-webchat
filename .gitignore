@@ -3,3 +3,11 @@ node_modules/
 .env*
 playwright-report/
 test-results/
+.wrangler/
+server/wrangler.jsonc
+server/deployment*.json
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
+*.private.json
+.dev.vars*

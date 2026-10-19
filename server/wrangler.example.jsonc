@@ -1,0 +1,11 @@
+{
+  "name": "acidum-sync",
+  "main": "worker.js",
+  "compatibility_date": "2026-10-01",
+  "workers_dev": true,
+  "observability": { "enabled": false },
+  "d1_databases": [
+    { "binding": "DB", "database_name": "acidum-sync", "database_id": "YOUR_DATABASE_ID" },
+  ],
+  "triggers": { "crons": ["17 * * * *"] },
+}

@@ -2,7 +2,7 @@
 
 **[Open acidum](https://jonasrappy.github.io/acidum-webchat/)**
 
-A lightweight webchat with mobile navigation and multiple accounts. Built with Svelte 5 and Vite, with no tracking or separate backend.
+A lightweight webchat with mobile navigation and multiple accounts. Built with Svelte 5 and Vite, with no tracking. An optional private backend syncs encrypted history between devices.
 
 ## Connect
 
@@ -48,7 +48,9 @@ Previously saved English chat events are restored to Danish while existing messa
 
 ## Data and privacy
 
-Everything acidum saves is stored in your browser: the login link, drafts, saved messages, the latest 100 log events, text size, room-activity visibility, own-message highlighting, desktop layout, participant-list visibility, notification preferences, and optional history. Local data is scoped to the current login using a SHA-256 identifier, keeping drafts, events, and saved messages from different logins separate. The token itself is stored separately in browser `localStorage`; older session storage is migrated automatically. If persistent storage is blocked, session storage is attempted instead.
+By default, acidum saves data only in your browser: the login link, drafts, saved messages, the latest 100 log events, text size, room-activity visibility, own-message highlighting, desktop layout, participant-list visibility, notification preferences, and optional history. Local data is scoped to the current login using a SHA-256 identifier, keeping drafts, events, and saved messages from different logins separate. The token itself is stored separately in browser `localStorage`; older session storage is migrated automatically. If persistent storage is blocked, session storage is attempted instead.
+
+**Sync** is optional and off by default. Connect your own private Cloudflare Worker and D1 database under **Settings → Sync** to store encrypted copies of received messages and marked events. Live data still comes from the chat WebSocket. Your chat token stays on the receiving devices and optional collector; the sync server receives a derived authentication value and encrypted records. Devices using the same token and private sync link share history without duplicate records. There is no built-in shared server, public database, or private connection link in this repository. Drafts, saved messages, and preferences remain local. See [private sync and collector setup](server/README.md) for encryption, retention, storage guards, and Free-plan budgets.
 
 To connect, the token and messages are sent directly to the chat server over an encrypted WebSocket. GitHub Pages only serves static site files. Chat data and passwords do not belong in the repository. Do not share your token link.
 
@@ -58,7 +60,7 @@ To connect, the token and messages are sent directly to the chat server over an 
 
 Memory retains up to 700 incoming messages per account. The timeline initially renders the latest 250 messages. The desktop overview divides that initial budget between its room panels, so each room keeps its latest messages even when another is busy. Older messages load per panel as you scroll up or select **Load older messages**. Live updates are batched with at least 80 ms between renders. Keyed Svelte components reuse unchanged message rows and sender groups. Message data uses raw reactive state without deep proxies. Dialogs and settings load on demand; archive code loads only when local history is used. Keyboard and viewport changes update layout and reading position. Activity in other conversations does not redraw the current message list. Hidden tabs defer rendering until visible. While you read older messages, incoming traffic does not redraw that conversation for every message. Other desktop panels continue updating independently. Only visible panels at the latest messages clear their accounts’ unread markers. A shared visibility observer covers the room panels; there are no observers per message.
 
-The server protocol's `lastLine` request retrieves newer messages. No request for arbitrary older server history has been identified. Lazy loading therefore uses messages already received and the archive you choose to save locally. Search and export cover loaded messages; scroll up to load more from the archive.
+The server protocol's `lastLine` request retrieves newer messages. No request for arbitrary older server history has been identified. Lazy loading therefore uses messages already received and the local or optional private cloud archive. A server collector can receive data while browsers are closed, provided the desktop app is running. It waits when that app is closed and does not alter its start or shutdown schedules. Search and export cover loaded messages; scroll up to load more from the archive.
 
 Participant lists reflect the latest room snapshot and subsequent events. Missing data may leave them incomplete. Following someone requires a valid destination ID in the departure event; it is not guessed from the room name. Received whispers can be read and filtered.
 
@@ -68,7 +70,7 @@ The integration uses an observed protocol and may need adjustments when the serv
 
 ## Development and testing
 
-Requires Node.js 22.12 or later.
+Requires Node.js 24 or later for the complete test suite and optional collector.
 
 ```sh
 npm ci

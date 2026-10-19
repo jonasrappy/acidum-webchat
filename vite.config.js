@@ -12,8 +12,8 @@ export default defineConfig(({ command }) => ({
         return html
           .replace("style-src 'self'", "style-src 'self' 'unsafe-inline'")
           .replace(
-            'connect-src wss://ws0.acium.app',
-            "connect-src 'self' ws://127.0.0.1:8765 wss://ws0.acium.app",
+            "connect-src 'self' https: wss://ws0.acium.app",
+            "connect-src 'self' https: ws://127.0.0.1:8765 wss://ws0.acium.app",
           );
       },
     },

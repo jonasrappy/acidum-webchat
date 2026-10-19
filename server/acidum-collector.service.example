@@ -1,0 +1,15 @@
+[Unit]
+Description=acidum encrypted chat collector
+After=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=%h/acidum-webchat
+ExecStart=/usr/bin/node %h/acidum-webchat/server/collector.mjs
+Restart=always
+RestartSec=15
+UMask=0077
+NoNewPrivileges=true
+
+[Install]
+WantedBy=default.target

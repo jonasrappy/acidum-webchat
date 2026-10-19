@@ -20,6 +20,7 @@ import { TimelineWindow } from './timeline.svelte.js';
 import { LocalHistory } from './history.svelte.js';
 import { EventLog } from '../lib/event-log.js';
 import { DesktopOverview } from './overview.svelte.js';
+import { CloudSync } from './sync.svelte.js';
 
 class Account {
   room = $state.raw(null);
@@ -145,6 +146,11 @@ export class ChatSession {
   loadingOlder = false;
 
   constructor() {
+    this.sync = new CloudSync((messages) => {
+      this.eventLog.capture(messages);
+      this.eventLog.flush();
+      this.schedule();
+    });
     const savedSize = Number(readPreference('acidum-text-size', '16'));
     if (Number.isFinite(savedSize) && savedSize >= 10 && savedSize <= 30)
       this.textSize = Math.round(savedSize);
@@ -173,6 +179,11 @@ export class ChatSession {
         this.syncNavigation();
       },
       onRefused: () => {
+        if (this.sync.enabled) {
+          this.status = 'Desktop chat unavailable · saved history is available';
+          this.connection.timer = setTimeout(() => this.connection.reconnect(), 60000);
+          return;
+        }
         this.disconnect(false);
         this.loginError = 'The saved chat is unavailable right now. Try again or paste a new link.';
       },
@@ -201,7 +212,11 @@ export class ChatSession {
       if (document.hidden) {
         this.saveDrafts();
         this.history.flush();
-      } else if (this.open) this.refresh();
+        this.sync.flush();
+      } else if (this.open) {
+        this.refresh();
+        this.sync.run();
+      }
     });
     listen(document, 'pointerdown', () => this.notifications.unlockSound());
     listen(document, 'keydown', (event) => {
@@ -222,6 +237,7 @@ export class ChatSession {
     listen(window, 'pagehide', () => {
       this.saveDrafts();
       this.history.flush();
+      this.sync.flush();
       this.connection.stop();
     });
     listen(window, 'pageshow', (event) => {
@@ -240,6 +256,7 @@ export class ChatSession {
       removeViewport();
       this.saveDrafts();
       this.history.detach();
+      this.sync.detach();
       this.overview.reset();
       this.connection.stop();
       this.notifications.destroy();
@@ -259,6 +276,7 @@ export class ChatSession {
       return;
     }
     const generation = ++this.loginGeneration;
+    this.sync.detach();
     this.token = token;
     writeToken(token);
     this.demo = false;
@@ -283,6 +301,12 @@ export class ChatSession {
           else composer.text = this.localData.draft(composer.account);
         }
         if (this.history.enabled) this.queueCurrentHistory();
+        this.sync.attach(token, scope).then(() => {
+          if (generation === this.loginGeneration) {
+            this.seedSync();
+            this.sync.importArchive().catch(() => {});
+          }
+        });
         this.schedule();
       })
       .catch(() => {
@@ -298,6 +322,8 @@ export class ChatSession {
     this.saveDrafts();
     this.connection.stop();
     this.history.detach();
+    this.sync.flush();
+    this.sync.detach();
     clearTimeout(this.alertTimer);
     clearTimeout(this.searchTimer);
     clearTimeout(this.incomingTimer);
@@ -404,6 +430,7 @@ export class ChatSession {
       if (this.eventLog.relevant(message)) logChanged = true;
       if (this.store.roleRevision !== roleRevision) this.viewDirty = true;
       if (!this.demo) this.history.queue(message);
+      if (!this.demo) this.sync.queue(message);
       if (!historical && message.serverNotify) this.notifications.receive(message);
       const visible =
         !this.dialogOpen &&
@@ -485,7 +512,7 @@ export class ChatSession {
       ? this.store.tabs.get(this.active)?.messages || []
       : [...this.store.tabs.values()].flatMap((tab) => tab.messages);
     const unique = new Map();
-    for (const message of [...this.history.rows, ...extra, ...current])
+    for (const message of [...this.sync.rows, ...this.history.rows, ...extra, ...current])
       unique.set(message.account + '\0' + message.key, message);
     const messages = [...unique.values()]
       .filter(
@@ -548,6 +575,7 @@ export class ChatSession {
     this.hasOlder =
       !this.logOnly &&
       (messages.length > this.pageSize ||
+        this.sync.hasMore ||
         Boolean(this.history.enabled && this.history.scope && this.history.hasMore && !this.demo));
     if (this.nearBottom) this.notice = false;
     const revision = ++this.scrollRevision;
@@ -602,6 +630,13 @@ export class ChatSession {
     if (this.loadingOlder || this.history.loading || this.demo) return;
     const messages = this.combinedMessages();
     if (messages.length > this.pageSize) {
+      this.pageSize += 250;
+      this.nearBottom = false;
+      this.loadingOlder = true;
+      this.refresh({ older: true });
+      return;
+    }
+    if (this.sync.hasMore && (await this.sync.loadOlder())) {
       this.pageSize += 250;
       this.nearBottom = false;
       this.loadingOlder = true;
@@ -758,6 +793,27 @@ export class ChatSession {
     this.person = '';
     this.filterChanged();
   }
+  seedSync() {
+    if (!this.sync.enabled) return;
+    for (const message of [
+      ...this.store.messages(''),
+      ...this.eventLog.rows.flatMap((row) => row.sources || [row]),
+    ])
+      this.sync.queue(message);
+  }
+
+  async connectSync() {
+    await this.sync.connect();
+    this.seedSync();
+    this.sync.importArchive().catch(() => {});
+    this.sync.schedule(1000);
+  }
+
+  disconnectSync() {
+    this.sync.disable();
+    this.filterChanged();
+  }
+
   setShowEvents(value) {
     this.showEvents = value;
     writePreference('acidum-show-room-activity', value ? 'yes' : 'no');
