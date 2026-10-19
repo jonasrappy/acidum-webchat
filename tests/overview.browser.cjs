@@ -36,7 +36,7 @@ const assert = require('node:assert/strict');
             JSON.stringify([
               event(request.name, 'room', {
                 room: { id: accounts.indexOf(request.name) + 1, name: 'Room ' + request.name },
-                users: [{ name: request.name }, { name: 'Alma' }],
+                users: [request.name, 'Alma', 'Damm', 'Daniel', 'David'].map((name) => ({ name })),
               }),
               ...Array.from({ length: request.name === 'Echo' ? 2 : 120 }, (_, index) =>
                 event(request.name, 'text', { text: `${request.name} message ${index}` }),
@@ -103,6 +103,24 @@ const assert = require('node:assert/strict');
     await input('Milo').fill('Milo draft');
     await input('Iris').fill('@Mil');
     assert.equal(await input('Iris').getAttribute('aria-expanded'), 'false');
+    await input('Iris').press('Tab');
+    assert.equal(await input('Iris').inputValue(), '@Mil');
+    assert.equal(await input('Iris').evaluate((node) => node === document.activeElement), false);
+    await input('Iris').fill('@da');
+    await input('Iris').press('Tab');
+    assert.equal(await input('Iris').inputValue(), 'Damm ');
+    assert.equal(await input('Iris').evaluate((node) => node === document.activeElement), true);
+    await input('Iris').fill('@da');
+    await input('Iris').press('ArrowDown');
+    await input('Iris').press('ArrowDown');
+    await input('Iris').press('Tab');
+    assert.equal(await input('Iris').inputValue(), 'Daniel ');
+    await input('Iris').fill('@da');
+    await input('Iris').press('ArrowDown');
+    await input('Iris').press('Shift+Tab');
+    assert.equal(await input('Iris').inputValue(), '@da');
+    assert.equal(await input('Iris').evaluate((node) => node === document.activeElement), false);
+    assert.deepEqual(sent, [{ name: 'Milo', say: 'Milo reply' }]);
     await input('Iris').fill('@A');
     await page.getByRole('option', { name: 'Alma', exact: true }).click();
     assert.equal(await input('Iris').inputValue(), 'Alma ');

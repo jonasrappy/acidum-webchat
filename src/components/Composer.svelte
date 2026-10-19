@@ -100,7 +100,16 @@
         else if (option.offsetTop + option.offsetHeight > list.scrollTop + list.clientHeight)
           list.scrollTop = option.offsetTop + option.offsetHeight - list.clientHeight;
       });
-    } else if ((event.key === 'Enter' || event.key === 'Tab') && selectedIndex >= 0) {
+    } else if (
+      event.key === 'Tab' &&
+      !event.shiftKey &&
+      !event.ctrlKey &&
+      !event.altKey &&
+      !event.metaKey
+    ) {
+      event.preventDefault();
+      complete(Math.max(0, selectedIndex));
+    } else if (event.key === 'Enter' && selectedIndex >= 0) {
       event.preventDefault();
       complete(selectedIndex);
     }
