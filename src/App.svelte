@@ -59,7 +59,7 @@
         {#if session.roomRail}<RoomPeople {session} />{/if}
       </div>
     {/if}
-    <Composer {session} />
+    {#if !session.overviewActive}<Composer {session} />{/if}
     <MobileNavigation {session} position="bottom" />
   </main>
 </div>

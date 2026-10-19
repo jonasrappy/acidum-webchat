@@ -2,41 +2,77 @@
   import { tick } from 'svelte';
   import Icon from './Icon.svelte';
   import { mentionQuery, mentionSuggestions, completeMention } from '../lib/mentions.js';
-  let { session } = $props();
+  let { session, lockedAccount = '' } = $props();
+  const composer = $derived(
+    lockedAccount ? session.composers.get(lockedAccount) : session.composer,
+  );
+  const prefix = $derived(
+    lockedAccount ? 'account-' + encodeURIComponent(lockedAccount) + '-' : '',
+  );
+  const id = (name) => prefix + name;
   let input;
+  let menu;
   let focused = $state(false);
   let caret = $state(0);
   let selected = $state(-1);
   let dismissed = $state('');
-  let query = $derived(focused ? mentionQuery(session.composer.text, caret) : null);
+  let query = $derived(focused ? mentionQuery(composer.text, caret) : null);
   let queryKey = $derived(query ? `${query.start}:${query.end}:${query.prefix}` : '');
   let names = $derived(
-    query && dismissed !== queryKey ? mentionSuggestions(session.presentNames(), query) : [],
+    query && dismissed !== queryKey
+      ? mentionSuggestions(session.presentNames(composer.account), query)
+      : [],
   );
   let expanded = $derived(names.length > 0);
   let selectedIndex = $derived(Math.min(selected, names.length - 1));
   let activeOption = $derived(
-    expanded && selectedIndex >= 0 ? 'mention-option-' + selectedIndex : undefined,
+    expanded && selectedIndex >= 0 ? id('mention-option-' + selectedIndex) : undefined,
   );
 
+  $effect(() => {
+    if (!lockedAccount || !expanded) return;
+    let frame = 0;
+    const position = () => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => {
+        const bounds = input.closest('.composer-wrap').getBoundingClientRect();
+        menu.style.left = bounds.left + 6 + 'px';
+        menu.style.width = bounds.width - 12 + 'px';
+        menu.style.bottom = window.innerHeight - bounds.top + 4 + 'px';
+        menu.style.setProperty(
+          '--mention-height',
+          Math.max(44, Math.min(220, bounds.top - 60)) + 'px',
+        );
+      });
+    };
+    position();
+    window.addEventListener('resize', position);
+    document.addEventListener('scroll', position, true);
+    return () => {
+      cancelAnimationFrame(frame);
+      window.removeEventListener('resize', position);
+      document.removeEventListener('scroll', position, true);
+    };
+  });
+
   function changed() {
-    caret = input.selectionStart ?? session.composer.text.length;
+    caret = input.selectionStart ?? composer.text.length;
     selected = -1;
     dismissed = '';
-    session.composer.changed();
+    composer.changed();
   }
 
   async function complete(index) {
     if (!names[index]) return;
-    const completion = completeMention(session.composer.text, query, names[index]);
+    const completion = completeMention(composer.text, query, names[index]);
     if (!completion) {
-      session.composer.error = 'This name would exceed the 100-character limit.';
+      composer.error = 'This name would exceed the 100-character limit.';
       return;
     }
-    session.composer.text = completion.text;
+    composer.text = completion.text;
     caret = completion.caret;
     selected = -1;
-    session.composer.save();
+    composer.save();
     await tick();
     input.focus({ preventScroll: true });
     input.setSelectionRange(caret, caret);
@@ -57,8 +93,8 @@
             ? names.length - 1
             : (selected + names.length - 1) % names.length;
       tick().then(() => {
-        const option = document.getElementById('mention-option-' + selected);
-        const list = document.getElementById('mention-suggestions');
+        const option = document.getElementById(id('mention-option-' + selected));
+        const list = document.getElementById(id('mention-suggestions'));
         if (!option || !list) return;
         if (option.offsetTop < list.scrollTop) list.scrollTop = option.offsetTop;
         else if (option.offsetTop + option.offsetHeight > list.scrollTop + list.clientHeight)
@@ -80,20 +116,29 @@
 
   function send(event) {
     event.preventDefault();
-    session.send();
+    session.send(composer);
     input.focus({ preventScroll: true });
-    caret = input.selectionStart ?? session.composer.text.length;
+    caret = input.selectionStart ?? composer.text.length;
   }
 </script>
 
-<footer class="composer-wrap">
-  <div id="mention-menu" class="mention-menu" hidden={!expanded}>
-    <p id="mention-caption">
-      {expanded ? (session.rosterComplete() ? 'In this room' : 'Observed people') : ''}
+<footer class="composer-wrap" class:embedded={Boolean(lockedAccount)}>
+  <div id={id('mention-menu')} class="mention-menu" bind:this={menu} hidden={!expanded}>
+    <p id={id('mention-caption')} class="mention-caption">
+      {expanded
+        ? session.rosterComplete(composer.account)
+          ? 'In this room'
+          : 'Observed people'
+        : ''}
     </p>
-    <div id="mention-suggestions" role="listbox" aria-label="Suggested people">
+    <div
+      id={id('mention-suggestions')}
+      class="mention-suggestions"
+      role="listbox"
+      aria-label="Suggested people"
+    >
       {#each names as name, index (name)}<button
-          id={'mention-option-' + index}
+          id={id('mention-option-' + index)}
           class="mention-option"
           type="button"
           tabindex="-1"
@@ -104,11 +149,13 @@
         >{/each}
     </div>
   </div>
-  <form id="composer" onsubmit={send}>
-    {#if !session.active}
+  <form id={id('composer')} class="composer-form" data-account={composer.account} onsubmit={send}>
+    {#if lockedAccount}
+      <span class="sender-label" title={lockedAccount}>{lockedAccount}</span>
+    {:else if !session.active}
       <select
         id="send-as"
-        value={session.composer.account}
+        value={composer.account}
         onchange={(event) => {
           session.setSendAs(event.currentTarget.value);
           selected = -1;
@@ -123,46 +170,48 @@
       >
     {/if}
     <input
-      id="message"
+      id={id('message')}
+      class="message-input"
       bind:this={input}
-      bind:value={session.composer.text}
+      bind:value={composer.text}
       oninput={changed}
       onfocus={() => {
+        if (lockedAccount) session.setSendAs(lockedAccount, false);
         focused = true;
-        caret = input.selectionStart ?? session.composer.text.length;
+        caret = input.selectionStart ?? composer.text.length;
       }}
       onblur={() => (focused = false)}
       onclick={changed}
       onkeydown={keydown}
       onkeyup={moved}
       placeholder="Write a message…"
-      aria-label="Message"
-      aria-describedby={session.composer.error ? 'send-error' : undefined}
+      aria-label={lockedAccount ? `Message as ${lockedAccount}` : 'Message'}
+      aria-describedby={composer.error ? id('send-error') : undefined}
       role="combobox"
       aria-autocomplete="list"
-      aria-controls="mention-suggestions"
+      aria-controls={id('mention-suggestions')}
       aria-expanded={expanded}
       aria-activedescendant={activeOption}
       maxlength="100"
       autocomplete="off"
-      disabled={!session.composer.account}
+      disabled={!composer.account}
     />
     <span
-      id="message-limit"
+      id={id('message-limit')}
       class="message-limit"
-      hidden={session.composer.text.length < 80}
-      aria-live="polite">{session.composer.text.length}/100</span
+      hidden={composer.text.length < 80}
+      aria-live="polite">{composer.text.length}/100</span
     >
     <button
-      id="send"
+      id={id('send')}
       class="send-button"
       type="submit"
-      aria-label="Send message"
-      disabled={!session.composer.account || !session.online || !session.composer.text.trim()}
+      aria-label={lockedAccount ? `Send as ${lockedAccount}` : 'Send message'}
+      disabled={!composer.account || !session.online || !composer.text.trim()}
       ><Icon name="send" /></button
     >
   </form>
-  <p id="send-error" class="error" role="alert">{session.composer.error}</p>
+  <p id={id('send-error')} class="send-error error" role="alert">{composer.error}</p>
 </footer>
 
 <style>
@@ -174,7 +223,37 @@
     background: #20211c;
     border-top: 1px solid var(--line);
   }
-  #composer {
+  .composer-wrap.embedded {
+    padding: 6px;
+  }
+  .embedded:focus-within {
+    z-index: 6;
+  }
+  .embedded .composer-form {
+    min-height: 50px;
+    padding: 3px;
+    gap: 6px;
+  }
+  .sender-label {
+    flex: none;
+    max-width: min(30%, 140px);
+    padding: 4px 8px 4px 3px;
+    border-right: 1px solid #4b583b;
+    color: var(--accent);
+    font-size: 13px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .embedded .mention-menu {
+    position: fixed;
+    right: auto;
+    max-width: none;
+  }
+  .embedded .mention-suggestions {
+    max-height: var(--mention-height, 220px);
+  }
+  .composer-form {
     display: flex;
     align-items: center;
     gap: 8px;
@@ -186,7 +265,7 @@
     border-radius: 3px;
     background: #292e23;
   }
-  #composer:focus-within {
+  .composer-form:focus-within {
     border-color: var(--accent);
     box-shadow: 0 0 0 1px var(--accent);
   }
@@ -207,7 +286,7 @@
     background: var(--panel);
     color: var(--text);
   }
-  #message {
+  .message-input {
     flex: 1;
     width: 100%;
     min-width: 0;
@@ -219,10 +298,10 @@
     font-size: max(16px, var(--message-font, 16px));
     line-height: 1.35;
   }
-  #message:focus {
+  .message-input:focus {
     outline: 0;
   }
-  #message::placeholder {
+  .message-input::placeholder {
     color: #abb69c;
   }
   .send-button {
@@ -251,7 +330,7 @@
     font: 11px/1.4 var(--mono);
     white-space: nowrap;
   }
-  #send-error {
+  .send-error {
     max-width: var(--content-width);
     margin-inline: auto;
   }
@@ -275,7 +354,7 @@
     border-bottom: 1px solid #4b583b;
     font-size: 12px;
   }
-  #mention-suggestions {
+  .mention-suggestions {
     position: relative;
     max-height: min(220px, calc(var(--app-height, 100dvh) * 0.4));
     overflow: auto;
@@ -303,7 +382,7 @@
     .composer-wrap {
       padding: 6px 8px;
     }
-    #composer {
+    .composer-form {
       gap: 6px;
       padding: 4px;
     }

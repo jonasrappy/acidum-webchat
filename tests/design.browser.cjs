@@ -63,11 +63,11 @@ const assert = require('node:assert/strict');
         await page.locator('#timeline').evaluate((node) => node.scrollWidth > node.clientWidth),
         false,
       );
-      for (const id of ['search-toggle', 'send-as', 'send']) {
-        const bounds = await page.locator('#' + id).boundingBox();
+      for (const control of await page.locator('#search-toggle, #send-as, .send-button').all()) {
+        const bounds = await control.boundingBox();
         assert.ok(
           bounds.width >= 44 && bounds.height >= 44,
-          `${id} at ${width}: ${JSON.stringify(bounds)}`,
+          `Control at ${width}: ${JSON.stringify(bounds)}`,
         );
       }
       const compactTargets = await page

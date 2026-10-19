@@ -1,10 +1,24 @@
 <script module>
-  const attach = (node, callback) => callback(node);
+  function attach(node, panel) {
+    let connection = panel.attach(node);
+    return {
+      update(next) {
+        if (next === panel) return;
+        connection.destroy();
+        panel = next;
+        connection = next.attach(node);
+      },
+      destroy() {
+        connection.destroy();
+      },
+    };
+  }
 </script>
 
 <script>
   import { onMount } from 'svelte';
   import MessageGroup from './MessageGroup.svelte';
+  import Composer from './Composer.svelte';
   let { session } = $props();
   let root;
   let observer;
@@ -14,6 +28,14 @@
     nodes.set(node, panel);
     observer?.observe(node);
     return {
+      update(next) {
+        if (next === panel) return;
+        panel.visible = false;
+        panel = next;
+        nodes.set(node, panel);
+        observer?.unobserve(node);
+        observer?.observe(node);
+      },
       destroy: () => {
         observer?.unobserve(node);
         nodes.delete(node);
@@ -84,7 +106,7 @@
           role="region"
           aria-label={`Messages for ${panel.accounts.map((account) => account.name).join(', ')}`}
           tabindex="0"
-          use:attach={(node) => panel.attach(node)}
+          use:attach={panel}
           onscroll={() => session.overview.onScroll(panel, session)}
         >
           <button
@@ -114,6 +136,11 @@
           >
         {/if}
       </div>
+      <div class="panel-composers">
+        {#each panel.accounts as account (account.name)}
+          <Composer {session} lockedAccount={account.name} />
+        {/each}
+      </div>
     </section>
   {/each}
 </div>
@@ -124,8 +151,8 @@
     flex: 1;
     min-height: 0;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    grid-template-rows: minmax(190px, 1fr);
-    grid-auto-rows: minmax(190px, 1fr);
+    grid-template-rows: minmax(240px, 1fr);
+    grid-auto-rows: minmax(240px, 1fr);
     gap: 12px;
     padding: 12px var(--gutter);
     overflow: auto;
@@ -133,7 +160,7 @@
     scrollbar-width: thin;
   }
   .overview.multiple-rows {
-    grid-template-rows: repeat(2, minmax(190px, 1fr));
+    grid-template-rows: repeat(2, minmax(240px, 1fr));
   }
   .room-panel {
     display: flex;
@@ -212,6 +239,13 @@
     flex: 1;
     min-height: 0;
   }
+  .panel-composers {
+    flex: none;
+    min-height: 0;
+    max-height: 50%;
+    overflow-y: auto;
+    scrollbar-width: thin;
+  }
   .panel-messages {
     flex: 1;
     min-width: 0;
@@ -258,7 +292,7 @@
       grid-template-columns: repeat(3, minmax(0, 1fr));
     }
     .overview.multiple-rows:not(.many-rooms) {
-      grid-template-rows: minmax(190px, 1fr);
+      grid-template-rows: minmax(240px, 1fr);
     }
   }
 </style>

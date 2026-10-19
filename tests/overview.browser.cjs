@@ -49,6 +49,7 @@ const assert = require('node:assert/strict');
       page
         .locator('.room-panel')
         .filter({ has: page.getByRole('button', { name: 'Reply as ' + name, exact: true }) });
+    const input = (name) => page.getByRole('combobox', { name: 'Message as ' + name, exact: true });
     await page.goto(process.env.ACIDUM_TEST_URL || 'http://127.0.0.1:8765/');
     await page.locator('#chat-link').fill('synthetic_overview_login_123');
     await page.locator('#connect-form').evaluate((form) => form.requestSubmit());
@@ -72,21 +73,46 @@ const assert = require('node:assert/strict');
         true,
       );
 
-    await page.locator('#message').fill('Nova draft');
-    await page.getByRole('button', { name: 'Reply as Milo', exact: true }).click();
-    assert.equal(await page.locator('#view-title').textContent(), 'All chats');
-    assert.equal(await page.locator('#send-as').inputValue(), 'Milo');
-    assert.equal(await page.locator('#message').inputValue(), '');
+    assert.equal(await page.locator('.composer-form').count(), 6);
     assert.equal(
-      await page.locator('#message').evaluate((node) => node === document.activeElement),
+      await page.locator('#composer, #message, #send-as, .room-panel select').count(),
+      0,
+    );
+    assert.equal(
+      await page
+        .locator('[id]')
+        .evaluateAll((nodes) => new Set(nodes.map((node) => node.id)).size === nodes.length),
       true,
     );
-    await page.locator('#message').fill('Milo reply');
-    await page.locator('#message').press('Enter');
-    await page.waitForFunction(() => document.querySelector('#message').value === '');
+    await input('Nova').fill('Nova draft');
+    await page.getByRole('button', { name: 'Reply as Milo', exact: true }).click();
+    assert.equal(await page.locator('#view-title').textContent(), 'All chats');
+    assert.equal(await panel('Milo').locator('.sender-label').textContent(), 'Milo');
+    assert.equal(await input('Milo').inputValue(), '');
+    assert.equal(await input('Milo').evaluate((node) => node === document.activeElement), true);
+    await input('Milo').fill('Milo reply');
+    await input('Milo').press('Enter');
+    await page.waitForFunction(
+      () => document.querySelector('[aria-label="Message as Milo"]').value === '',
+    );
     assert.deepEqual(sent, [{ name: 'Milo', say: 'Milo reply' }]);
     await page.getByRole('button', { name: 'Reply as Nova', exact: true }).click();
-    assert.equal(await page.locator('#message').inputValue(), 'Nova draft');
+    assert.equal(await input('Nova').inputValue(), 'Nova draft');
+    await input('Milo').fill('Milo draft');
+    await input('Iris').fill('@Mil');
+    assert.equal(await input('Iris').getAttribute('aria-expanded'), 'false');
+    await input('Iris').fill('@A');
+    await page.getByRole('option', { name: 'Alma', exact: true }).click();
+    assert.equal(await input('Iris').inputValue(), 'Alma ');
+    assert.equal(await input('Nova').inputValue(), 'Nova draft');
+    await panel('Nova')
+      .locator('.composer-form')
+      .evaluate((form) => form.requestSubmit());
+    assert.deepEqual(sent.at(-1), { name: 'Nova', say: 'Nova draft' });
+    assert.equal(await input('Nova').inputValue(), '');
+    assert.equal(await input('Milo').inputValue(), 'Milo draft');
+    assert.equal(await input('Iris').inputValue(), 'Alma ');
+    await input('Nova').fill('Nova draft');
 
     await panel('Nova')
       .locator('.panel-messages')
@@ -188,6 +214,11 @@ const assert = require('node:assert/strict');
     await page.locator('#search').fill('');
     await page.locator('#search').press('Escape');
     await page.waitForFunction(() => document.querySelectorAll('.message').length > 10);
+    await page.waitForFunction(() =>
+      [...document.querySelectorAll('.panel-messages')].every(
+        (node) => node.scrollHeight - node.scrollTop - node.clientHeight < 2,
+      ),
+    );
     socket.send(
       JSON.stringify(
         event('Milo', 'room', {
@@ -197,6 +228,8 @@ const assert = require('node:assert/strict');
       ),
     );
     await page.waitForFunction(() => document.querySelectorAll('.room-panel').length === 5);
+    assert.equal(await panel('Nova').locator('.composer-form').count(), 2);
+    assert.equal(await input('Milo').inputValue(), 'Milo draft');
     const sharedTime = ++time;
     socket.send(
       JSON.stringify(
@@ -243,6 +276,14 @@ const assert = require('node:assert/strict');
     assert.equal(await page.locator('.room-panel').count(), 0);
     await page.locator('#layout-overview').click();
     await page.waitForFunction(() => document.querySelectorAll('.room-panel').length === 6);
+    await input('Nova').fill('Restored Nova draft');
+    await input('Milo').fill('Restored Milo draft');
+    await page.reload();
+    await page.waitForFunction(
+      () =>
+        document.querySelector('[aria-label="Message as Nova"]')?.value === 'Restored Nova draft' &&
+        document.querySelector('[aria-label="Message as Milo"]')?.value === 'Restored Milo draft',
+    );
     for (const [width, height] of [
       [1440, 900],
       [1100, 800],
@@ -258,6 +299,16 @@ const assert = require('node:assert/strict');
         await page.evaluate(() => document.documentElement.scrollWidth > innerWidth),
         false,
       );
+      if (width >= 1100) {
+        assert.equal(await page.locator('.composer-form').count(), 6);
+        assert.equal(await page.locator('#send-as').count(), 0);
+        assert.equal(await input('Nova').inputValue(), 'Restored Nova draft');
+        assert.equal(await input('Milo').inputValue(), 'Restored Milo draft');
+      } else {
+        assert.equal(await page.locator('.composer-form').count(), 1);
+        await page.locator('#send-as').selectOption('Milo');
+        assert.equal(await page.locator('#message').inputValue(), 'Restored Milo draft');
+      }
       assert.equal(
         await page.locator('#timeline').evaluate((node) => node.scrollWidth > node.clientWidth),
         false,
@@ -268,6 +319,10 @@ const assert = require('node:assert/strict');
     socket.send(JSON.stringify(event('Echo', 'text', { text: 'Offscreen attention', log: true })));
     await panel('Echo').locator('.badge').waitFor();
     assert.equal(await panel('Echo').locator('.badge').textContent(), '1');
+    await panel('Echo')
+      .locator('.message-text')
+      .filter({ hasText: 'Offscreen attention', exact: true })
+      .waitFor();
     await page.locator('#timeline').evaluate((node) => {
       node.scrollTop = node.scrollHeight;
     });
@@ -336,7 +391,8 @@ const assert = require('node:assert/strict');
     await page.locator('#connect-form').evaluate((form) => form.requestSubmit());
     await page.waitForFunction(() => document.querySelectorAll('.room-panel').length === 6);
     assert.ok((await page.locator('.message').count()) <= 250);
-    assert.equal(await page.locator('#message').inputValue(), '');
+    assert.equal(await input('Nova').inputValue(), '');
+    assert.equal(await input('Milo').inputValue(), '');
     assert.deepEqual(errors, []);
     console.log(
       'Six-room overview, bounded rendering, independent reading, lazy history, reply drafts, shared rooms, filters, responsive layouts, live participants, and login isolation pass',

@@ -4,16 +4,10 @@ export class ComposerState {
   error = $state('');
   timer = null;
 
-  constructor(getData) {
+  constructor(getData, account = '') {
     this.getData = getData;
-  }
-
-  select(account) {
-    if (account === this.account) return false;
-    this.save();
     this.account = account;
     this.text = this.getData()?.draft(account) || '';
-    return true;
   }
 
   save() {

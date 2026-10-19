@@ -15,6 +15,7 @@ class RoomPanel {
   node = null;
   revision = 0;
   loadingOlder = false;
+  height = 0;
 
   constructor(key, accounts) {
     this.key = key;
@@ -51,6 +52,7 @@ class RoomPanel {
 
   attach(node) {
     this.node = node;
+    this.height = node.clientHeight;
     tick().then(() => {
       if (this.node === node && this.nearBottom) node.scrollTop = node.scrollHeight;
     });
@@ -141,6 +143,8 @@ export class DesktopOverview {
     const node = panel.node;
     if (!node) return;
     const wasAtBottom = panel.nearBottom;
+    if (wasAtBottom && panel.height !== node.clientHeight) node.scrollTop = node.scrollHeight;
+    panel.height = node.clientHeight;
     panel.nearBottom = node.scrollHeight - node.scrollTop - node.clientHeight < 40;
     if (panel.nearBottom) {
       if (!wasAtBottom && panel.notice) this.latest(panel, session);

@@ -78,6 +78,8 @@ export class ChatSession {
   eventLog = new EventLog();
   timeline = new TimelineWindow();
   overview = new DesktopOverview();
+  composer = $state.raw(null);
+  composers = new Map();
 
   overviewAvailable = $derived(
     this.wide && !this.active && !this.logOnly && this.accounts.length > 1,
@@ -190,7 +192,7 @@ export class ChatSession {
     listen(desktop, 'change', updateDesktop);
     listen(document, 'visibilitychange', () => {
       if (document.hidden) {
-        this.composer.save();
+        this.saveDrafts();
         this.history.flush();
       } else if (this.open) this.refresh();
     });
@@ -211,7 +213,7 @@ export class ChatSession {
     listen(window, 'online', () => this.reconnect());
     listen(window, 'offline', () => this.connection.offline());
     listen(window, 'pagehide', () => {
-      this.composer.save();
+      this.saveDrafts();
       this.history.flush();
       this.connection.stop();
     });
@@ -229,7 +231,7 @@ export class ChatSession {
     return () => {
       listeners.forEach((remove) => remove());
       removeViewport();
-      this.composer.save();
+      this.saveDrafts();
       this.history.detach();
       this.overview.reset();
       this.connection.stop();
@@ -269,8 +271,10 @@ export class ChatSession {
         this.eventLog = new EventLog(localStorageOrFallback(), scope);
         this.eventLog.capture([...pending, ...this.store.messages('')]);
         this.eventLog.flush();
-        if (this.composer.text) this.composer.save();
-        else this.composer.text = this.localData.draft(this.composer.account);
+        for (const composer of this.composers.values()) {
+          if (composer.text) composer.save();
+          else composer.text = this.localData.draft(composer.account);
+        }
         if (this.history.enabled) this.queueCurrentHistory();
         this.schedule();
       })
@@ -284,7 +288,7 @@ export class ChatSession {
 
   disconnect(forget = true) {
     ++this.loginGeneration;
-    this.composer.save();
+    this.saveDrafts();
     this.connection.stop();
     this.history.detach();
     clearTimeout(this.alertTimer);
@@ -299,7 +303,9 @@ export class ChatSession {
     this.resumeAvailable = Boolean(readToken());
     this.localData = null;
     this.eventLog = new EventLog();
-    this.composer.reset();
+    for (const composer of this.composers.values()) composer.reset();
+    this.composers.clear();
+    this.composer = new ComposerState(() => this.localData);
     this.store = new ChatStore();
     this.accounts = [];
     this.timeline.clear();
@@ -339,6 +345,7 @@ export class ChatSession {
     this.roleRevision = this.store.roleRevision;
     const previous = new Map(this.accounts.map((account) => [account.name, account]));
     const accounts = this.store.names.map((name) => {
+      this.accountComposer(name);
       const account = previous.get(name) || new Account(name);
       account.update(
         this.store.tab(name),
@@ -355,6 +362,12 @@ export class ChatSession {
 
   updateTabs(names) {
     this.store.setTabs(names);
+    for (const [name, composer] of this.composers) {
+      if (this.store.names.includes(name)) continue;
+      composer.save();
+      composer.reset();
+      this.composers.delete(name);
+    }
     if (this.active && !this.store.names.includes(this.active)) this.active = '';
     if (!this.store.names.includes(this.composer.account))
       this.setSendAs(this.store.names[0] || '', false);
@@ -634,7 +647,22 @@ export class ChatSession {
 
   replyAs(name) {
     this.setSendAs(name, false);
-    tick().then(() => document.getElementById('message')?.focus({ preventScroll: true }));
+    tick().then(() => this.focusComposer(name));
+  }
+
+  focusComposer(name = this.composer.account) {
+    const id = this.overviewActive ? 'account-' + encodeURIComponent(name) + '-message' : 'message';
+    document.getElementById(id)?.focus({ preventScroll: true });
+  }
+
+  accountComposer(name) {
+    if (!this.composers.has(name))
+      this.composers.set(name, new ComposerState(() => this.localData, name));
+    return this.composers.get(name);
+  }
+
+  saveDrafts() {
+    for (const composer of this.composers.values()) composer.save();
   }
 
   choose(name, logOnly = false) {
@@ -656,32 +684,36 @@ export class ChatSession {
   }
 
   setSendAs(name, changeView = true) {
-    if (this.composer.select(name)) this.rosterRevision++;
+    if (name !== this.composer.account) {
+      this.composer.save();
+      this.composer = this.accountComposer(name);
+      this.rosterRevision++;
+    }
     if (changeView && this.active && this.active !== name) this.choose(name);
   }
 
-  send() {
-    const text = this.composer.text;
-    if (!text.trim() || !this.store.names.includes(this.composer.account)) return;
+  send(composer = this.composer) {
+    const text = composer.text;
+    if (!text.trim() || !this.store.names.includes(composer.account)) return;
     if (text.length > 100) {
-      this.composer.error = 'Messages can contain up to 100 characters.';
+      composer.error = 'Messages can contain up to 100 characters.';
       return;
     }
-    this.composer.error = '';
+    composer.error = '';
     if (this.demo)
       this.ingest({
-        me: { name: this.composer.account },
-        user: { name: this.composer.account },
+        me: { name: composer.account },
+        user: { name: composer.account },
         type: 'text',
         text,
         time: Date.now(),
       });
-    else if (!this.online || !this.connection.send({ name: this.composer.account, say: text })) {
-      this.composer.error = 'Disconnected. Your message is still in the text field.';
+    else if (!this.online || !this.connection.send({ name: composer.account, say: text })) {
+      composer.error = 'Disconnected. Your message is still in the text field.';
       return;
     }
-    this.composer.text = '';
-    this.composer.save();
+    composer.text = '';
+    composer.save();
   }
 
   searchChanged() {
@@ -715,16 +747,16 @@ export class ChatSession {
     this.scrollToBottom();
   }
 
-  presentNames() {
+  presentNames(account = this.composer.account) {
     this.rosterRevision;
-    return [...(this.store.tabs.get(this.composer.account)?.presence.values() || [])]
+    return [...(this.store.tabs.get(account)?.presence.values() || [])]
       .filter((person) => person.present)
       .map((person) => person.name);
   }
 
-  rosterComplete() {
+  rosterComplete(account = this.composer.account) {
     this.rosterRevision;
-    return Boolean(this.store.tabs.get(this.composer.account)?.rosterComplete);
+    return Boolean(this.store.tabs.get(account)?.rosterComplete);
   }
 
   openDialog(name) {
