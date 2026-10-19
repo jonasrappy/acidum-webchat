@@ -1,6 +1,7 @@
 <script>
   import MessageRow from './MessageRow.svelte';
-  let { group, session } = $props();
+  let { group, session, showAccounts = true } = $props();
+  const accountsVisible = $derived(showAccounts && !session.active);
 </script>
 
 {#if group.showDay}<div class="day-divider">{group.day}</div>{/if}
@@ -18,7 +19,7 @@
       (group.kind === 'private' ? ' · Whisper' : '')
     : undefined}
 >
-  <header class="message-group-head" hidden={!group.name && Boolean(session.active)}>
+  <header class="message-group-head" hidden={!group.name && !accountsVisible}>
     <div class="message-group-author" hidden={!group.name}>
       {#if group.name}
         <button
@@ -31,15 +32,12 @@
         {#if group.kind === 'private'}<span class="private-label">Whisper</span>{/if}
       {/if}
     </div>
-    <div
-      class="message-accounts"
-      role="group"
-      aria-label="Your accounts"
-      hidden={Boolean(session.active)}
-    >
-      {#each group.accounts as name (name)}<span class="message-account" title={name}>{name}</span
-        >{/each}
-    </div>
+    {#if accountsVisible}
+      <div class="message-accounts" role="group" aria-label="Your accounts">
+        {#each group.accounts as name (name)}<span class="message-account" title={name}>{name}</span
+          >{/each}
+      </div>
+    {/if}
   </header>
   <div class="message-group-lines">
     {#each group.rows as row (row.key)}<MessageRow

@@ -56,6 +56,8 @@ const assert = require('node:assert/strict');
     await page.waitForFunction(() => document.querySelectorAll('.room-panel').length === 6);
     await panel('Echo').locator('.message-text').filter({ hasText: 'Echo message 1' }).waitFor();
     assert.ok((await page.locator('.message').count()) <= 250);
+    assert.equal(await page.locator('.message-accounts').count(), 0);
+    assert.ok((await page.locator('.message-name').count()) > 0);
     const positions = await page.locator('.room-panel').evaluateAll((nodes) =>
       nodes.map((node) => {
         const { x, y, right, bottom } = node.getBoundingClientRect();
@@ -120,6 +122,7 @@ const assert = require('node:assert/strict');
     assert.equal(await page.locator('.room-panel').count(), 6);
     assert.equal(await page.locator('.composer-form').count(), 1);
     assert.equal(await page.locator('.panel-composers').count(), 0);
+    assert.equal(await page.locator('.message-accounts').count(), 0);
     assert.equal(await page.locator('#message').inputValue(), 'Nova draft');
     await page.getByRole('button', { name: 'Reply as Milo', exact: true }).click();
     assert.equal(await page.locator('#send-as').inputValue(), 'Milo');
@@ -327,14 +330,7 @@ const assert = require('node:assert/strict');
           (node) => node.textContent === 'One shared public message',
         ).length === 1,
     );
-    assert.deepEqual(
-      await page
-        .locator('.message-group')
-        .filter({ hasText: 'One shared public message' })
-        .locator('.message-account')
-        .allTextContents(),
-      ['Milo', 'Nova'],
-    );
+    assert.equal(await page.locator('.message-accounts').count(), 0);
     assert.equal(
       await page.locator('.message.private').filter({ hasText: 'Separate private copy' }).count(),
       2,
@@ -349,6 +345,14 @@ const assert = require('node:assert/strict');
     await page.locator('#layout-timeline').click();
     assert.equal(await page.locator('.room-panel').count(), 0);
     assert.equal(await page.locator('#messages').count(), 1);
+    assert.deepEqual(
+      await page
+        .locator('.message-group')
+        .filter({ hasText: 'One shared public message' })
+        .locator('.message-account')
+        .allTextContents(),
+      ['Milo', 'Nova'],
+    );
     await page.reload();
     await page.locator('#layout-timeline[aria-pressed=true]').waitFor();
     assert.equal(await page.locator('.room-panel').count(), 0);

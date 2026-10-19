@@ -122,6 +122,7 @@
           {#each panel.timeline.groups as group (group.key)}<MessageGroup
               {group}
               {session}
+              showAccounts={false}
             />{/each}
           {#if !panel.timeline.groups.length}
             <p class="panel-empty">
