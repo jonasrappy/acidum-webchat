@@ -2,6 +2,7 @@
   import MessageRow from './MessageRow.svelte';
   let { group, session, showAccounts = true } = $props();
   const accountsVisible = $derived(showAccounts && !session.active);
+  const own = $derived(group.rows.some((row) => session.isOwnMessage(row.message)));
 </script>
 
 {#if group.showDay}<div class="day-divider">{group.day}</div>{/if}
@@ -11,6 +12,7 @@
   class:alternate={group.alternate}
   class:has-attention={group.attention}
   class:superuser={group.superuser}
+  class:own
   aria-label={group.name
     ? group.name +
       (group.superuser ? ' · Superuser' : '') +
@@ -42,7 +44,6 @@
   <div class="message-group-lines">
     {#each group.rows as row (row.key)}<MessageRow
         {row}
-        own={session.isOwnMessage(row.message)}
         onopen={(message) => session.openMessage(message)}
       />{/each}
   </div>
@@ -75,6 +76,13 @@
   .message-group.alternate {
     background: #2c2f27;
     box-shadow: inset 2px 0 #505b40;
+  }
+  .message-group.own:not(.superuser) {
+    background: #252e31;
+    box-shadow: inset 2px 0 #667f89;
+  }
+  .message-group.own.alternate:not(.superuser) {
+    background: #2b3539;
   }
   .message-group-head {
     display: flex;

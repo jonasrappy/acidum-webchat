@@ -30,6 +30,7 @@ const assert = require('node:assert/strict');
         event('Nova', 100, 'text', { text: 'My public message' }),
         event('Nova', 199, 'join', { user: { name: 'nOvA' } }),
         event('Nova', 200, 'text', { user: { name: 'nOvA' }, text: 'Mixed case sender' }),
+        event('Nova', 201, 'text', { user: { name: 'nOvA' }, text: 'Another message from me' }),
         event('Nova', 300, 'priv', {
           from: { name: 'Nova' },
           to: { name: 'Alma' },
@@ -70,22 +71,33 @@ const assert = require('node:assert/strict');
       });
     });
     const row = (text) => page.locator('.message').filter({ hasText: text });
-    const ownCount = () => page.locator('.message.own').count();
+    const group = (text) => page.locator('.message-group').filter({ has: row(text) });
+    const ownCount = () => page.locator('.message-group.own').count();
     const checkMarked = async () => {
-      await page.waitForFunction(() => document.querySelectorAll('.message.own').length === 5);
+      await page.waitForFunction(
+        () => document.querySelectorAll('.message-group.own').length === 5,
+      );
       assert.equal(await row('My public message').count(), 1);
+      assert.equal(await group('Mixed case sender').locator('.message').count(), 3);
+      assert.equal(await group('Mixed case sender').locator('.message-name').count(), 1);
       for (const text of [
         'My public message',
         'Mixed case sender',
         'My outgoing whisper',
         'From my other account',
       ]) {
-        assert.equal(await row(text).evaluate((node) => node.classList.contains('own')), true);
+        assert.equal(await group(text).evaluate((node) => node.classList.contains('own')), true);
         assert.equal(
           await row(text)
             .locator('.message-text')
             .evaluate((node) => getComputedStyle(node).borderLeftWidth),
-          '2px',
+          '0px',
+        );
+        assert.equal(
+          await row(text)
+            .locator('.message-text')
+            .evaluate((node) => getComputedStyle(node).backgroundColor),
+          'rgba(0, 0, 0, 0)',
         );
       }
       for (const text of [
@@ -93,8 +105,22 @@ const assert = require('node:assert/strict');
         'An ordinary incoming message',
         'Nova is mentioned here',
       ])
-        assert.equal(await row(text).evaluate((node) => node.classList.contains('own')), false);
-      assert.equal(await page.locator('.message.system.own').count(), 0);
+        assert.equal(await group(text).evaluate((node) => node.classList.contains('own')), false);
+      assert.equal(await page.locator('.message.own').count(), 0);
+      assert.equal(
+        await page
+          .locator('.message-group.own')
+          .evaluateAll((groups) =>
+            groups.every((node) => node.querySelector('.message:not(.system)')),
+          ),
+        true,
+      );
+      assert.notEqual(
+        await group('Mixed case sender').evaluate((node) => getComputedStyle(node).backgroundColor),
+        await group('An ordinary incoming message').evaluate(
+          (node) => getComputedStyle(node).backgroundColor,
+        ),
+      );
       const background = (text) =>
         row(text)
           .locator('.message-text')
@@ -146,9 +172,11 @@ const assert = require('node:assert/strict');
     await page.reload();
     await checkMarked();
     socket.send(JSON.stringify({ tabs: ['Nova', 'Milo', 'Guest'] }));
-    await page.waitForFunction(() => document.querySelectorAll('.message.own').length === 6);
+    await page.waitForFunction(() => document.querySelectorAll('.message-group.own').length === 6);
     assert.equal(
-      await row('An ordinary incoming message').evaluate((node) => node.classList.contains('own')),
+      await group('An ordinary incoming message').evaluate((node) =>
+        node.classList.contains('own'),
+      ),
       true,
     );
     socket.send(JSON.stringify({ tabs: ['Nova', 'Milo'] }));

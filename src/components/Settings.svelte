@@ -15,9 +15,9 @@
     <Help label="About appearance"
       ><p>
         Text size is saved on this device. Room activity shows people entering or leaving rooms,
-        changing rooms, and other chat events in the conversation. Your messages can use a subtle
-        blue-grey marker, including messages from your other connected accounts. This choice is
-        saved on this device.
+        changing rooms, and other chat events in the conversation. Your message groups can use a
+        subtle blue-grey background, including messages from your other connected accounts. This
+        choice is saved on this device.
       </p>
       {#if session.wide}<p>
           Desktop panels can have separate message fields with fixed senders, or one shared bar at
