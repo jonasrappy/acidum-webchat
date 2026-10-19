@@ -70,6 +70,7 @@ export class ChatSession {
   roleRevision = $state(0);
   wide = $state(false);
   layout = $state(readPreference('acidum-desktop-layout', 'overview'));
+  desktopComposer = $state(readPreference('acidum-desktop-composer', 'panels'));
   peopleOpen = $state(readPreference('acidum-room-people', 'yes') !== 'no');
   dialogs = $state({ rooms: false, settings: false, person: false, message: false });
   selectedPerson = $state.raw(null);
@@ -85,6 +86,7 @@ export class ChatSession {
     this.wide && !this.active && !this.logOnly && this.accounts.length > 1,
   );
   overviewActive = $derived(this.overviewAvailable && this.layout === 'overview');
+  panelComposers = $derived(this.overviewActive && this.desktopComposer !== 'shared');
   roomRail = $derived(this.wide && Boolean(this.active) && !this.logOnly && this.peopleOpen);
 
   totalUnread = $derived(this.accounts.reduce((sum, account) => sum + account.unread, 0));
@@ -638,6 +640,13 @@ export class ChatSession {
     this.filterChanged();
   }
 
+  setDesktopComposer(value) {
+    this.saveDrafts();
+    this.desktopComposer = value;
+    writePreference('acidum-desktop-composer', value);
+    tick().then(() => this.scrollToBottom());
+  }
+
   togglePeople() {
     this.peopleOpen = !this.peopleOpen;
     writePreference('acidum-room-people', this.peopleOpen ? 'yes' : 'no');
@@ -651,7 +660,7 @@ export class ChatSession {
   }
 
   focusComposer(name = this.composer.account) {
-    const id = this.overviewActive ? 'account-' + encodeURIComponent(name) + '-message' : 'message';
+    const id = this.panelComposers ? 'account-' + encodeURIComponent(name) + '-message' : 'message';
     document.getElementById(id)?.focus({ preventScroll: true });
   }
 

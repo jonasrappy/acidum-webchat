@@ -136,11 +136,13 @@
           >
         {/if}
       </div>
-      <div class="panel-composers">
-        {#each panel.accounts as account (account.name)}
-          <Composer {session} lockedAccount={account.name} />
-        {/each}
-      </div>
+      {#if session.panelComposers}
+        <div class="panel-composers">
+          {#each panel.accounts as account (account.name)}
+            <Composer {session} lockedAccount={account.name} />
+          {/each}
+        </div>
+      {/if}
     </section>
   {/each}
 </div>

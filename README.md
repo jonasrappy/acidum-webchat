@@ -15,7 +15,7 @@ The token link has the technical format `https://acium.app/chat?token=…`. It i
 ## Features
 
 - On desktop, **All chats** opens a room overview with independent message panels. Accounts in the same known room share a panel. Panels keep a fixed order, and busy rooms cannot push quieter rooms out of the view. Choose **Timeline** for one chronological stream; the layout choice is saved on this device.
-- Each desktop panel has a message field with its sender fixed to the corresponding account. Accounts sharing a room get separate fields below the shared conversation. Drafts stay separate and follow the account between desktop panels, the timeline, and mobile. Name suggestions use the room of the account you are writing as.
+- Under **Settings → Appearance → Desktop message fields**, choose **Under each chat** for fields with fixed senders or **One bottom bar** for a shared field with a sender selector. The preference is saved on this device and applies to the desktop overview. Accounts sharing a room get separate fields in the first mode. Drafts stay separate and follow the account between both modes, the timeline, and mobile. Name suggestions use the room of the account you are writing as.
 - Opening one account on desktop shows a live participant list beside the conversation. Hide or restore it with the participant button.
 - View all conversations together or select one account. Mobile account tabs fit their names and keep the selected account visible when switching accounts or resizing the screen.
 - Search loaded messages, filter by sender, or show whispers only. Active filters remain visible when search is closed and can be removed directly.

@@ -17,6 +17,10 @@
         Text size is saved on this device. Room activity shows people entering or leaving rooms,
         changing rooms, and other chat events in the conversation.
       </p>
+      {#if session.wide}<p>
+          Desktop panels can have separate message fields with fixed senders, or one shared bar at
+          the bottom where you choose the sender. This choice is saved on this device.
+        </p>{/if}
       <p class="font-preview">An example message.</p></Help
     >
     <label class="text-size-label" for="text-size"
@@ -39,6 +43,33 @@
         onchange={(event) => session.setShowEvents(event.currentTarget.checked)}
       /></label
     >
+    {#if session.wide}
+      <fieldset class="desktop-composer-setting">
+        <legend>Desktop message fields</legend>
+        <label class="radio-choice" for="composer-panels">
+          <input
+            id="composer-panels"
+            type="radio"
+            name="desktop-composer"
+            value="panels"
+            checked={session.desktopComposer !== 'shared'}
+            onchange={(event) => session.setDesktopComposer(event.currentTarget.value)}
+          />
+          <span>Under each chat</span>
+        </label>
+        <label class="radio-choice" for="composer-shared">
+          <input
+            id="composer-shared"
+            type="radio"
+            name="desktop-composer"
+            value="shared"
+            checked={session.desktopComposer === 'shared'}
+            onchange={(event) => session.setDesktopComposer(event.currentTarget.value)}
+          />
+          <span>One bottom bar</span>
+        </label>
+      </fieldset>
+    {/if}
   </section>
   <section class="settings-group">
     <h3>Message alerts</h3>
@@ -164,6 +195,34 @@
     gap: 16px;
     min-height: 52px;
     cursor: pointer;
+  }
+  .desktop-composer-setting {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0 24px;
+    border: 0;
+    border-top: 1px solid var(--line);
+    padding: 10px 0 0;
+    margin: 12px 0 0;
+    min-width: 0;
+  }
+  .desktop-composer-setting legend {
+    padding: 0 8px 0 0;
+    font-size: 13px;
+    color: var(--muted);
+  }
+  .radio-choice {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 44px;
+    cursor: pointer;
+  }
+  .radio-choice input {
+    width: 18px;
+    height: 18px;
+    margin: 0;
+    accent-color: var(--accent);
   }
   .setting-row > span {
     display: flex;

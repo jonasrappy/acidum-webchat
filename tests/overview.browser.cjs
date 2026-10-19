@@ -114,6 +114,49 @@ const assert = require('node:assert/strict');
     assert.equal(await input('Iris').inputValue(), 'Alma ');
     await input('Nova').fill('Nova draft');
 
+    await page.locator('#settings-button').click();
+    await page.getByRole('radio', { name: 'One bottom bar', exact: true }).check();
+    await page.locator('#settings-dialog .close-sheet').click();
+    assert.equal(await page.locator('.room-panel').count(), 6);
+    assert.equal(await page.locator('.composer-form').count(), 1);
+    assert.equal(await page.locator('.panel-composers').count(), 0);
+    assert.equal(await page.locator('#message').inputValue(), 'Nova draft');
+    await page.getByRole('button', { name: 'Reply as Milo', exact: true }).click();
+    assert.equal(await page.locator('#send-as').inputValue(), 'Milo');
+    assert.equal(await page.locator('#message').inputValue(), 'Milo draft');
+    assert.equal(
+      await page.locator('#message').evaluate((node) => node === document.activeElement),
+      true,
+    );
+    await page.locator('#message').fill('Shared bar reply');
+    await page.locator('#message').press('Enter');
+    assert.deepEqual(sent.at(-1), { name: 'Milo', say: 'Shared bar reply' });
+    await page.locator('#message').fill('Milo draft');
+    await page.reload();
+    await page.locator('#send-as').waitFor();
+    assert.equal(await page.locator('.composer-form').count(), 1);
+    await page.locator('#settings-button').click();
+    assert.equal(
+      await page.getByRole('radio', { name: 'One bottom bar', exact: true }).isChecked(),
+      true,
+    );
+    await page.getByRole('radio', { name: 'Under each chat', exact: true }).check();
+    await page.locator('#settings-dialog .close-sheet').click();
+    assert.equal(await page.locator('.composer-form').count(), 6);
+    assert.equal(await input('Nova').inputValue(), 'Nova draft');
+    assert.equal(await input('Milo').inputValue(), 'Milo draft');
+    assert.equal(await input('Iris').inputValue(), 'Alma ');
+    await page.reload();
+    await input('Nova').waitFor();
+    assert.equal(await page.locator('.composer-form').count(), 6);
+    await page.locator('#settings-button').click();
+    assert.equal(
+      await page.getByRole('radio', { name: 'Under each chat', exact: true }).isChecked(),
+      true,
+    );
+    await page.locator('#settings-dialog .close-sheet').click();
+    await page.locator('.message').first().waitFor();
+
     await panel('Nova')
       .locator('.panel-messages')
       .evaluate((node) => {
